@@ -621,9 +621,7 @@ def add_file_students(request):
 # =========================
 @admin_required
 def exam_setup(request):
-    return render(request, "core/exam_setup.html", {
-        'admin_dashboard_url': settings.ADMIN_DASHBOARD_URL
-    })
+    return render(request, "core/exam_setup.html")
 
 
 # =========================

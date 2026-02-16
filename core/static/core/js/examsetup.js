@@ -135,9 +135,8 @@ if (completeSetupBtn) {
 
             // Redirect to dashboard
             console.log('[COMPLETE SETUP] Redirecting to dashboard...');
-            // Use dashboard URL from environment variable (.env)
-            const dashboardUrl = window.ADMIN_DASHBOARD_URL || '/dashboard/';
-            setTimeout(() => { window.location.href = dashboardUrl; }, 250);
+            // Use absolute URL as requested
+            setTimeout(() => { window.location.href = 'https://exam-seat-management-system.onrender.com/admin-dashboard'; }, 250);
         })
         .catch(err => {
             console.error('[COMPLETE SETUP] Error:', err);
