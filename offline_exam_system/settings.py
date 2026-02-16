@@ -159,7 +159,9 @@ STATICFILES_DIRS = [
 ]
 
 # WhiteNoise compression for faster static file serving
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Use CompressedStaticFilesStorage (stable, no manifest required)
+# Avoid CompressedManifestStaticFilesStorage which requires manifest.json and can fail silently
+STATICFILES_STORAGE = "whitenoise.storage.CompressedStaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"

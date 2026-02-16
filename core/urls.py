@@ -41,6 +41,7 @@ from .views import (
     upload_admin_emails,
     delete_admin_email,
     block_admin_email,
+    diagnostic_check,
 )
 
 urlpatterns = [
@@ -87,4 +88,6 @@ urlpatterns = [
     path('manage-admin-emails/', upload_admin_emails, name='manage_admin_emails'),
     path('delete-admin-email/<int:email_id>/', delete_admin_email, name='delete_admin_email'),
     path('block-admin-email/', block_admin_email, name='block_admin_email'),
+    # Diagnostic endpoint (check if static files exist on server)
+    path('diagnostic-check/', diagnostic_check, name='diagnostic_check'),
 ]

@@ -2447,3 +2447,52 @@ def debug_department_exams(request):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 
+def diagnostic_check(request):
+    """
+    DIAGNOSTIC ENDPOINT (PUBLIC): Check if static files exist on the server.
+    Opens /diagnostic-check/ to see server-side file status.
+    """
+    from pathlib import Path
+    import os
+
+    static_root = settings.STATIC_ROOT
+    static_url = settings.STATIC_URL
+    debug = settings.DEBUG
+    allowed_hosts = settings.ALLOWED_HOSTS
+    staticfiles_dirs = settings.STATICFILES_DIRS
+
+    # Check if STATIC_ROOT exists and list contents
+    static_root_exists = static_root.exists() if isinstance(static_root, Path) else os.path.exists(static_root)
+    static_root_contents = []
+    if static_root_exists:
+        try:
+            static_root_path = Path(static_root) if not isinstance(static_root, Path) else static_root
+            for item in static_root_path.rglob('*'):
+                if item.is_file():
+                    rel_path = item.relative_to(static_root_path)
+                    static_root_contents.append(str(rel_path))
+        except Exception as e:
+            static_root_contents = [f"Error listing: {str(e)}"]
+
+    # Check if source dirs exist
+    source_dirs_status = {}
+    for source_dir in staticfiles_dirs:
+        source_path = Path(source_dir) if isinstance(source_dir, str) else source_dir
+        source_dirs_status[str(source_path)] = {
+            'exists': source_path.exists(),
+            'is_dir': source_path.is_dir() if source_path.exists() else False,
+        }
+
+    return JsonResponse({
+        'debug': debug,
+        'allowed_hosts': allowed_hosts,
+        'static_url': static_url,
+        'static_root': str(static_root),
+        'static_root_exists': static_root_exists,
+        'static_root_file_count': len(static_root_contents),
+        'static_root_sample_files': static_root_contents[:20],  # First 20 files
+        'staticfiles_dirs': [str(d) for d in staticfiles_dirs],
+        'source_dirs_status': source_dirs_status,
+    }, indent=2)
+
+
