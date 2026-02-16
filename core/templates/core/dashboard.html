@@ -234,17 +234,14 @@
         <img src="{{ qr_url }}" alt="Universal QR" style="max-width:320px; border:3px solid #28a745; padding:10px; border-radius:8px;">
         <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
           <button type="button" id="printQrBtn" class="upload-btn">Print QR</button>
-          <button type="button" id="copyQrUrlBtn" class="upload-btn">Copy QR Image URL</button>
+         
           <button type="button" id="copyPortalUrlBtn" class="upload-btn">Copy Student Portal URL</button>
         </div>
         <p style="margin-top:10px; color:#666;">
           <strong>Student Portal URL:</strong><br>
           <a href="{{ student_portal_url }}" target="_blank" style="color:#1976d2; word-break:break-all;">{{ student_portal_url }}</a>
         </p>
-        <p style="margin-top:8px; color:#666;">
-          <strong>Dashboard URL (After Exam Creation):</strong><br>
-          <span id="dashboardUrlDisplay" style="color:#555; word-break:break-all;">Loading...</span>
-        </p>
+       
       </div>
     </div>
 
