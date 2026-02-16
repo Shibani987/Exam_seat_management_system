@@ -1,0 +1,123 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Exam Seating - {{ exam_name }}</title>
+  <link rel="stylesheet" href="{% static 'core/css/dash_board.css' %}">
+  <style>
+    #back-link { color:#1976d2; text-decoration:none; font-weight:500; transition:0.2s; }
+    #back-link:hover { color:#1565c0; border-bottom:2px solid #1976d2; }
+    .room-card { margin-bottom: 25px; background:#f9f9f9; border:1px solid #e0e0e0; border-radius:6px; padding:18px; }
+    .room-header { display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #ddd; }
+    .dept-meta-section { margin-bottom:12px; padding:10px; background:#fff; border-left:3px solid #1976d2; border-radius:3px; }
+    .dept-meta-name { font-weight:600; color:#1976d2; font-size:0.9rem; margin-bottom:4px; }
+    .dept-meta-exam { font-size:0.85rem; color:#555; margin:3px 0 0 10px; }
+    .dept-meta-students { font-size:0.8rem; color:#666; margin:2px 0 0 10px; }
+    .seating-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap:6px; margin-top:12px; }
+    .seat-cell { border:1px solid #e0e0e0; border-radius:4px; padding:8px; min-height:48px; background:#fafafa; font-size:0.85rem; }
+    .seat-cell.empty { background:#fff; opacity:0.98; }
+    .seat-cell .empty-seat { color:#666; font-weight:600; font-style:normal; text-align:center; margin-top:6px; }
+    .room-meta { color:#666; font-size:0.9rem; }
+    .room-actions { display:flex; gap:8px; }
+    .room-actions .delete-btn { background:#e53935; color:#fff; border:none; padding:6px 8px; border-radius:4px; cursor:pointer; font-size:0.85rem; }
+    .room-actions .delete-btn:hover { background:#d32f2f; }
+    .room-actions .delete-btn:disabled { opacity:0.6; cursor:not-allowed; }
+  </style>
+</head>
+<body>
+  <div style="max-width:1100px;margin:30px auto;padding:0 16px;">
+    <a id="back-link" href="/dashboard/">← Back to Dashboard</a>
+    <h1 style="margin-top:12px; margin-bottom:8px;">Exam Seating — {{ exam_name }}</h1>
+    <div style="margin-bottom:18px; color:#444; font-size:0.95rem;">
+      <strong>Start Date:</strong> {{ start_date|default:"N/A" }} &nbsp; | &nbsp; <strong>End Date:</strong> {{ end_date|default:"N/A" }}
+    </div>
+    <div id="roomsContainer">
+      <p style="color:#666;">Loading seating data...</p>
+    </div>
+ 
+    <!-- Add Room Form -->
+    <div style="max-width:1100px;margin:6px auto;padding:0 16px;">
+      <div style="background:#fff;border:1px solid #e0e0e0;padding:12px;border-radius:6px;margin-top:12px;">
+        <h3 style="margin:0 0 8px 0;color:#1976d2;">Add Room</h3>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+          <input id="new-room-building" placeholder="Building (e.g. Main Building)" style="padding:8px;border:1px solid #ddd;border-radius:4px;flex:1;min-width:180px;" />
+          <input id="new-room-number" placeholder="Room Number (e.g. 303)" style="padding:8px;border:1px solid #ddd;border-radius:4px;min-width:120px;" />
+          <input id="new-room-capacity" placeholder="Capacity" type="number" min="1" style="padding:8px;border:1px solid #ddd;border-radius:4px;width:100px;" />
+          <button id="addRoomBtn" style="background:#4caf50;color:#fff;border:none;padding:8px 12px;border-radius:4px;cursor:pointer;">Create Room</button>
+        </div>
+        <div id="addRoomMsg" style="margin-top:8px;color:#d32f2f;display:none"></div>
+      </div>
+    </div>
+  </div>
+
+  {% now "U" as now_ts %}
+
+  <!-- Edit Room Modal -->
+  <div id="editRoomModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:1000;">
+    <div style="background:#fff; width:90%; max-width:900px; max-height:85vh; overflow:auto; border-radius:8px; padding:16px; position:relative;">
+      <button id="closeEditModal" style="position:absolute; right:12px; top:12px; background:#eee; border:none; padding:6px 8px; cursor:pointer;">Close</button>
+      <h3 id="editModalTitle">Edit Room</h3>
+      <div id="editModalBody">
+        <p style="color:#666;">Loading...</p>
+      </div>
+      <div style="margin-top:12px; display:flex; gap:8px; justify-content:flex-end;">
+        <button id="saveRoomBtn" style="background:#1976d2;color:#fff;border:none;padding:8px 12px;border-radius:4px;">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/view_exam.js' %}?v={{ now_ts }}"></script>
+  <script>
+    window.EXAM_ID = {{ exam_id }};
+  </script>
+  <script>
+    // Inline handler to create a single room without touching existing rooms
+    document.addEventListener('DOMContentLoaded', function(){
+      const addBtn = document.getElementById('addRoomBtn');
+      if (!addBtn) return;
+      const buildingEl = document.getElementById('new-room-building');
+      const numberEl = document.getElementById('new-room-number');
+      const capacityEl = document.getElementById('new-room-capacity');
+      const msgEl = document.getElementById('addRoomMsg');
+
+      addBtn.addEventListener('click', function(){
+        const building = (buildingEl.value || '').trim();
+        const room_number = (numberEl.value || '').trim();
+        const capacity = Number(capacityEl.value || 0);
+        msgEl.style.display = 'none';
+
+        if (!building || !room_number || !capacity || capacity <= 0) {
+          msgEl.textContent = 'Please provide building, room number and a positive capacity';
+          msgEl.style.display = 'block';
+          return;
+        }
+
+        addBtn.disabled = true;
+        fetch('/add_room/', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ exam_id: window.EXAM_ID, building: building, room_number: room_number, capacity: capacity })
+        })
+        .then(r => r.json())
+        .then(j => {
+          if (j.status === 'success') {
+            alert('Room created: ' + j.room.building + ' — ' + j.room.room_number + ' (' + j.room.capacity + ')');
+            window.location.reload();
+          } else {
+            msgEl.textContent = j.message || 'Failed to create room';
+            msgEl.style.display = 'block';
+            addBtn.disabled = false;
+          }
+        })
+        .catch(err => {
+          msgEl.textContent = err.message || 'Network error';
+          msgEl.style.display = 'block';
+          addBtn.disabled = false;
+        });
+      });
+    });
+  </script>
+</body>
+</html>

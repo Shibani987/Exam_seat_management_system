@@ -1,0 +1,5 @@
+Django
+pandas
+qrcode[pil]
+Pillow
+requests

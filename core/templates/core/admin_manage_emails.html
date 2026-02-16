@@ -1,0 +1,49 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Manage Admin Emails</title>
+  <link rel="stylesheet" href="{% static 'core/css/dash_board.css' %}?v=3">
+</head>
+<body>
+  <div style="max-width:800px; margin:40px auto;">
+    <h1>Manage Eligible Admin Emails</h1>
+    {% if message %}
+      <p style="color:green">{{ message }}</p>
+    {% endif %}
+    <form method="POST">
+      {% csrf_token %}
+      <label for="id_email">Add a single email</label><br>
+      {{ form.email }}
+      <button type="submit" style="margin-left:8px;">Add</button>
+    </form>
+
+    <hr>
+
+    <form method="POST">
+      {% csrf_token %}
+      <label for="emails">Or paste emails (one per line)</label><br>
+      <textarea name="emails" rows="5" style="width:100%;"></textarea><br>
+      <button type="submit" style="margin-top:8px;">Add Pasted Emails</button>
+    </form>
+
+    <h3 style="margin-top:20px;">Currently eligible emails</h3>
+    <ul>
+      {% for e in eligible_emails %}
+        <li>
+          {{ e.email }} ({{ e.added_at|date:'Y-m-d H:i' }})
+          <form method="POST" action="{% url 'delete_admin_email' e.id %}" style="display:inline; margin-left:10px;">
+            {% csrf_token %}
+            <button type="submit" class="admin-email-delete-btn" onclick="return confirm('Delete this eligible email?');">Delete</button>
+          </form>
+        </li>
+      {% empty %}
+        <li>No emails yet.</li>
+      {% endfor %}
+    </ul>
+
+    <div style="margin-top:20px;"><a href="{% url 'dashboard' %}">Back to Dashboard</a></div>
+  </div>
+</body>
+</html>

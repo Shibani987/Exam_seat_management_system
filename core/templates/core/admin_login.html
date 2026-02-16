@@ -1,0 +1,84 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Admin Login – Offline Exam Management</title>
+  <link rel="stylesheet" href="{% static 'core/css/admin_login.css' %}">
+  <style>
+    .forgot-password-link {
+      display: inline-block;
+      margin-top: 12px;
+      text-align: center;
+      width: 100%;
+    }
+    .forgot-password-link a {
+      color: #1976d2;
+      text-decoration: underline;
+      font-size: 0.95rem;
+      transition: color 0.2s ease;
+    }
+    .forgot-password-link a:hover {
+      color: #1565c0;
+      text-decoration: none;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="login-wrapper">
+
+    <!-- LEFT INFO PANEL -->
+    <div class="info">
+      <h1>Offline Exam Management System</h1>
+      <p>This admin portal is used to securely manage examination preparation activities before the exam day.</p>
+      <ul class="points">
+        <li>✔ Upload & validate department-wise student data</li>
+        <li>✔ Configure exams, sessions & rooms</li>
+        <li>✔ Run smart seating allocation algorithm</li>
+        <li>✔ Generate QR-based seat verification</li>
+      </ul>
+    </div>
+
+    <!-- LOGIN CARD -->
+    <div class="login-card">
+      <h2>Admin Login</h2>
+      <p class="sub">Authorized access only</p>
+
+      <form method="POST">
+        {% csrf_token %}
+        {% if error %}
+        <p class="error">{{ error }}</p>
+    {% endif %}
+
+        <label>Admin Username</label>
+        <input type="text" name="username" placeholder="admin" required />
+
+        <label>Password</label>
+      <div class="password-wrapper">
+  <input id="password" type="password" name="password" required />
+  <svg id="togglePassword" class="toggle-password" viewBox="0 0 24 24">
+    <!-- eye open -->
+    <path d="M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zm0 13c-3.04 0-5.5-2.46-5.5-5.5S8.96 6.5 12 6.5s5.5 2.46 5.5 5.5-2.46 5.5-5.5 5.5zm0-9a3.5 3.5 0 100 7 3.5 3.5 0 000-7z"/>
+  </svg>
+</div>
+
+        <button type="submit">Login</button>
+      </form>
+
+      <div class="note">
+        This login ensures that only authorized administrators can configure exams and allocate seating.
+      </div>
+
+      <div class="forgot-password-link">
+        <a href="{% url 'forgot_password' %}">Forgot password?</a>
+      </div>
+    </div>
+
+  </div>
+
+ <script src="{% static 'core/js/admin_login.js' %}"></script>
+
+</body>
+</html>

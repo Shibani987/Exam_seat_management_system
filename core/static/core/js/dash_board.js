@@ -1,0 +1,147 @@
+console.log('[DASHBOARD JS] Script loaded!');
+
+// ================= SIDEBAR & MODAL HANDLERS =================
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const closeBtn = document.getElementById('closeBtn');
+const sidebar = document.getElementById('sidebar');
+const newExamBtn = document.getElementById('newExamBtn');
+const newExamModal = document.getElementById('newExamModal');
+const modalCloseBtn = document.getElementById('modalCloseBtn');
+
+// Safely check if modal exists (to avoid errors if missing in some views)
+if (newExamBtn && newExamModal && modalCloseBtn) {
+  // Open modal
+  newExamBtn.addEventListener('click', () => {
+    newExamModal.classList.add('active');
+  });
+
+  // Close modal
+  modalCloseBtn.addEventListener('click', () => {
+    newExamModal.classList.remove('active');
+  });
+
+  // Close modal when clicking outside modal content
+  newExamModal.addEventListener('click', (event) => {
+    if (event.target === newExamModal) {
+      newExamModal.classList.remove('active');
+    }
+  });
+
+  // Close modal with Escape key
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && newExamModal.classList.contains('active')) {
+      newExamModal.classList.remove('active');
+    }
+  });
+}
+
+// ================= SIDEBAR TOGGLE =================
+if (hamburgerBtn && sidebar && closeBtn) {
+  hamburgerBtn.addEventListener('click', () => {
+    hamburgerBtn.classList.toggle('active');
+    sidebar.classList.toggle('active');
+  });
+
+  closeBtn.addEventListener('click', () => {
+    hamburgerBtn.classList.remove('active');
+    sidebar.classList.remove('active');
+  });
+}
+
+// ================= TAB SWITCHING =================
+const tabLinks = document.querySelectorAll('.tab-link');
+const tabContents = document.querySelectorAll('.tab-content');
+
+tabLinks.forEach(link => {
+  link.addEventListener('click', (e) => {
+    e.preventDefault();
+    const tabId = link.getAttribute('data-tab');
+
+    // Remove active class from all
+    tabLinks.forEach(l => l.classList.remove('active'));
+    tabContents.forEach(content => content.classList.remove('active'));
+
+    // Add to selected
+    link.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+
+    // Close sidebar in mobile
+    sidebar.classList.remove('active');
+    hamburgerBtn.classList.remove('active');
+  });
+});
+
+// ================= LOGOUT CLOSE SIDEBAR =================
+const logoutLink = sidebar.querySelector('.logout a');
+if (logoutLink) {
+  logoutLink.addEventListener('click', () => {
+    sidebar.classList.remove('active');
+    hamburgerBtn.classList.remove('active');
+  });
+}
+
+// ================= CLOSE SIDEBAR ON OUTSIDE CLICK (MOBILE) =================
+document.addEventListener('click', (event) => {
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile && sidebar.classList.contains('active')) {
+    if (!sidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+      sidebar.classList.remove('active');
+      hamburgerBtn.classList.remove('active');
+    }
+  }
+});
+
+// ================= NEW EXAM MODAL BUTTONS =================
+const uploadBtn = document.querySelector('.btn-upload');
+const continueBtn = document.querySelector('.btn-continue');
+
+if (uploadBtn) {
+  uploadBtn.addEventListener('click', () => {
+    // Close modal
+    newExamModal.classList.remove('active');
+
+    // Switch tab to "Upload Student Data"
+    document.querySelector('[data-tab="upload-data"]').classList.add('active');
+    document.querySelector('[data-tab="create-exam"]').classList.remove('active');
+    document.getElementById('upload-data').classList.add('active');
+    document.getElementById('create-exam').classList.remove('active');
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
+
+if (continueBtn) {
+  continueBtn.addEventListener('click', () => {
+    window.location.href = examSetupUrl; // ✅ dynamic Django URL
+  });
+}
+
+// ================= ENABLE UPLOAD BUTTON ONLY WHEN ALL FILLED =================
+const yearSelect = document.getElementById("yearSelect");
+const semesterSelect = document.getElementById("semesterSelect");
+const deptSelect = document.getElementById("deptSelect");
+const fileInput = document.getElementById("fileInput");
+const uploadDataBtn = document.getElementById("uploadBtn");
+
+if (uploadDataBtn) {
+  function checkFormFilled() {
+    if (
+      yearSelect.value &&
+      semesterSelect.value &&
+      deptSelect.value &&
+      fileInput.files.length > 0
+    ) {
+      uploadDataBtn.disabled = false;
+    } else {
+      uploadDataBtn.disabled = true;
+    }
+  }
+
+  [yearSelect, semesterSelect, deptSelect, fileInput].forEach(el => {
+    if (el) el.addEventListener("change", checkFormFilled);
+  });
+}
+
+
+
+

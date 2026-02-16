@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Universal QR Code</title>
+<link rel="stylesheet" href="{% static 'core/css/examsetup.css' %}">
+    <style>
+        .print-btn { padding:10px 14px; border-radius:6px; background:#0f4e87; color:#fff; border:none; cursor:pointer; font-weight:600; }
+        .print-btn:hover { background:#0d4372; }
+        @media print {
+            body * { visibility: hidden; }
+            #qrCard, #qrCard * { visibility: visible; }
+            #qrCard { position: absolute; left:0; top:0; width:100%; text-align:center; padding-top:20px; }
+        }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>Universal QR Code</h1>
+    <p>This QR code points to the <strong>Student Portal</strong>. Students can scan it and then enter their registration number to find their seat.</p>
+
+    <div style="text-align:center; padding:20px;" id="qrCard">
+        <img id="universalQr" src="{{ qr_url }}" alt="Universal QR" style="max-width:320px; border:3px solid #28a745; padding:10px; border-radius:8px;">
+        <div style="margin-top:12px;">
+            <button id="printQr" class="print-btn">Print QR</button>
+        </div>
+        <p style="margin-top:10px; color:#666;">Or open <a href="{% url 'student_portal' %}" target="_blank">Student Portal</a></p>
+    </div>
+
+    <div style="text-align:center; margin-top:20px;">
+        <a href="{% url 'exam_setup' %}" class="filter-btn">Back to Exam Setup</a>
+    </div>
+</div>
+<script>
+    document.getElementById('printQr')?.addEventListener('click', function(){ window.print(); });
+</script>
+</body>
+</html>

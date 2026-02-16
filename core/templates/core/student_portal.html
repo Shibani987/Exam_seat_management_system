@@ -1,0 +1,812 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Portal - Exam Seat Lookup</title>
+    <style>
+        /* Reset */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        html,body { height: 100%; }
+
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #f5f7fa; /* subtle, professional */
+            color: #213547;
+            -webkit-font-smoothing:antialiased;
+            -moz-osx-font-smoothing:grayscale;
+            padding: 30px 20px;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+        }
+
+        .container {
+            background: #fff;
+            border: 1px solid #e6eaef;
+            border-radius: 10px;
+            box-shadow: 0 8px 30px rgba(33,53,71,0.08);
+            max-width: 760px;
+            width: 100%;
+            padding: 32px;
+        }
+
+        .header {
+            margin-bottom: 22px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e6eaef;
+        }
+
+        .brand { display:flex; align-items:center; gap:14px; }
+        .logo { width:56px; height:56px; object-fit:contain; border-radius:6px; background:#f0f3f6; padding:6px; }
+
+        .header h1 {
+            font-size: 20px;
+            color: #0b2540;
+            margin-bottom: 2px;
+            font-weight: 700;
+        }
+
+        .header .subtitle {
+            color:#566777; font-size:13px; margin-top:2px;
+        }
+
+        .step-indicator {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .step-dot {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            background: #e6eef7;
+            color: #566777;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.3s ease;
+        }
+
+        .step-dot.active {
+            background: #0f4e87;
+            color: white;
+        }
+
+        .step-dot.completed {
+            background: #28a745;
+            color: white;
+        }
+
+        .step-line {
+            width: 30px;
+            height: 2px;
+            background: #e6eef7;
+        }
+
+        .step-line.active {
+            background: #0f4e87;
+        }
+
+        .login-form { margin: 20px 0 0 0; }
+
+        .form-group { margin-bottom: 18px; }
+        .form-group label { display:block; font-weight:600; color:#34495e; font-size:13px; margin-bottom:6px; }
+        .form-group input {
+            width:100%; padding:12px 14px; border-radius:8px; border:1px solid #dce6ef; background:#fbfdff; font-size:14px; color:#0b2540;
+            transition: box-shadow 0.15s ease, border-color 0.15s ease;
+        }
+        .form-group input:focus { outline:none; box-shadow:0 0 0 3px rgba(15,78,135,0.08); border-color:#0f4e87; }
+
+        .exam-list {
+            margin-top: 20px;
+            border: 1px solid #e6eaf7;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .exam-item {
+            padding: 14px;
+            border-bottom: 1px solid #e6eaf7;
+            cursor: pointer;
+            transition: background 0.2s ease;
+            background: #fbfdff;
+        }
+
+        .exam-item:last-child {
+            border-bottom: none;
+        }
+
+        .exam-item:hover {
+            background: #f0f5f9;
+        }
+
+        .exam-item.selected {
+            background: #e8f5f0;
+            border-left: 4px solid #28a745;
+        }
+
+        .exam-item-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            font-size: 13px;
+        }
+
+        .exam-name {
+            font-weight: 700;
+            color: #0b2540;
+            margin-bottom: 6px;
+        }
+
+        .exam-detail {
+            color: #566777;
+        }
+
+        .exam-detail strong {
+            color: #34495e;
+        }
+
+        .btn { padding:11px 16px; border-radius:8px; background:#0f4e87; color:white; border:none; cursor:pointer; font-weight:700; font-size:14px; }
+        .btn:hover { background:#0d4372; }
+        .btn:disabled { background:#a0b3c6; cursor:not-allowed; }
+
+        .btn.btn-secondary {
+            background: transparent;
+            border: 1px solid #0f4e87;
+            color: #0f4e87;
+        }
+
+        .btn.btn-secondary:hover {
+            background: #f6f9fc;
+        }
+
+        .btn.btn-outline { background:transparent; border:1px solid #0f4e87; color:#0f4e87; font-weight:600; }
+        .btn.btn-outline:hover { background:#f6f9fc; }
+
+        .message { margin-top:12px; }
+        .error { background:#fff5f5; color:#8a1919; padding:12px; border-radius:8px; border-left:4px solid #d9534f; }
+        .success { background:#f4fffb; color:#0b7a53; padding:12px; border-radius:8px; border-left:4px solid #28a745; }
+        .warning { background:#fffbf0; color:#856404; padding:12px; border-radius:8px; border-left:4px solid #ffc107; }
+
+        .seat-info { background:#ffffff; padding:18px; border-radius:8px; margin-top:20px; border:1px solid #e9eff5; }
+        .seat-info h3 { color:#0b2540; margin-bottom:14px; font-size:16px; font-weight:700; }
+        .seat-info-grid { display:grid; grid-template-columns: repeat(2, 1fr); gap:14px; }
+        .info-item { padding:12px; background:#fbfdff; border-radius:6px; border-left:4px solid #e6eef7; }
+        .info-item strong { display:block; color:#6b7f8f; font-size:12px; margin-bottom:6px; }
+        .info-item span { color:#0b2540; font-weight:700; font-size:15px; }
+
+        .highlight { background:#f8f9fb; color:#213547; padding:12px 14px; border-radius:6px; margin-top:14px; border-left:4px solid #d1dbe6; font-size:13px; }
+
+        .seat-actions { display:flex; gap:12px; justify-content:flex-start; align-items:center; flex-wrap: wrap; }
+
+        /* Seating Layout */
+        .seating-layout {
+            margin-top: 24px;
+            padding: 18px;
+            background: #fbfdff;
+            border-radius: 8px;
+            border: 1px solid #e6eef7;
+        }
+
+        .seating-layout h4 {
+            color: #0b2540;
+            margin-bottom: 16px;
+            font-size: 15px;
+            font-weight: 700;
+        }
+
+        .seat-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 8px;
+            max-width: 400px;
+        }
+
+        .seat-cell {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            border: 1px solid #d1dbe6;
+            background: #f8f9fb;
+            color: #566777;
+            font-weight: 600;
+            font-size: 12px;
+            cursor: default;
+            transition: all 0.2s ease;
+        }
+
+        .seat-cell.empty {
+            background: #f8f9fb;
+            color: #a0a9b5;
+            border-color: #e6eef7;
+        }
+
+        .seat-cell.occupied {
+            background: #e8f5f0;
+            color: #0b7a53;
+            border-color: #28a745;
+        }
+
+        .seat-cell.student-seat {
+            background: #28a745;
+            color: white;
+            border-color: #1e7e34;
+            font-weight: 700;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.3);
+        }
+
+        .seat-legend {
+            display: flex;
+            gap: 20px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #e6eef7;
+            flex-wrap: wrap;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 12px;
+            color: #566777;
+        }
+
+        .legend-box {
+            width: 24px;
+            height: 24px;
+            border-radius: 4px;
+            border: 1px solid #d1dbe6;
+        }
+
+        .legend-box.empty {
+            background: #f8f9fb;
+        }
+
+        .legend-box.occupied {
+            background: #e8f5f0;
+            border-color: #28a745;
+        }
+
+        .legend-box.student-seat {
+            background: #28a745;
+            border-color: #1e7e34;
+        }
+
+        .student-info-card {
+            background: #f0f5f9;
+            padding: 14px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #d1dbe6;
+        }
+
+        .student-info-card h3 {
+            color: #0b2540;
+            font-size: 14px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .student-details {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .student-detail-item {
+            color: #566777;
+        }
+
+        .student-detail-label {
+            color: #34495e;
+            font-weight: 600;
+        }
+
+        .footer { margin-top:26px; padding-top:18px; border-top:1px solid #eef3f7; color:#6b7f8f; font-size:12px; text-align:center; }
+
+        /* Sections */
+        section {
+            display: none;
+        }
+
+        section.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width:600px) {
+            .seat-info-grid { grid-template-columns: 1fr; }
+            .brand { gap:10px; }
+            .logo { width:48px; height:48px; }
+            .exam-item-info { grid-template-columns: 1fr; }
+            .step-indicator { flex-wrap: wrap; }
+        }
+
+        /* Print styles: only print the seat-info card */
+        @media print {
+            body { background: #fff; }
+            body * { visibility: hidden; }
+            .seat-info, .seat-info * { visibility: visible; }
+            .seat-info { position: absolute; left: 0; top: 0; width: 100%; padding: 0; border:none; box-shadow:none; }
+            .btn, .header, .login-form, .footer, #messageContainer, .student-info-card { display:none !important; }
+        }
+    </style> 
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <div class="brand">
+                <img src="{% static 'core/img/logo-placeholder.png' %}" alt="Institution Logo" class="logo" onerror="this.style.display='none'">
+                <div>
+                    <h1>Student Portal</h1>
+                    <p class="subtitle">Exam Seat Lookup</p>
+                </div>
+            </div>
+        </div> 
+        
+        <div id="messageContainer"></div>
+
+        <!-- Step Indicator -->
+        <div class="step-indicator" id="stepIndicator">
+            <div class="step-dot active" id="step1-dot">1</div>
+            <div class="step-line" id="line1"></div>
+            <div class="step-dot" id="step2-dot">2</div>
+            <div class="step-line" id="line2"></div>
+            <div class="step-dot" id="step3-dot">3</div>
+        </div>
+
+        <!-- STEP 1: Enter Registration ID -->
+        <section id="step1" class="active">
+            <h2 style="font-size: 16px; color: #0b2540; margin-bottom: 16px; font-weight: 700;">Step 1: Enter Registration ID</h2>
+            <form id="step1Form">
+                <div class="form-group">
+                    <label for="regNumber">Registration Number</label>
+                    <input type="text" id="regNumber" placeholder="Enter your registration number" required>
+                </div>
+                
+                <button type="submit" class="btn">Find My Exams</button>
+            </form>
+        </section>
+
+        <!-- STEP 2: Select Exam -->
+        <section id="step2">
+            <h2 style="font-size: 16px; color: #0b2540; margin-bottom: 16px; font-weight: 700;">Step 2: Select Your Exam</h2>
+            
+            <div class="student-info-card">
+                <h3>Your Information</h3>
+                <div class="student-details">
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Department:</div>
+                        <div id="infoDepart">-</div>
+                    </div>
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Year:</div>
+                        <div id="infoYear">-</div>
+                    </div>
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Name:</div>
+                        <div id="infoName">-</div>
+                    </div>
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Semester:</div>
+                        <div id="infoSem">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <p style="color: #566777; font-size: 13px; margin-bottom: 12px;">Select an exam from below:</p>
+            <div class="exam-list" id="examList"></div>
+
+            <div class="seat-actions" style="margin-top: 20px;">
+                <button type="button" class="btn btn-secondary" onclick="goBackToStep1()">Back</button>
+            </div>
+        </section>
+
+        <!-- STEP 3: Show Seat Information -->
+        <section id="step3">
+            <div class="student-info-card">
+                <h3>Selected Exam</h3>
+                <div class="student-details">
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Exam Name:</div>
+                        <div id="selectedExamName">-</div>
+                    </div>
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Exam Date:</div>
+                        <div id="selectedExamDate">-</div>
+                    </div>
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Time Window:</div>
+                        <div id="selectedTimeWindow">-</div>
+                    </div>
+                    <div class="student-detail-item">
+                        <div class="student-detail-label">Status:</div>
+                        <div id="selectedStatus">-</div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="seatErrorContainer" style="display: none;">
+            </div>
+
+            <div id="seatDisplayContainer">
+                <div class="seat-info">
+                    <h3>Seating Assignment</h3>
+                    <div class="seat-info-grid">
+                        <div class="info-item">
+                            <strong>Registration Number</strong>
+                            <span id="seatRegNumber">-</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Building</strong>
+                            <span id="seatBuilding">-</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Room Number</strong>
+                            <span id="seatRoom">-</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Seat Position</strong>
+                            <span id="seatPosition">-</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Department</strong>
+                            <span id="seatDept">-</span>
+                        </div>
+                        <div class="info-item">
+                            <strong>Session</strong>
+                            <span id="examSession">-</span>
+                        </div>
+                    </div>
+
+                    <!-- Seating Layout -->
+                    <div class="seating-layout">
+                        <h4>Room Layout (5 Columns × 8 Rows)</h4>
+                        <div class="seat-grid" id="seatGrid"></div>
+                        <div class="seat-legend">
+                            <div class="legend-item">
+                                <div class="legend-box empty"></div>
+                                <span>Empty Seat</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-box occupied"></div>
+                                <span>Occupied Seat</span>
+                            </div>
+                            <div class="legend-item">
+                                <div class="legend-box student-seat"></div>
+                                <span>Your Seat</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="highlight">
+                        <strong>Important:</strong> Please arrive at least 15 minutes before the exam. Carry a valid photo ID and your registration document. Mobile phones and electronic devices are not permitted in the examination hall.
+                    </div>
+                </div>
+            </div>
+
+            <div class="seat-actions" style="margin-top: 20px;">
+                <button type="button" class="btn" onclick="location.reload()">Start Over</button>
+            </div> 
+        </section>
+        
+        <div class="footer">
+            <p>© 2026 Offline Exam Management System</p>
+        </div>
+    </div>
+    
+    <script>
+        const messageContainer = document.getElementById('messageContainer');
+        let currentStudentReg = '';
+        let currentExamId = '';
+        let allExams = [];
+
+        // Step 1: Get student info
+        document.getElementById('step1Form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const regNumber = document.getElementById('regNumber').value.trim();
+            
+            if (!regNumber) {
+                showMessage('Please enter your registration number.', 'error');
+                return;
+            }
+            
+            getStudentInfo(regNumber);
+        });
+
+        function getStudentInfo(regNumber) {
+            const btn = document.querySelector('#step1Form button');
+            btn.disabled = true;
+            btn.textContent = 'Loading...';
+            
+            fetch(`/get-student-info/?reg_number=${encodeURIComponent(regNumber)}`, {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    currentStudentReg = regNumber;
+                    allExams = data.exams;
+                    displayStudentInfo(data.student_info);
+                    displayExamList(data.exams);
+                } else {
+                    showMessage('❌ ' + (data.message || 'Student not found.'), 'error');
+                }
+            })
+            .catch(err => {
+                showMessage('❌ Error: ' + err.message, 'error');
+            })
+            .finally(() => {
+                btn.disabled = false;
+                btn.textContent = 'Find My Exams';
+            });
+        }
+
+        function displayStudentInfo(info) {
+            document.getElementById('infoDepart').textContent = info.department || '-';
+            document.getElementById('infoYear').textContent = info.year || '-';
+            document.getElementById('infoName').textContent = info.name || '-';
+            document.getElementById('infoSem').textContent = info.semester || '-';
+            
+            goToStep(2);
+        }
+
+        function displayExamList(exams) {
+            const examList = document.getElementById('examList');
+            examList.innerHTML = '';
+            
+            if (!exams || exams.length === 0) {
+                examList.innerHTML = '<div style="padding: 14px; color: #8a1919; background: #fff5f5; border-radius: 8px;">No exams found for your registration.</div>';
+                return;
+            }
+            
+            exams.forEach((exam, index) => {
+                const examItem = document.createElement('div');
+                examItem.className = 'exam-item';
+                examItem.onclick = () => selectExam(exam, index);
+                
+                const examDate = exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'TBA';
+                let timeRange = 'Time TBA';
+                if (exam.start_time && exam.end_time) {
+                    const startFormatted = formatTime12hr(exam.start_time);
+                    const endFormatted = formatTime12hr(exam.end_time);
+                    timeRange = `${startFormatted} - ${endFormatted}`;
+                }
+                
+                examItem.innerHTML = `
+                    <div class="exam-name">${exam.exam_name || exam.paper_code}</div>
+                    <div class="exam-item-info">
+                        <div class="exam-detail">
+                            <strong>Date:</strong> ${examDate}
+                        </div>
+                        <div class="exam-detail">
+                            <strong>Time:</strong> ${timeRange}
+                        </div>
+                    </div>
+                `;
+                
+                examList.appendChild(examItem);
+            });
+        }
+
+        function formatTime12hr(timeStr) {
+            if (!timeStr) return 'TBA';
+            
+            const [hours, minutes] = timeStr.split(':').map(Number);
+            const ampm = hours >= 12 ? 'PM' : 'AM';
+            const displayHours = hours % 12 || 12;
+            
+            return `${String(displayHours).padStart(2, '0')}:${String(minutes).padStart(2, '0')} ${ampm}`;
+        }
+
+        function selectExam(exam, index) {
+            // Update selection UI
+            document.querySelectorAll('.exam-item').forEach((el, i) => {
+                if (i === index) {
+                    el.classList.add('selected');
+                } else {
+                    el.classList.remove('selected');
+                }
+            });
+            
+            // Fetch seat info. We still store exam object, but UI will prefer server's seat data when available
+            currentExamId = exam.exam_id;
+            fetchSeatInfo(currentStudentReg, exam);
+        }
+
+        function fetchSeatInfo(regNumber, exam) {
+            const btn = document.querySelector('#step2 button');
+            if (btn) btn.disabled = true;
+            
+            showMessage('Loading seat information...', 'warning');
+            
+            setTimeout(() => {
+                // include exam_date to select the correct seat row when multiple dates exist
+                const examDateParam = exam.exam_date ? `&exam_date=${encodeURIComponent(exam.exam_date)}` : '';
+                fetch(`/get-student-seat/?reg_number=${encodeURIComponent(regNumber)}&exam_id=${exam.exam_id}${examDateParam}`, {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+                .then(r => r.json())
+                .then(data => {
+                    // Verify the response is for the exam we requested
+                    if (data.requested_exam_id && parseInt(data.requested_exam_id) !== parseInt(exam.exam_id)) {
+                        showMessage('❌ Error: Got response for wrong exam. Please try again.', 'error');
+                        return;
+                    }
+                    
+                    if (data.status === 'success') {
+                            // Use server-provided seat details for display to avoid mismatches
+                            displaySeat(data.seat, data);
+                            goToStep(3);
+                            messageContainer.innerHTML = '';
+                        } else {
+                            // Error message - seat not available. Prefer server-provided fields.
+                            displaySeatError(data, exam);
+                            goToStep(3);
+                        }
+                })
+                .catch(err => {
+                    showMessage('❌ Error: ' + err.message, 'error');
+                })
+                .finally(() => {
+                    if (btn) btn.disabled = false;
+                });
+            }, 500);
+        }
+
+        function displaySeatError(data, exam) {
+            const errorDiv = document.getElementById('seatErrorContainer');
+            const displayDiv = document.getElementById('seatDisplayContainer');
+            // If server returned seat info, prefer those values; otherwise fall back to the exam list item
+            const seat = data.seat || null;
+            const examDate = seat && seat.exam_date ? new Date(seat.exam_date).toLocaleDateString() : (exam.exam_date ? new Date(exam.exam_date).toLocaleDateString() : 'TBA');
+            
+            let timeRange = 'Time TBA';
+            if (seat && seat.exam_start_time && seat.exam_end_time) {
+                const startFormatted = formatTime12hr(seat.exam_start_time);
+                const endFormatted = formatTime12hr(seat.exam_end_time);
+                timeRange = `${startFormatted} - ${endFormatted}`;
+            } else if (exam.start_time && exam.end_time) {
+                const startFormatted = formatTime12hr(exam.start_time);
+                const endFormatted = formatTime12hr(exam.end_time);
+                timeRange = `${startFormatted} - ${endFormatted}`;
+            }
+
+            document.getElementById('selectedExamName').textContent = (seat && seat.exam_name) ? seat.exam_name : (exam.exam_name || exam.paper_code);
+            document.getElementById('selectedExamDate').textContent = examDate;
+            document.getElementById('selectedTimeWindow').textContent = timeRange;
+            
+            let message = data.message || 'Seat information unavailable';
+            let messageType = 'warning';
+            
+            if (data.is_future) {
+                document.getElementById('selectedStatus').textContent = 'Not Yet (Future Exam)';
+                message = data.message || `This exam is scheduled for ${examDate}, not today.`;
+                messageType = 'warning';
+            } else if (data.is_expired) {
+                document.getElementById('selectedStatus').textContent = 'Exam Ended';
+                messageType = 'error';
+                if (data.exam_end_time) message = `The exam ended at ${data.exam_end_time}. Seat information is no longer available.`;
+            } else if (data.is_early) {
+                const mins = data.minutes_to_wait != null ? data.minutes_to_wait : '';
+                document.getElementById('selectedStatus').textContent = `Available in ${mins} minutes`;
+                message = data.message || message;
+                messageType = 'warning';
+            } else {
+                document.getElementById('selectedStatus').textContent = 'Not Available';
+            }
+            
+            errorDiv.innerHTML = `<div class="${messageType}" style="margin-bottom: 20px;">${message}</div>`;
+            errorDiv.style.display = 'block';
+            displayDiv.style.display = 'none';
+        }
+
+        function displaySeat(seat, exam) {
+            const examDate = seat.exam_date ? new Date(seat.exam_date).toLocaleDateString() : 'TBA';
+            const startTimeFormatted = formatTime12hr(seat.access_start_time);
+            const endTimeFormatted = formatTime12hr(seat.exam_end_time);
+            const accessTime = `${startTimeFormatted} - ${endTimeFormatted}`;
+            
+            document.getElementById('selectedExamName').textContent = seat.exam_name || 'Exam';
+            document.getElementById('selectedExamDate').textContent = examDate;
+            document.getElementById('selectedTimeWindow').textContent = accessTime;
+            document.getElementById('selectedStatus').textContent = '✓ Available Now';
+            
+            document.getElementById('seatRegNumber').textContent = seat.registration_number || '-';
+            document.getElementById('seatBuilding').textContent = seat.room_building || '-';
+            document.getElementById('seatRoom').textContent = seat.room_number || '-';
+            document.getElementById('seatPosition').textContent = seat.seat_code || '-';
+            document.getElementById('seatDept').textContent = seat.department || '-';
+            document.getElementById('examSession').textContent = seat.exam_session || '-';
+            
+            generateSeatGrid(seat);
+            
+            document.getElementById('seatErrorContainer').style.display = 'none';
+            document.getElementById('seatDisplayContainer').style.display = 'block';
+        }
+
+        function generateSeatGrid(seat) {
+            const grid = document.getElementById('seatGrid');
+            grid.innerHTML = '';
+            
+            // Generate 5 columns × 8 rows
+            const rows = 8;
+            const cols = 5;
+            
+            for (let row = 0; row < rows; row++) {
+                for (let col = 1; col <= cols; col++) {
+                    const rowLetter = String.fromCharCode(65 + row); // A, B, C, ...
+                    const seatCode = `${rowLetter}${col}`;
+                    
+                    const seatCell = document.createElement('div');
+                    seatCell.className = 'seat-cell';
+                    
+                    if (seatCode === seat.seat_code) {
+                        seatCell.classList.add('student-seat');
+                        seatCell.textContent = seatCode;
+                        seatCell.title = 'Your Seat';
+                    } else {
+                        if (seat.room_occupied_seats && seat.room_occupied_seats.includes(seatCode)) {
+                            seatCell.classList.add('occupied');
+                        } else {
+                            seatCell.classList.add('empty');
+                        }
+                        seatCell.textContent = seatCode;
+                    }
+                    
+                    grid.appendChild(seatCell);
+                }
+            }
+        }
+
+        function showMessage(msg, type) {
+            messageContainer.innerHTML = `<div class="${type}">${msg}</div>`;
+        }
+
+        function goToStep(stepNum) {
+            document.querySelectorAll('section').forEach(s => s.classList.remove('active'));
+            document.getElementById(`step${stepNum}`).classList.add('active');
+            
+            updateStepIndicator(stepNum);
+        }
+
+        function goBackToStep1() {
+            goToStep(1);
+            document.getElementById('regNumber').value = '';
+            document.getElementById('regNumber').focus();
+        }
+
+        function updateStepIndicator(currentStep) {
+            for (let i = 1; i <= 3; i++) {
+                const dot = document.getElementById(`step${i}-dot`);
+                const line = document.getElementById(`line${i}`);
+                
+                dot.classList.remove('active', 'completed');
+                if (line) line.classList.remove('active');
+                
+                if (i < currentStep) {
+                    dot.classList.add('completed');
+                    if (line) line.classList.add('active');
+                } else if (i === currentStep) {
+                    dot.classList.add('active');
+                    if (line) line.classList.add('active');
+                }
+            }
+        }
+    </script>
+</body>
+</html>

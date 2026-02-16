@@ -1,0 +1,335 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Exam Management System</title>
+<link rel="stylesheet" href="{% static 'core/css/examsetup.css' %}">
+</head>
+<body>
+
+<div class="container">
+<h1>Exam Management System</h1>
+<p class="subtitle">Admin Dashboard - Setup Exams & Manage Seating</p>
+
+<!-- STEP INDICATOR -->
+<div class="stepper">
+    <div class="step active" id="step1">
+        <div class="step-number">1</div>
+        <p>Exam Setup</p>
+    </div>
+    <div class="step" id="step2">
+        <div class="step-number">2</div>
+        <p>Department Selection</p>
+    </div>
+    <div class="step" id="step3">
+        <div class="step-number">3</div>
+        <p>Room Setup</p>
+    </div>
+    <div class="step" id="step4">
+        <div class="step-number">4</div>
+        <p>Student Data</p>
+    </div>
+    <div class="step" id="step5">
+        <div class="step-number">5</div>
+        <p>Seat Allocation</p>
+    </div>
+    <div class="step" id="step6">
+        <div class="step-number">6</div>
+        <p>QR Code</p>
+    </div>
+</div>
+
+<!-- STEP 1 -->
+<form id="examForm">
+    <label for="examName">Exam Name</label>
+    <input type="text" id="examName" placeholder="e.g., Data Structures - Final Exam" required>
+
+    <label for="examStartDate">Start Date</label>
+    <input type="date" id="examStartDate" required>
+
+    <label for="examEndDate">End Date</label>
+    <input type="date" id="examEndDate" required>
+
+    <button type="submit" id="proceedBtn">Proceed to Department Selection</button>
+</form>
+
+<!-- STEP 2 -->
+<div id="step2Content" style="display:none;">
+    <p>Select Departments — choose one or more departments. After selecting a department you must add and complete at least one exam (Name, Code, Date, Session, Start Time, End Time) for that department before the "Proceed to Room Setup" button becomes active.</p>
+    <div class="department-container">
+        <div class="department" data-name="BCA">BCA</div>
+        <div class="department" data-name="BBA">BBA</div>
+        <div class="department" data-name="CSE">CSE</div>
+        <div class="department" data-name="ECE">ECE</div>
+        <div class="department" data-name="ME">ME</div>
+        <div class="department" data-name="EEE">EEE</div>
+        <div class="department" data-name="CIVIL">CIVIL</div>
+    </div>
+    
+    <div class="exams-container" id="examsContainer"></div>
+    
+    <div class="flex-buttons">
+        <button id="nextBtn" disabled>Proceed to Room Setup</button>
+    </div>
+</div>
+
+<!-- STEP 3 -->
+<div id="step3Content" style="display:none;">
+    <p>Room Setup</p>
+    <div class="room-setup">
+        <label for="buildingSelect">Select Building</label>
+        <select id="buildingSelect">
+            <option value="">Select Building</option>
+            <option value="Main Building">Main Building</option>
+            <option value="CMS">CMS</option>
+        </select>
+
+        <label for="roomNumber">Room Number</label>
+        <input type="text" id="roomNumber" placeholder="e.g., 303">
+
+        <label for="roomCapacity">Capacity</label>
+        <input type="number" id="roomCapacity" placeholder="e.g., 40">
+
+        <p style="font-size:0.95rem; color:#555; margin-top:10px;">Click <strong>+ Add Room</strong> to append another room input block. You can add multiple rooms — each will appear below and can be edited or removed.</p>
+        <button id="addRoomBtn">+ Add Room</button>
+    </div>
+
+    <div id="roomList" style="margin-top: 20px; margin-bottom: 20px;"></div>
+
+    <div class="flex-buttons">
+        <button id="proceedStep3Btn" disabled>Proceed to Student Data</button>
+    </div>
+</div>
+
+<!-- STEP 4 -->
+<div id="step4Content" style="display:none;">
+    <h2>Select Uploaded Student Data</h2>
+    <p>Select semester, year, and department-wise uploaded student data for seating allocation.</p>
+    
+    <div class="filter-section">
+        <label for="filterYear">Select Year:</label>
+        <select id="filterYear">
+            <option value="">--Select Year--</option>
+            <option value="2020">2020</option>
+            <option value="2021">2021</option>
+            <option value="2022">2022</option>
+            <option value="2023">2023</option>
+            <option value="2024">2024</option>
+            <option value="2025">2025</option>
+            <option value="2026">2026</option>
+            <option value="2027">2027</option>
+            <option value="2028">2028</option>
+            <option value="2029">2029</option>
+            <option value="2030">2030</option>
+            <option value="2031">2031</option>
+            <option value="2032">2032</option>
+            <option value="2033">2033</option>
+            <option value="2034">2034</option>
+            <option value="2035">2035</option>
+        </select>
+
+        <label for="filterSemester">Select Semester:</label>
+        <select id="filterSemester">
+            <option value="">--Select Semester--</option>
+            <option value="1">Semester 1</option>
+            <option value="2">Semester 2</option>
+            <option value="3">Semester 3</option>
+            <option value="4">Semester 4</option>
+            <option value="5">Semester 5</option>
+            <option value="6">Semester 6</option>
+            <option value="7">Semester 7</option>
+            <option value="8">Semester 8</option>
+        </select>
+
+        <label for="filterDepartment">Select Department:</label>
+        <select id="filterDepartment">
+            <option value="">--Select Department--</option>
+            <option value="CSE">CSE</option>
+            <option value="ECE">ECE</option>
+            <option value="EEE">EEE</option>
+            <option value="IT">IT</option>
+            <option value="ME">ME</option>
+            <option value="CE">CE</option>
+            <option value="AIML">AIML</option>
+            <option value="CSBS">CSBS</option>
+            <option value="BCA">BCA</option>
+            <option value="BBA">BBA</option>
+        </select>
+
+        <button id="showAllBtn" class="filter-btn">All</button>
+        <button id="filterBtn" class="filter-btn">Filter Files</button>
+    </div>
+
+    <div class="files-table-container">
+        <table class="files-table">
+            <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Semester</th>
+                    <th>Year</th>
+                    <th>Department</th>
+                    <th>Select</th>
+                </tr>
+            </thead>
+            <tbody id="filesTableBody">
+                <tr>
+                    <td colspan="5" style="text-align:center; padding:20px; color:#999;">
+                        No files uploaded yet.
+                    </td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <div class="flex-buttons">
+        <button id="proceedStep4Btn" disabled>Proceed to Seat Allocation</button>
+    </div>
+</div>
+
+<!-- STEP 5 -->
+<div id="step5Content" style="display:none;">
+    <h2>Seat Allocation Preview</h2>
+    <p>Visual representation of seating arrangements</p>
+    <div class="dept-tabs" id="deptTabs"></div>
+    <div class="room-section" id="roomSection"></div>
+    <div class="flex-buttons">
+        <button id="regenStep5Btn">Regenerate</button>
+        <button id="lockStep5Btn" disabled>Lock Seating</button>
+    </div>
+</div>
+
+
+<!-- Regenerate Confirmation Modal (Simple) -->
+<div id="regenConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
+  <div style="background:#fff; width:400px; max-width:95%; margin:40px auto; border-radius:8px; padding:20px; text-align:center;">
+    <h3 style="margin:0 0 16px 0;">Regenerate Seating?</h3>
+    <p style="margin:0 0 16px 0; color:#555;">This will randomly regenerate all seat allocations.</p>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button id="confirmRegenBtn" style="background:#4caf50; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Yes, Regenerate</button>
+      <button id="cancelRegenBtn" style="background:#999; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Regenerate Confirmation Modal (Simple) -->
+<div id="regenConfirmModal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.5); align-items:center; justify-content:center; z-index:9999;">
+  <div style="background:#fff; width:400px; max-width:95%; margin:40px auto; border-radius:8px; padding:20px; text-align:center;">
+    <h3 style="margin:0 0 16px 0;">Regenerate Seating?</h3>
+    <p style="margin:0 0 16px 0; color:#555;">This will randomly regenerate all seat allocations. You can then fine-tune individual rooms using "Configure Columns".</p>
+    <div style="display:flex; gap:8px; justify-content:center;">
+      <button id="confirmRegenBtn" style="background:#4caf50; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Yes, Regenerate</button>
+      <button id="cancelRegenBtn" style="background:#999; color:#fff; border:none; padding:8px 16px; border-radius:6px; cursor:pointer;">Cancel</button>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- STEP 6 -->
+<div id="step6Content" style="display:none;">
+    <h2>Exam Setup Summary & Verification</h2>
+    <p>Complete overview of all saved data before completion</p>
+    
+    <!-- EXAM DETAILS -->
+    <div class="summary-section">
+        <h3>Exam Details</h3>
+        <div class="summary-grid">
+            <div><strong>Exam Name:</strong> <span id="summaryExamName">-</span></div>
+            <div><strong>Start Date:</strong> <span id="summaryStartDate">-</span></div>
+            <div><strong>End Date:</strong> <span id="summaryEndDate">-</span></div>
+        </div>
+    </div>
+    
+    <!-- DEPARTMENTS & EXAMS -->
+    <div class="summary-section">
+        <h3>Departments & Exams</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Department</th>
+                    <th>Exam Name</th>
+                    <th>Paper Code</th>
+                    <th>Exam Date</th>
+                    <th>Session</th>
+                    <th>Start Time</th>
+                    <th>End Time</th>
+                </tr>
+            </thead>
+            <tbody id="summaryDepartmentsBody">
+                <tr><td colspan="7" style="text-align:center;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- STUDENT FILES USED -->
+    <div class="summary-section">
+        <h3>Student Data Files Used</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>File Name</th>
+                    <th>Year</th>
+                    <th>Semester</th>
+                    <th>Department</th>
+                    <th>Students</th>
+                </tr>
+            </thead>
+            <tbody id="summaryFilesBody">
+                <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- ROOMS SETUP -->
+    <div class="summary-section">
+        <h3>Rooms Configured</h3>
+        <table class="summary-table">
+            <thead>
+                <tr>
+                    <th>Building</th>
+                    <th>Room Number</th>
+                    <th>Capacity</th>
+                </tr>
+            </thead>
+            <tbody id="summaryRoomsBody">
+                <tr><td colspan="3" style="text-align:center;">Loading...</td></tr>
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- SEATING ARRANGEMENT -->
+    <div class="summary-section">
+        <h3>Seating Arrangement (5 Columns × 8 Rows)</h3>
+        <div style="margin-bottom: 15px;">
+            <p><strong>Total Students Allocated:</strong> <span id="totalStudentsAllocated">0</span></p>
+            <p><strong>Total Seats Allocated:</strong> <span id="totalSeatsAllocated">0</span></p>
+        </div>
+        <div id="seatingPreview" style="max-height: 400px; overflow-y: auto;">
+            <p style="text-align:center;">Loading seating arrangement...</p>
+        </div>
+    </div>
+    
+    <!-- QR CODE SECTION -->
+    <div class="summary-section">
+        <h3>Universal QR Code (Same for All Exams)</h3>
+        <p style="font-weight: bold; color: #007bcd;">Students can scan this QR code to view their assigned seat and room number</p>
+        <p style="color: #666; font-size: 0.95rem;">This QR is generated once and used for all exams. Student enters registration number to find their seat.</p>
+        <div style="text-align: center; padding: 20px;">
+            <img id="qrPreview" src="{% url 'generate_qr' %}?type=student_portal" alt="Universal QR Code" style="max-width: 300px; border: 3px solid #28a745; padding: 10px; border-radius: 8px;">
+            <p style="margin-top:8px;"><a href="{% url 'qr_page' %}" target="_blank">Open QR Page</a></p>
+            <p style="margin-top: 15px; color: #666; font-size: 0.9rem;">Scan to access student portal</p>
+        </div>
+    </div>
+    
+    <div class="flex-buttons">
+        <button id="completeSetupBtn">Complete Setup</button>
+    </div>
+</div>
+
+</div>
+
+<script src="{% static 'core/js/examsetup.js' %}?v=20"></script>
+</body>
+</html>
