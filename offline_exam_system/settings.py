@@ -139,7 +139,7 @@ USE_TZ = True
 # Static & media files
 # =========================================
 
-STATIC_URL = "static/"
+STATIC_URL = "/static/"
 
 # Location for collected static files in production
 STATIC_ROOT = BASE_DIR / "staticfiles"
