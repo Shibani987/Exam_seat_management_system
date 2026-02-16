@@ -103,9 +103,18 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     raise ValueError(f"DATABASE_URL not set. Check your .env file at {dotenv_path}")
 
-DATABASES = {
-    "default": dj_database_url.parse(DATABASE_URL)
-}
+# Parse the DATABASE_URL and ensure sensible production defaults.
+# - set a reasonable connection pooling `conn_max_age`
+# - require SSL for hosts like Supabase if not already specified
+db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+
+# Ensure SSL is required when connecting to managed Postgres services that need it
+if "sslmode" not in DATABASE_URL.lower():
+    options = db_config.setdefault("OPTIONS", {})
+    # psycopg2/Django accept sslmode via OPTIONS
+    options.setdefault("sslmode", "require")
+
+DATABASES = {"default": db_config}
 
 # =========================================
 # Password validation
@@ -144,8 +153,9 @@ STATIC_URL = "/static/"
 # Location for collected static files in production
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
+# Use pathlib for static file dirs to avoid OS path glitches
 STATICFILES_DIRS = [
-    os.path.join(BASE_DIR, "core/static"),
+    str(BASE_DIR / "core" / "static"),
 ]
 
 # WhiteNoise compression for faster static file serving
@@ -256,6 +266,20 @@ if not DEBUG:
         "font-src": ("'self'",),
         "connect-src": ("'self'",),
     }
+
+# Warn at startup if static files appear missing (helps diagnose collectstatic failures)
+import logging
+_startup_logger = logging.getLogger('exam_system')
+try:
+    if not DEBUG:
+        if not STATIC_ROOT.exists() or not any(STATIC_ROOT.iterdir()):
+            _startup_logger.warning(
+                "STATIC_ROOT (%s) appears empty at startup. Have you run collectstatic?",
+                STATIC_ROOT,
+            )
+except Exception:
+    # best-effort check only; avoid crashing startup
+    pass
 
 # =========================================
 # Base URLs for Portal and Dashboard
