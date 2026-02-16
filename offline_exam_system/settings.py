@@ -162,10 +162,11 @@ STATIC_URL = "/static/"
 # Location for collected static files in production
 STATIC_ROOT = BASE_DIR / "staticfiles"
 
-# Use pathlib for static file dirs to avoid OS path glitches
-STATICFILES_DIRS = [
-    str(BASE_DIR / "core" / "static"),
-]
+# Do NOT add STATICFILES_DIRS - Django automatically collects from INSTALLED_APPS
+# (core, django.contrib.admin, etc.) via AppDirectoriesFinder.
+# Adding STATICFILES_DIRS creates duplicate source conflicts.
+# Files are found at: core/static/ → staticfiles/
+# Files are found at: django/contrib/admin/static/ → staticfiles/admin/
 
 # Static files storage: use simple StaticFilesStorage (not compressed/manifest)
 # CompressedManifestStaticFilesStorage can fail silently and break static file serving
