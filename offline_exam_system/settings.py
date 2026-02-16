@@ -158,8 +158,9 @@ STATICFILES_DIRS = [
     str(BASE_DIR / "core" / "static"),
 ]
 
-# WhiteNoise compression for faster static file serving
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Static files storage: use simple StaticFilesStorage (not compressed/manifest)
+# CompressedManifestStaticFilesStorage can fail silently and break static file serving
+STATICFILES_STORAGE = "django.contrib.staticfiles.storage.StaticFilesStorage"
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
