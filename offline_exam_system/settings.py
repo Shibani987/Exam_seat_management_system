@@ -254,6 +254,13 @@ if not DEBUG:
     }
 
 # =========================================
+# Base URLs for Portal and Dashboard
+# =========================================
+BASE_URL = os.getenv("BASE_URL", "http://localhost:8000")
+STUDENT_PORTAL_URL = os.getenv("STUDENT_PORTAL_URL", "http://localhost:8000/student-portal")
+ADMIN_DASHBOARD_URL = os.getenv("ADMIN_DASHBOARD_URL", "http://localhost:8000/admin-dashboard")
+
+# =========================================
 # Misc
 # =========================================
 

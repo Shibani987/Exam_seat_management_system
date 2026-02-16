@@ -227,7 +227,7 @@
     <div class="tab-content" id="qr-tab">
       <h1>Universal QR Code</h1>
       <p class="upload-description">
-       scan to access student portal. students can scan this qr and then enter their registration number to find their seat.
+       Scan to access student portal. Students can scan this QR and then enter their registration number to find their seat.
       </p>
 
       <div style="text-align:center; margin-top:20px;">
@@ -238,8 +238,12 @@
           <button type="button" id="copyPortalUrlBtn" class="upload-btn">Copy Student Portal URL</button>
         </div>
         <p style="margin-top:10px; color:#666;">
-          Student Portal:
-          <a href="{{ student_portal_url }}" target="_blank">{{ student_portal_url }}</a>
+          <strong>Student Portal URL:</strong><br>
+          <a href="{{ student_portal_url }}" target="_blank" style="color:#1976d2; word-break:break-all;">{{ student_portal_url }}</a>
+        </p>
+        <p style="margin-top:8px; color:#666;">
+          <strong>Dashboard URL (After Exam Creation):</strong><br>
+          <span id="dashboardUrlDisplay" style="color:#555; word-break:break-all;">Loading...</span>
         </p>
       </div>
     </div>
@@ -582,6 +586,17 @@
     const printQrBtn = document.getElementById('printQrBtn');
     const copyQrUrlBtn = document.getElementById('copyQrUrlBtn');
     const copyPortalUrlBtn = document.getElementById('copyPortalUrlBtn');
+    const dashboardUrlDisplay = document.getElementById('dashboardUrlDisplay');
+    
+    // Display dashboard URL (will be set after exam creation)
+    function updateDashboardUrl() {
+      const currentUrl = window.location.origin + window.location.pathname;
+      dashboardUrlDisplay.textContent = currentUrl;
+      dashboardUrlDisplay.style.color = '#1976d2';
+    }
+    
+    // Initialize dashboard URL display
+    updateDashboardUrl();
     
     if (printQrBtn) {
       printQrBtn.addEventListener('click', () => {

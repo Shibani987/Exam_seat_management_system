@@ -672,6 +672,7 @@ def complete_exam_setup(request):
     """
     if request.method == "POST":
         try:
+            from django.conf import settings
             data = json.loads(request.body)
             exam_id = data.get("exam_id")
             
@@ -688,9 +689,13 @@ def complete_exam_setup(request):
             
             logger.info(f'Exam {exam.id} marked as PERMANENT in database')
             
+            # Get dashboard URL from settings
+            dashboard_url = settings.ADMIN_DASHBOARD_URL
+            
             return JsonResponse({
                 "status": "success",
-                "message": "Exam setup completed. All data permanently saved to database."
+                "message": "Exam setup completed. All data permanently saved to database.",
+                "dashboard_url": dashboard_url
             })
         except Exam.DoesNotExist:
             logger.warning(f'Complete setup: Exam not found with ID: {exam_id}')
@@ -2070,9 +2075,10 @@ def generate_qr(request):
 
 def qr_page(request):
     """Render a standalone page that shows the universal QR (points to student portal)."""
-    from django.urls import reverse
-    qr_url = request.build_absolute_uri(reverse('generate_qr')) + '?type=student_portal'
-    student_portal_url = request.build_absolute_uri(reverse('student_portal'))
+    from django.conf import settings
+    # Use configured URL from settings instead of request.build_absolute_uri
+    qr_url = f"{settings.STUDENT_PORTAL_URL}?qr=1"
+    student_portal_url = settings.STUDENT_PORTAL_URL
     return render(request, 'core/qr_page.html', {
         'qr_url': qr_url,
         'student_portal_url': student_portal_url
