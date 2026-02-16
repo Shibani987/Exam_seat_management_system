@@ -2076,9 +2076,16 @@ def generate_qr(request):
 def qr_page(request):
     """Render a standalone page that shows the universal QR (points to student portal)."""
     from django.conf import settings
-    # Use configured URL from settings instead of request.build_absolute_uri
-    qr_url = f"{settings.STUDENT_PORTAL_URL}?qr=1"
+    
+    # Get configured URL from settings (read from .env in production)
     student_portal_url = settings.STUDENT_PORTAL_URL
+    
+    # Ensure URL uses HTTPS in production
+    if settings.SECURE_SSL_REDIRECT and not student_portal_url.startswith('https'):
+        student_portal_url = student_portal_url.replace('http://', 'https://')
+    
+    qr_url = f"{student_portal_url}?qr=1"
+    
     return render(request, 'core/qr_page.html', {
         'qr_url': qr_url,
         'student_portal_url': student_portal_url
