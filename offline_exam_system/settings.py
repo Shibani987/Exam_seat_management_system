@@ -106,13 +106,22 @@ if not DATABASE_URL:
 # Parse the DATABASE_URL and ensure sensible production defaults.
 # - set a reasonable connection pooling `conn_max_age`
 # - require SSL for hosts like Supabase if not already specified
+# - add connection timeout and keepalive options for Render/Supabase IPv6/IPv4 resilience
 db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
 
-# Ensure SSL is required when connecting to managed Postgres services that need it
+# Configure connection options for Postgres reliability
+options = db_config.setdefault("OPTIONS", {})
+
+# SSL: require for managed services like Supabase
 if "sslmode" not in DATABASE_URL.lower():
-    options = db_config.setdefault("OPTIONS", {})
-    # psycopg2/Django accept sslmode via OPTIONS
     options.setdefault("sslmode", "require")
+
+# Connection reliability options for Render/Supabase IPv6 issues
+options.setdefault("connect_timeout", 15)  # Wait up to 15 seconds for connection
+options.setdefault("keepalives", 1)         # Enable TCP keepalives
+options.setdefault("keepalives_idle", 30)   # Send keepalive every 30 seconds of idle
+options.setdefault("keepalives_interval", 10)  # Wait 10 seconds between keepalives
+options.setdefault("keepalives_count", 5)   # Try 5 times before giving up
 
 DATABASES = {"default": db_config}
 
