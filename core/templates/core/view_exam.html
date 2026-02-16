@@ -68,10 +68,27 @@
     </div>
   </div>
 
-  <script src="{% static 'core/js/view_exam.js' %}?v={{ now_ts }}"></script>
   <script>
+    // CSRF helper for fetch calls
+    function getCookie(name) {
+      let cookieValue = null;
+      if (document.cookie && document.cookie !== '') {
+        const cookies = document.cookie.split(';');
+        for (let cookie of cookies) {
+          cookie = cookie.trim();
+          if (cookie.startsWith(name + '=')) {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+            break;
+          }
+        }
+      }
+      return cookieValue;
+    }
+    const csrftoken = getCookie('csrftoken') || '';
     window.EXAM_ID = {{ exam_id }};
+    window.CSRF_TOKEN = csrftoken;
   </script>
+  <script src="{% static 'core/js/view_exam.js' %}?v={{ now_ts }}"></script>
   <script>
     // Inline handler to create a single room without touching existing rooms
     document.addEventListener('DOMContentLoaded', function(){
@@ -97,7 +114,7 @@
         addBtn.disabled = true;
         fetch('/add_room/', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN || '' },
           body: JSON.stringify({ exam_id: window.EXAM_ID, building: building, room_number: room_number, capacity: capacity })
         })
         .then(r => r.json())

@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.http import JsonResponse
-from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.csrf import csrf_exempt, csrf_protect
 from django.contrib.auth.decorators import login_required
 from datetime import datetime, timedelta, date, time
 from django.utils import timezone
@@ -9,10 +9,14 @@ from django.core.mail import send_mail
 from django.conf import settings
 import secrets
 import string
+import logging
 
 import pandas as pd
 import json
 from django.contrib.auth.hashers import make_password, check_password
+
+# Setup logging for security events
+logger = logging.getLogger('exam_system')
 
 from .forms import StudentDataUploadForm, ForgotPasswordForm, ResetPasswordForm, AdminEmailUploadForm
 from .models import (
@@ -28,13 +32,15 @@ from .models import (
     BlockedAdminEmail,
     PasswordResetToken,
 )
-import os
+from .config import AppConfig
+
 # =========================
-# Hard-coded Admin Credentials (prefer .env)
+# Admin Credentials (from OOP config)
 # =========================
 
-ENV_ADMIN_USERNAME = os.environ.get('ADMIN_USERNAME')
-ENV_ADMIN_PASSWORD = os.environ.get('ADMIN_PASSWORD')
+_admin_creds = AppConfig.get_admin_credentials()
+ENV_ADMIN_USERNAME = _admin_creds.username
+ENV_ADMIN_PASSWORD = _admin_creds.password
 
 
 def _get_client_ip(request):
@@ -49,13 +55,13 @@ def _get_client_ip(request):
 
 def ensure_default_admin():
     try:
-        if AdminAccount.objects.filter(username__iexact=(ENV_ADMIN_USERNAME or ADMIN_USERNAME)).count() == 0:
-            username = ENV_ADMIN_USERNAME or ADMIN_USERNAME
-            default_password = ENV_ADMIN_PASSWORD or ADMIN_PASSWORD
+        if AdminAccount.objects.filter(username__iexact=ENV_ADMIN_USERNAME).count() == 0:
+            username = ENV_ADMIN_USERNAME
+            default_password = ENV_ADMIN_PASSWORD
             AdminAccount.objects.create(username=username, email=None, password_hash=make_password(default_password))
-            print('[ADMIN] Default admin account created/synced')
+            logger.info(f'Default admin account created: {username}')
     except Exception as e:
-        print(f'[ADMIN] ensure_default_admin error: {e}')
+        logger.error(f'Error in ensure_default_admin: {str(e)}')
 
 
 def admin_required(view_func):
@@ -90,8 +96,8 @@ def admin_login(request):
         password = request.POST.get("password") or ''
 
         # Hard-coded/env check
-        default_username = ENV_ADMIN_USERNAME or ADMIN_USERNAME
-        default_password = ENV_ADMIN_PASSWORD or ADMIN_PASSWORD
+        default_username = ENV_ADMIN_USERNAME
+        default_password = ENV_ADMIN_PASSWORD
         if username == default_username and password == default_password:
             # login success
             request.session['admin_logged_in'] = True
@@ -131,10 +137,17 @@ def dashboard(request):
     years = range(2020, 2036)
     eligible_emails = EligibleAdminEmail.objects.all().order_by('-added_at')
 
+    # Universal QR and student portal URLs (used in dashboard QR tab)
+    from django.urls import reverse
+    qr_url = request.build_absolute_uri(reverse('generate_qr')) + '?type=student_portal'
+    student_portal_url = request.build_absolute_uri(reverse('student_portal'))
+
     return render(request, 'core/dashboard.html', {
         'uploaded_files': uploaded_files,
         'years': years,
         'eligible_emails': eligible_emails,
+        'qr_url': qr_url,
+        'student_portal_url': student_portal_url,
     })
 
 
@@ -191,7 +204,7 @@ Exam Management System Administration
         )
         return True
     except Exception as e:
-        print(f"Error sending email: {e}")
+        logger.error(f"Error sending password reset email to {email}: {str(e)}")
         return False
 
 
@@ -420,6 +433,7 @@ def block_admin_email(request):
 # =========================
 # Upload Student Data (DB only, NO file storage)
 # =========================
+@admin_required
 def upload_student_data(request):
     if request.method == "POST":
         form = StudentDataUploadForm(request.POST)
@@ -498,6 +512,7 @@ def upload_student_data(request):
 # =========================
 # Delete Student File (DB only)
 # =========================
+@admin_required
 def delete_student_file(request, file_id):
     student_file = get_object_or_404(StudentDataFile, id=file_id)
     student_file.delete()  # cascades to Student table
@@ -505,7 +520,7 @@ def delete_student_file(request, file_id):
     return redirect("dashboard")
 
 
-@csrf_exempt
+@admin_required_json
 def get_file_students(request):
     """Fetch all students from a file. Query: file_id=int"""
     try:
@@ -534,7 +549,6 @@ def get_file_students(request):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 
-@csrf_exempt
 @admin_required_json
 def update_students(request):
     """Update multiple students. POST JSON: { students: [ {id, name, roll_number, registration_number, department, year, semester}, ... ] }"""
@@ -563,7 +577,6 @@ def update_students(request):
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
 
 
-@csrf_exempt
 @admin_required_json
 def add_file_students(request):
     """Add new students to a StudentDataFile. POST JSON: { file_id: int, students: [ {name, roll_number, registration_number, department, year, semester}, ... ] }"""
@@ -606,6 +619,7 @@ def add_file_students(request):
 # =========================
 # Exam Setup Page
 # =========================
+@admin_required
 def exam_setup(request):
     return render(request, "core/exam_setup.html")
 
@@ -613,7 +627,7 @@ def exam_setup(request):
 # =========================
 # Initialize Temporary Exam (When exam_setup loads)
 # =========================
-@csrf_exempt
+@admin_required_json
 def init_temp_exam(request):
     """
     Creates a temporary exam when exam_setup page loads.
@@ -628,27 +642,27 @@ def init_temp_exam(request):
                 is_completed=False
             )
             
-            print(f"✓ Temporary exam created: ID={temp_exam.id}")
+            logger.info(f"Temporary exam created: ID={temp_exam.id}")
             
             return JsonResponse({
                 "status": "success",
                 "exam_id": temp_exam.id
             })
         except Exception as e:
-            print(f"✗ Error creating temporary exam: {str(e)}")
+            logger.error(f"Error creating temporary exam: {str(e)}")
             return JsonResponse({
                 "status": "error",
                 "message": str(e)
             }, status=400)
     
-    print(f"✗ Invalid method: {request.method}")
+    logger.warning(f"Invalid method in init_temp_exam: {request.method}")
     return JsonResponse({"status": "error", "message": "GET method required"}, status=400)
 
 
 # =========================
 # Mark Exam as Complete
 # =========================
-@csrf_exempt
+@admin_required_json
 def complete_exam_setup(request):
     """
     Called when Complete Setup button is clicked at the very end (after lock_seating).
@@ -661,33 +675,31 @@ def complete_exam_setup(request):
             data = json.loads(request.body)
             exam_id = data.get("exam_id")
             
-            print(f'[COMPLETE SETUP] Received exam_id: {exam_id}')
+            logger.info(f'Received complete setup request for exam_id: {exam_id}')
             
             exam = Exam.objects.get(id=exam_id)
-            print(f'[COMPLETE SETUP] Found exam: {exam.name} (ID: {exam.id})')
-            print(f'[COMPLETE SETUP] Before: is_temporary={exam.is_temporary}, is_completed={exam.is_completed}')
+            logger.info(f'Found exam: {exam.name} (ID: {exam.id})')
+            logger.debug(f'Before: is_temporary={exam.is_temporary}, is_completed={exam.is_completed}')
             
             # Mark exam as permanently completed
             exam.is_temporary = False
             exam.is_completed = True
             exam.save()
             
-            print(f'[COMPLETE SETUP] After: is_temporary={exam.is_temporary}, is_completed={exam.is_completed}')
-            print(f'[COMPLETE SETUP] Exam marked as PERMANENT in database!')
-            print(f'[COMPLETE SETUP] New Exam ID will be created on next page load!')
+            logger.info(f'Exam {exam.id} marked as PERMANENT in database')
             
             return JsonResponse({
                 "status": "success",
                 "message": "Exam setup completed. All data permanently saved to database."
             })
         except Exam.DoesNotExist:
-            print(f'[COMPLETE SETUP] Exam not found with ID: {exam_id}')
+            logger.warning(f'Complete setup: Exam not found with ID: {exam_id}')
             return JsonResponse({
                 "status": "error",
                 "message": f"Exam not found with ID: {exam_id}"
             }, status=400)
         except Exception as e:
-            print(f'[COMPLETE SETUP] Exception: {str(e)}')
+            logger.error(f'Error in complete_exam_setup: {str(e)}')
             return JsonResponse({
                 "status": "error",
                 "message": str(e)
@@ -696,7 +708,7 @@ def complete_exam_setup(request):
     return JsonResponse({"status": "error"}, status=400)
 
 
-@csrf_exempt
+@admin_required_json
 def add_room_single(request):
     """Add a single room to an existing exam without deleting other rooms.
 
@@ -731,7 +743,7 @@ def add_room_single(request):
 # =========================
 # Delete Temporary Exam (On page unload/refresh)
 # =========================
-@csrf_exempt
+@admin_required_json
 def delete_temp_exam(request):
     """
     Called when page unloads/refreshes before completion.
@@ -773,7 +785,7 @@ def delete_temp_exam(request):
 # =========================
 # Create Exam (API)
 # =========================
-@csrf_exempt
+@admin_required_json
 def create_exam(request):
     if request.method == "POST":
         try:
@@ -812,7 +824,7 @@ def create_exam(request):
 # =========================
 # Delete Exam (Admin)
 # =========================
-@csrf_exempt
+@admin_required_json
 def delete_exam(request):
     if request.method == 'POST':
         try:
@@ -828,7 +840,7 @@ def delete_exam(request):
 
             # Delete the exam (cascade will remove related objects)
             exam.delete()
-            print(f"[DELETE_EXAM] Deleted exam {exam_id} and related data.")
+            logger.info(f"Deleted exam {exam_id} and related data by admin")
             return JsonResponse({'status': 'success', 'message': 'Exam deleted'})
         except json.JSONDecodeError:
             return JsonResponse({'status': 'error', 'message': 'Invalid JSON'}, status=400)
@@ -841,7 +853,7 @@ def delete_exam(request):
 # =========================
 # Add Departments & Papers (API)
 # =========================
-@csrf_exempt
+@admin_required_json
 def add_departments(request):
     if request.method == "POST":
         try:
@@ -881,7 +893,7 @@ from django.views.decorators.csrf import csrf_exempt
 import json
 from .models import Exam, Room
 
-@csrf_exempt
+@admin_required_json
 def add_rooms(request):
     if request.method == "POST":
         try:
@@ -934,7 +946,7 @@ def add_rooms(request):
 # =========================
 # Delete single Room (API)
 # =========================
-@csrf_exempt
+@admin_required_json
 def delete_room(request):
     """Delete a single room by id. Also removes related seat allocations."""
     if request.method != 'POST':
@@ -955,7 +967,7 @@ def delete_room(request):
         SeatAllocation.objects.filter(room=room).delete()
 
         room.delete()
-        print(f"[DELETE_ROOM] Deleted room {room_id}")
+        logger.info(f"Deleted room {room_id} by admin")
         return JsonResponse({"status": "success", "message": "Room deleted"})
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
@@ -964,7 +976,7 @@ def delete_room(request):
 # =========================
 # Room detail & manual edit endpoints
 # =========================
-@csrf_exempt
+@admin_required_json
 def get_room_details(request):
     """Return room info, current allocations for the room, and exam students list."""
     if request.method != 'GET':
@@ -1033,7 +1045,7 @@ def get_room_details(request):
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
-@csrf_exempt
+@admin_required_json
 def update_room_seating(request):
     """Update seating allocations for a single room.
 
@@ -1057,7 +1069,7 @@ def update_room_seating(request):
         updated_count = 0
 
         # Debug log incoming seats
-        print(f"[UPDATE_ROOM] Received {len(seats)} seats for room {room_id}")
+        logger.debug(f"Received {len(seats)} seats for room {room_id}")
 
         for s in seats:
             reg = (s.get('registration') or '').strip()
@@ -1094,7 +1106,7 @@ def update_room_seating(request):
             else:
                 updated_count += 1
 
-        print(f"[UPDATE_ROOM] Created {created_count}, Updated {updated_count} for room {room_id}")
+        logger.info(f"Room {room_id}: Created {created_count}, Updated {updated_count} seats")
 
         return JsonResponse({'status': 'success', 'message': f'Created {created_count}, Updated {updated_count} seats for room {room.room_number}', 'seats_received': len(seats), 'created': created_count, 'updated': updated_count})
     except Room.DoesNotExist:
@@ -1103,7 +1115,7 @@ def update_room_seating(request):
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
-@csrf_exempt
+@admin_required_json
 def add_student_to_seat(request):
     """Safely add or update a single student to a seat.
     
@@ -1165,18 +1177,18 @@ def add_student_to_seat(request):
             'exam_name': data.get('exam_name') or room.exam.name
         }
         
-        # Log detailed student and timing info (and raw payload)
+        # Log detailed student and timing info
         start_time = (data.get('start_time') or '').strip()
         end_time = (data.get('end_time') or '').strip()
-        print(f"[ADD_STUDENT] Received payload for seat={seat_code}: {json.dumps(data)}")
-        log_msg = f"[ADD_STUDENT] Seat {seat_code}: {reg} ({defaults['department']})"
+        logger.debug(f"Received seat data for seat={seat_code}")
+        log_msg = f"Seat {seat_code}: {reg} ({defaults['department']})"
         if semester:
             log_msg += f" Sem {semester}"
         if year:
             log_msg += f" Year {year}"
         if start_time or end_time:
             log_msg += f" [{start_time or 'N/A'} - {end_time or 'N/A'}]"
-        print(log_msg)
+        logger.info(log_msg)
         
         # Update or create — only affects this specific seat
         obj, created = SeatAllocation.objects.update_or_create(
@@ -1225,9 +1237,9 @@ def add_student_to_seat(request):
                         changed = True
                     if changed:
                         de_obj.save()
-                        print(f"[ADD_STUDENT] Updated existing DepartmentExam id={de_obj.id} for exam={room.exam.id} dept={de_obj.department} date={de_exam_date} start={parsed_start} end={parsed_end}")
+                        logger.info(f"Updated DepartmentExam for dept={de_obj.department} date={de_exam_date}")
                     else:
-                        print(f"[ADD_STUDENT] DepartmentExam id={de_obj.id} already has same times; no update needed")
+                        logger.debug(f"DepartmentExam already has same times, no update needed")
                 else:
                     # Create a new DepartmentExam row
                     de_obj = DepartmentExam.objects.create(
@@ -1240,9 +1252,9 @@ def add_student_to_seat(request):
                         start_time=parsed_start,
                         end_time=parsed_end
                     )
-                    print(f"[ADD_STUDENT] Created DepartmentExam id={de_obj.id} for exam={room.exam.id} dept={de_obj.department} date={de_obj.exam_date} start={parsed_start} end={parsed_end}")
+                    logger.info(f"Created DepartmentExam for dept={de_obj.department} date={de_obj.exam_date}")
         except Exception as e:
-            print(f"[ADD_STUDENT] Failed to persist DepartmentExam: {e}")
+            logger.error(f"Failed to persist DepartmentExam: {str(e)}")
 
         action = "created" if created else "updated"
         return JsonResponse({
@@ -1264,14 +1276,14 @@ def add_student_to_seat(request):
     except Room.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Room not found"}, status=404)
     except Exception as e:
-        print(f"[ADD_STUDENT] Error: {e}")
+        logger.error(f"Error in add_student_to_seat: {str(e)}")
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
 # =========================
 # Get Uploaded Student Files (API)
 # ========================="
-@csrf_exempt
+@admin_required_json
 def get_uploaded_files(request):
     if request.method == "GET":
         try:
@@ -1300,7 +1312,7 @@ def get_uploaded_files(request):
 # =========================
 # Save Selected Files for Exam (API)
 # =========================
-@csrf_exempt
+@admin_required_json
 def save_selected_files(request):
     if request.method == "POST":
         try:
@@ -1379,7 +1391,7 @@ def save_selected_files(request):
 # =========================
 # Generate Seating Algorithm
 # =========================
-@csrf_exempt
+@admin_required_json
 def generate_seating(request):
     """Generate seat allocations based on exam groups and department distribution"""
     from collections import defaultdict
@@ -1406,6 +1418,7 @@ def generate_seating(request):
                         col_map_norm[int(k)] = v if v not in [None, ''] else None
                     except Exception:
                         continue
+
 
         # optional room-specific mapping: { room_id: [col1,col2,...,col5] }
         room_column_map = data.get('room_column_map') or {}
@@ -1745,7 +1758,7 @@ def generate_seating(request):
 # =========================
 # Get Seating Data
 # =========================
-@csrf_exempt
+@admin_required_json
 def get_seating_data(request, exam_id):
     """Fetch existing seating allocations for display"""
     try:
@@ -1770,7 +1783,7 @@ def get_seating_data(request, exam_id):
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
-@csrf_exempt
+@admin_required_json
 def lock_seating(request):
     """Save seating allocation to database"""
     if request.method != "POST":
@@ -2057,8 +2070,13 @@ def generate_qr(request):
 
 def qr_page(request):
     """Render a standalone page that shows the universal QR (points to student portal)."""
+    from django.urls import reverse
     qr_url = request.build_absolute_uri(reverse('generate_qr')) + '?type=student_portal'
-    return render(request, 'core/qr_page.html', {'qr_url': qr_url})
+    student_portal_url = request.build_absolute_uri(reverse('student_portal'))
+    return render(request, 'core/qr_page.html', {
+        'qr_url': qr_url,
+        'student_portal_url': student_portal_url
+    })
 
 
 def get_student_seat(request):
@@ -2256,7 +2274,7 @@ def get_exam_status(exam):
     
     # Guard against missing dates
     if start_date is None or end_date is None:
-        print(f"[GET_EXAM_STATUS] Warning: Exam {exam.id} ('{exam.name}') missing start_date or/or end_date.")
+        logger.warning(f"Exam {exam.id} ('{exam.name}') missing start_date or end_date")
         return 'incomplete'
     
     if today < start_date:
@@ -2280,17 +2298,17 @@ def cleanup_expired_exams():
     count = expired_exams.count()
     
     if count > 0:
-        print(f'[CLEANUP] Deleting {count} expired exams...')
+        logger.info(f'Deleting {count} expired exams...')
         for exam in expired_exams:
-            print(f'  - Deleting exam: {exam.name} (ID: {exam.id}) - Ended on {exam.end_date}')
+            logger.debug(f'Deleting exam: {exam.name} (ID: {exam.id}) - Ended on {exam.end_date}')
         expired_exams.delete()
-        print(f'[CLEANUP] ✓ Deleted {count} expired exams')
+        logger.info(f'Successfully deleted {count} expired exams')
     
     return count
 
 
 # =========================
-@csrf_exempt
+@admin_required_json
 def get_all_exams(request):
     """
     Returns all permanent exams with details for dashboard display.
@@ -2303,17 +2321,17 @@ def get_all_exams(request):
         
         # DEBUG: Check all exams first
         all_exams = Exam.objects.all()
-        print(f'[GET_ALL_EXAMS] Total exams in DB: {all_exams.count()}')
+        logger.debug(f'Total exams in DB: {all_exams.count()}')
         for exam in all_exams:
-            print(f'  - {exam.id}: {exam.name} | is_completed={exam.is_completed}, is_temporary={exam.is_temporary}')
+            logger.debug(f'  - {exam.id}: {exam.name} | is_completed={exam.is_completed}, is_temporary={exam.is_temporary}')
         
         # Get all permanent exams
         exams = Exam.objects.filter(is_completed=True, is_temporary=False)
-        print(f'[GET_ALL_EXAMS] Found {exams.count()} permanent exams (is_completed=True AND is_temporary=False)')
+        logger.info(f'Found {exams.count()} permanent exams (is_completed=True AND is_temporary=False)')
         
         exam_list = []
         for exam in exams:
-            print(f'[GET_ALL_EXAMS] Processing exam: {exam.name} (ID: {exam.id})')
+            logger.debug(f'Processing exam: {exam.name} (ID: {exam.id})')
             
             # Get unique departments for this exam (remove duplicates)
             dept_exams = DepartmentExam.objects.filter(exam=exam)
@@ -2325,7 +2343,7 @@ def get_all_exams(request):
             
             # Calculate duration in days (guard against missing dates)
             if exam.start_date is None or exam.end_date is None:
-                print(f"[GET_ALL_EXAMS] Warning: Exam {exam.id} ('{exam.name}') missing start_date or end_date.")
+                logger.warning(f"Exam {exam.id} ('{exam.name}') missing start_date or end_date")
                 duration_days = None
             else:
                 duration_days = (exam.end_date - exam.start_date).days
@@ -2343,17 +2361,17 @@ def get_all_exams(request):
                 'duration_days': duration_days,
                 'status': status
             }
-            print(f'[GET_ALL_EXAMS] Exam data: {exam_data}')
+            logger.debug(f'Exam data prepared: {exam_data}')
             exam_list.append(exam_data)
         
-        print(f'[GET_ALL_EXAMS] ✓ Returning {len(exam_list)} exams')
+        logger.info(f'Returning {len(exam_list)} exams')
         return JsonResponse({
             'status': 'success',
             'exams': exam_list
         })
     
     except Exception as e:
-        print(f'[GET_ALL_EXAMS] ❌ Exception: {str(e)}')
+        logger.error(f"Exception in get_all_exams: {str(e)}", exc_info=True)
         return JsonResponse({
             'status': 'error',
             'message': str(e)
@@ -2365,24 +2383,23 @@ def get_all_exams(request):
 
 
 # DEBUG: Simple test endpoint
-@csrf_exempt  
+@admin_required_json
 def test_api(request):
-    print('[TEST API] Called!')
+    logger.info('test_api endpoint called')
     try:
         exams = Exam.objects.filter(is_completed=True, is_temporary=False)
         count = exams.count()
-        print(f'[TEST API] Found {count} exams')
+        logger.debug(f'Found {count} exams')
         return JsonResponse({
             'message': 'API is working',
             'exam_count': count,
             'exams': [{'id': e.id, 'name': e.name} for e in exams]
         })
     except Exception as e:
-        print(f'[TEST API] Error: {str(e)}')
+        logger.error(f"Error in test_api: {str(e)}", exc_info=True)
         return JsonResponse({'error': str(e)})
 
-
-@csrf_exempt
+@admin_required_json
 def debug_department_exams(request):
     """Debug endpoint: list DepartmentExam rows for an exam (optional filter by department)."""
     try:

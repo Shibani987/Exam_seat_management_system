@@ -24,6 +24,7 @@
       <a href="#" class="tab-link active" data-tab="create-exam">create exam</a>
       <a href="#" class="tab-link" data-tab="upload-data">upload student data</a>
       <a href="#" class="tab-link" data-tab="admin-emails">admin emails</a>
+      <a href="#" class="tab-link" data-tab="qr-tab">universal qr</a>
     </div>
     <div class="logout">
       <a href="{% url 'admin_logout' %}">logout →</a>
@@ -221,6 +222,27 @@
 
 
   </div>
+
+    <!-- ================== UNIVERSAL QR TAB ================== -->
+    <div class="tab-content" id="qr-tab">
+      <h1>Universal QR Code</h1>
+      <p class="upload-description">
+       scan to access student portal. students can scan this qr and then enter their registration number to find their seat.
+      </p>
+
+      <div style="text-align:center; margin-top:20px;">
+        <img src="{{ qr_url }}" alt="Universal QR" style="max-width:320px; border:3px solid #28a745; padding:10px; border-radius:8px;">
+        <div style="margin-top:12px; display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+          <button type="button" id="printQrBtn" class="upload-btn">Print QR</button>
+          <button type="button" id="copyQrUrlBtn" class="upload-btn">Copy QR Image URL</button>
+          <button type="button" id="copyPortalUrlBtn" class="upload-btn">Copy Student Portal URL</button>
+        </div>
+        <p style="margin-top:10px; color:#666;">
+          Student Portal:
+          <a href="{{ student_portal_url }}" target="_blank">{{ student_portal_url }}</a>
+        </p>
+      </div>
+    </div>
 
   <!-- ================== MODAL FOR NEW EXAM ================== -->
   <div class="modal" id="newExamModal">
@@ -554,6 +576,56 @@
           alert('Failed to load file students. See console for details.');
           fileStudentsModal.style.display = 'none';
         });
+    }
+
+    // ================== UNIVERSAL QR TAB COPY HELPERS ==================
+    const printQrBtn = document.getElementById('printQrBtn');
+    const copyQrUrlBtn = document.getElementById('copyQrUrlBtn');
+    const copyPortalUrlBtn = document.getElementById('copyPortalUrlBtn');
+    
+    if (printQrBtn) {
+      printQrBtn.addEventListener('click', () => {
+        const qrImg = document.querySelector('#qr-tab img');
+        if (qrImg) {
+          const printWindow = window.open('', '', 'width=400,height=500');
+          printWindow.document.write(`
+            <html>
+              <head>
+                <title>Print QR Code</title>
+                <style>
+                  body { margin:0; padding:20px; text-align:center; font-family:Arial,sans-serif; }
+                  h1 { color:#333; }
+                  img { max-width:320px; border:3px solid #28a745; padding:10px; border-radius:8px; }
+                  p { color:#666; margin-top:10px; }
+                </style>
+              </head>
+              <body>
+                <h1>Universal QR Code</h1>
+                <p>Scan to access Student Portal</p>
+                <img src="${qrImg.src}" alt="QR Code">
+                <p style="margin-top:20px; color:#999; font-size:0.9em;">Student Portal: <a href="{{ student_portal_url }}">{{ student_portal_url }}</a></p>
+              </body>
+            </html>
+          `);
+          printWindow.document.close();
+          setTimeout(() => { printWindow.print(); }, 250);
+        }
+      });
+    }
+    
+    if (copyQrUrlBtn && navigator.clipboard) {
+      copyQrUrlBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText('{{ qr_url }}')
+          .then(() => alert('QR image URL copied to clipboard'))
+          .catch(() => alert('Unable to copy QR URL'));
+      });
+    }
+    if (copyPortalUrlBtn && navigator.clipboard) {
+      copyPortalUrlBtn.addEventListener('click', () => {
+        navigator.clipboard.writeText('{{ student_portal_url }}')
+          .then(() => alert('Student Portal URL copied to clipboard'))
+          .catch(() => alert('Unable to copy Student Portal URL'));
+      });
     }
 </script> 
 </body>

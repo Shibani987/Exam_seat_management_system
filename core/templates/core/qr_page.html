@@ -9,6 +9,9 @@
     <style>
         .print-btn { padding:10px 14px; border-radius:6px; background:#0f4e87; color:#fff; border:none; cursor:pointer; font-weight:600; }
         .print-btn:hover { background:#0d4372; }
+        .copy-btn { padding:10px 14px; border-radius:6px; background:#28a745; color:#fff; border:none; cursor:pointer; font-weight:600; margin-left:8px; }
+        .copy-btn:hover { background:#218838; }
+        .button-group { margin-top:12px; }
         @media print {
             body * { visibility: hidden; }
             #qrCard, #qrCard * { visibility: visible; }
@@ -23,8 +26,10 @@
 
     <div style="text-align:center; padding:20px;" id="qrCard">
         <img id="universalQr" src="{{ qr_url }}" alt="Universal QR" style="max-width:320px; border:3px solid #28a745; padding:10px; border-radius:8px;">
-        <div style="margin-top:12px;">
+        <div class="button-group">
             <button id="printQr" class="print-btn">Print QR</button>
+            <button id="copyQrUrl" class="copy-btn">Copy QR URL</button>
+            <button id="copyPortalUrl" class="copy-btn">Copy Portal URL</button>
         </div>
         <p style="margin-top:10px; color:#666;">Or open <a href="{% url 'student_portal' %}" target="_blank">Student Portal</a></p>
     </div>
@@ -34,7 +39,21 @@
     </div>
 </div>
 <script>
-    document.getElementById('printQr')?.addEventListener('click', function(){ window.print(); });
+    document.getElementById('printQr')?.addEventListener('click', function(){ 
+        window.print(); 
+    });
+    
+    document.getElementById('copyQrUrl')?.addEventListener('click', function(){
+        navigator.clipboard.writeText('{{ qr_url }}')
+            .then(() => alert('QR image URL copied to clipboard!'))
+            .catch(() => alert('Unable to copy'));
+    });
+    
+    document.getElementById('copyPortalUrl')?.addEventListener('click', function(){
+        navigator.clipboard.writeText('{{ student_portal_url }}')
+            .then(() => alert('Student Portal URL copied to clipboard!'))
+            .catch(() => alert('Unable to copy'));
+    });
 </script>
 </body>
 </html>

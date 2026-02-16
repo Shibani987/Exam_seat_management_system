@@ -175,7 +175,10 @@ document.addEventListener('DOMContentLoaded', function(){
             modalBody.innerHTML = '<p style="color:#666;">Loading room details...</p>';
             modal.style.display = 'flex';
 
-            fetch(`/get_room_details/?room_id=${roomId}`)
+            fetch(`/get_room_details/?room_id=${roomId}`, {
+                method: 'GET',
+                headers: { 'X-CSRFToken': window.CSRF_TOKEN || '' }
+            })
             .then(r => r.json())
             .then(data => {
                 if (data.status !== 'success') {
@@ -487,7 +490,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     removeBtn.disabled = true;
                     fetch('/add_student_to_seat/', {
                         method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN || '' },
                         body: JSON.stringify({
                             room_id: currentRoomId,
                             seat: seatCode,
@@ -545,7 +548,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 saveBtn.disabled = true;
                 fetch('/add_student_to_seat/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN || '' },
                     body: JSON.stringify({
                         room_id: currentRoomId,
                         seat: seatCode,
@@ -607,7 +610,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
                 fetch('/delete_room/', {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                    headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRFToken': window.CSRF_TOKEN || '' },
                     body: JSON.stringify({ room_id: rid })
                 })
                 .then(async res => {
