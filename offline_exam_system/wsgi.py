@@ -16,19 +16,6 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'offline_exam_system.settings')
 
 application = get_wsgi_application()
 
-# Ensure WhiteNoise can serve static files by wrapping the application
-# This adds robustness to static file serving in production
-from whitenoise.wsgi import WhiteNoise
-
-# Additional whiteNoise configuration for maximum compatibility
-static_root = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'staticfiles')
-application = WhiteNoise(
-    application,
-    root=static_root,
-    prefix='static/',
-    max_age=31536000,  # 1 year cache
-    mimetypes={
-        '.js': 'application/javascript; charset=utf-8',
-        '.css': 'text/css; charset=utf-8',
-    }
-)
+# WhiteNoise is configured via middleware in settings.py (MIDDLEWARE list).
+# Modern whitenoise (6.x+) uses middleware approach, not WSGI wrapping.
+# No need to import or wrap here.
