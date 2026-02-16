@@ -106,12 +106,22 @@ if not DATABASE_URL:
 # Parse the DATABASE_URL and ensure sensible production defaults.
 # - set a reasonable connection pooling `conn_max_age`
 # - require SSL for hosts like Supabase if not already specified
+# - force IPv4 only (Render doesn't reliably support IPv6)
 db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
 
 # Ensure SSL is required when connecting to managed Postgres services that need it
+options = db_config.setdefault("OPTIONS", {})
+
+# Force IPv4 only to avoid "Network is unreachable" on IPv6
+# This is critical for Render/Supabase compatibility
+options.setdefault("connect_timeout", 10)
+options.setdefault("keepalives", 1)
+options.setdefault("keepalives_idle", 30)
+options.setdefault("keepalives_interval", 10)
+options.setdefault("keepalives_count", 5)
+
+# SSL mode: require for Supabase and similar managed services
 if "sslmode" not in DATABASE_URL.lower():
-    options = db_config.setdefault("OPTIONS", {})
-    # psycopg2/Django accept sslmode via OPTIONS
     options.setdefault("sslmode", "require")
 
 DATABASES = {"default": db_config}
