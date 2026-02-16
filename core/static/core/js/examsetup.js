@@ -135,8 +135,9 @@ if (completeSetupBtn) {
 
             // Redirect to dashboard
             console.log('[COMPLETE SETUP] Redirecting to dashboard...');
-            // Use absolute URL as requested
-            setTimeout(() => { window.location.href = 'http://127.0.0.1:8000/dashboard/'; }, 250);
+            // Use dashboard URL from environment variable (.env)
+            const dashboardUrl = window.ADMIN_DASHBOARD_URL || '/dashboard/';
+            setTimeout(() => { window.location.href = dashboardUrl; }, 250);
         })
         .catch(err => {
             console.error('[COMPLETE SETUP] Error:', err);
