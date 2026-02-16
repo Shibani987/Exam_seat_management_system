@@ -143,7 +143,7 @@ if (completeSetupBtn) {
             alert('Error: ' + err.message);
         });
     };
-}
+
 
 // =============================
 // INITIALIZE TEMP EXAM ON PAGE LOAD
