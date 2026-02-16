@@ -10,6 +10,7 @@ import os
 from dotenv import load_dotenv
 import dj_database_url
 
+
 # =========================================
 # Base paths & .env loading
 # =========================================
@@ -27,8 +28,7 @@ load_dotenv(dotenv_path=dotenv_path)
 # - In development: falls back to the existing hardcoded key (no behavior change)
 # - In production: set SECRET_KEY in environment / .env
 SECRET_KEY = os.getenv(
-    "SECRET_KEY",
-    "django-insecure-83u_0ai5(qobklao2rdb(wj4-!9i0&j2-n$v=_y(gckysyejvf",
+    "SECRET_KEY"
 )
 
 # SECURITY WARNING: don't run with debug turned on in production!
@@ -160,9 +160,11 @@ USE_TZ = True
 STATIC_URL = "/static/"
 
 # Location for collected static files in production
+STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
