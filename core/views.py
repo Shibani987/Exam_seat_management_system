@@ -2258,26 +2258,6 @@ def get_student_seat(request):
                 return response
             
             if now > exam_end_dt:
-                # Exam hasn't started yet (time window not opened)
-                time_diff = datetime.combine(today, access_start) - datetime.combine(today, now)
-                minutes_to_wait = int(time_diff.total_seconds() // 60)
-                response = JsonResponse({
-                    "status": "error",
-                    "message": f"Exam access opens at {access_start_time}",
-                    "exam_id": exam_id,
-                    "requested_exam_id": exam_id,
-                    "is_future": False,
-                    "is_expired": False,
-                    "is_early": True,
-                    "minutes_to_wait": minutes_to_wait,
-                    "exam_start_time": exam_start_time,
-                    "exam_end_time": exam_end_time,
-                    "seat": seat_data
-                }, status=403)
-                response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-                return response
-            
-            if now > exam_end:
                 # Exam has ended
                 response = JsonResponse({
                     "status": "error",
