@@ -2138,15 +2138,16 @@ def get_student_seat(request):
         # Check if exam is accessible (date and time validation)
         # Use timezone-aware date for accurate comparison in IST
         from django.utils import timezone as django_timezone
-        import pytz
+        from zoneinfo import ZoneInfo
         
-        # Get current date in IST timezone
-        ist = pytz.timezone('Asia/Kolkata')
-        today = django_timezone.now().astimezone(ist).date()
+        # Get current date and time in IST timezone
+        ist = ZoneInfo('Asia/Kolkata')
+        now_ist = django_timezone.now().astimezone(ist)
+        today = now_ist.date()
         exam_date = seat.exam_date
         
         # Log for debugging timezone issues
-        logger.info(f"[SEAT ACCESS] Reg: {reg_number}, Exam: {exam_id}, Server time (IST): {django_timezone.now().astimezone(ist)}, Today (IST): {today}, Exam date: {exam_date}")
+        logger.info(f"[SEAT ACCESS] Reg: {reg_number}, Exam: {exam_id}, Server time (IST): {now_ist}, Today (IST): {today}, Exam date: {exam_date}")
         
         # Get exam times from DepartmentExam
         student = Student.objects.filter(registration_number=reg_number).first()
@@ -2211,11 +2212,11 @@ def get_student_seat(request):
         # Check time window (exam_start - 15 min) to exam_end
         # Use timezone-aware datetime for accurate comparison
         from django.utils import timezone as django_timezone
-        import pytz
+        from zoneinfo import ZoneInfo
         
         # Get IST timezone
-        ist = pytz.timezone('Asia/Kolkata')
-        now = django_timezone.now().astimezone(ist)
+        ist = ZoneInfo('Asia/Kolkata')
+        now = now_ist  # Use the now_ist we already calculated above
         
         # Log for debugging
         logger.info(f"[TIME CHECK] Current time (IST): {now}, Access start: {access_start_time}, Exam end: {exam_end_time}")
@@ -2231,8 +2232,8 @@ def get_student_seat(request):
                 exam_end_naive = exam_end_naive + timedelta(days=1)
             
             # Make them timezone-aware in IST
-            access_start_dt = ist.localize(access_start_naive)
-            exam_end_dt = ist.localize(exam_end_naive)
+            access_start_dt = access_start_naive.replace(tzinfo=ist)
+            exam_end_dt = exam_end_naive.replace(tzinfo=ist)
             
             logger.info(f"[TIME CHECK] Access start datetime (IST): {access_start_dt}, Exam end datetime (IST): {exam_end_dt}")
             
