@@ -324,9 +324,11 @@ def reset_password(request):
         elif not EligibleAdminEmail.objects.filter(email__iexact=email).exists():
             message = 'This email is not eligible to reset password'
         else:
-            # Create or update admin account with username=email
-            admin, _ = AdminAccount.objects.get_or_create(username=email)
-            admin.username = email
+            # Generate username from email (same as forgot_password)
+            username = generate_username(email)
+            
+            # Create or update admin account with generated username
+            admin, _ = AdminAccount.objects.get_or_create(username=username)
             admin.email = email
             admin.password_hash = make_password(new_password)
             admin.save()
