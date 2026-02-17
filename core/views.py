@@ -249,10 +249,16 @@ def forgot_password(request):
                 expires_at=expires_at
             )
             
-            # Send email (non-blocking with fail_silently=True)
-            send_password_reset_email(email, username, reset_token, request)
+            # Send email in background thread (non-blocking)
+            import threading
+            email_thread = threading.Thread(
+                target=send_password_reset_email,
+                args=(email, username, reset_token, request)
+            )
+            email_thread.daemon = True  # Thread will not block app shutdown
+            email_thread.start()
             
-            # Always show success message (security best practice)
+            # Show success immediately (email sending in background)
             message = 'A password reset link has been sent to your registered email address. Please check your inbox. The link is valid for 1 hour.'
             success = True
 
