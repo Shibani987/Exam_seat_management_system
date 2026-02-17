@@ -10,7 +10,6 @@ from django.conf import settings
 import secrets
 import string
 import logging
-import threading
 
 import pandas as pd
 import json
