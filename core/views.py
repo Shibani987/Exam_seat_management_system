@@ -195,29 +195,17 @@ Regards,
 Exam Management System Administration
         """
         
-        # Send email with timeout protection
-        from django.core.mail import EmailMessage
-        email_msg = EmailMessage(
+        send_mail(
             subject,
             message,
             settings.DEFAULT_FROM_EMAIL,
             [email],
+            fail_silently=False,
         )
-        
-        # Try to send with a short timeout to prevent worker timeout
-        try:
-            email_msg.send(fail_silently=False)
-            logger.info(f"Password reset email sent successfully to {email}")
-            return True
-        except Exception as send_error:
-            logger.error(f"Error sending password reset email to {email}: {str(send_error)}")
-            # Return True anyway so user doesn't see error (security best practice)
-            # The token is already created in database, user can try again
-            return True
-            
+        return True
     except Exception as e:
-        logger.error(f"Error preparing password reset email for {email}: {str(e)}")
-        return True  # Return True to prevent user enumeration
+        logger.error(f"Error sending password reset email to {email}: {str(e)}")
+        return False
 
 
 def forgot_password(request):
@@ -235,32 +223,29 @@ def forgot_password(request):
         elif not EligibleAdminEmail.objects.filter(email__iexact=email).exists():
             message = 'This email is not registered for admin password reset.'
         else:
-            try:
-                # Generate username and token
-                username = generate_username(email)
-                temp_password = generate_temp_password()
-                reset_token = secrets.token_urlsafe(32)
-                expires_at = timezone.now() + timedelta(hours=1)  # 1 hour expiry
-                
-                # Create password reset token
-                PasswordResetToken.objects.create(
-                    email=email,
-                    token=reset_token,
-                    username=username,
-                    temp_password=temp_password,
-                    expires_at=expires_at
-                )
-                
-                # Send email (non-blocking, returns immediately)
-                send_password_reset_email(email, username, reset_token, request)
-                
-                # Always show success message (security best practice)
+            # Generate username and token
+            username = generate_username(email)
+            temp_password = generate_temp_password()
+            reset_token = secrets.token_urlsafe(32)
+            expires_at = timezone.now() + timedelta(hours=1)  # 1 hour expiry
+            
+            # Create password reset token
+            PasswordResetToken.objects.create(
+                email=email,
+                token=reset_token,
+                username=username,
+                temp_password=temp_password,
+                expires_at=expires_at
+            )
+            
+            # Send email
+            email_sent = send_password_reset_email(email, username, reset_token, request)
+            
+            if email_sent:
                 message = 'A password reset link has been sent to your registered email address. Please check your inbox. The link is valid for 1 hour.'
                 success = True
-                
-            except Exception as e:
-                logger.error(f"Error in forgot_password for {email}: {str(e)}")
-                message = 'An error occurred. Please try again later.'
+            else:
+                message = 'An error occurred while sending the email. Please try again later.'
 
     return render(request, 'core/admin_forgot_password.html', {
         'form': form,
