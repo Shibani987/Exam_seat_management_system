@@ -172,6 +172,9 @@ MEDIA_ROOT = BASE_DIR / "media"
 # =========================================
 # Email Configuration
 # =========================================
+# =========================================
+# Email Configuration
+# =========================================
 # For Gmail:
 # 1. Enable 2FA on your Google account
 # 2. Generate app password: https://myaccount.google.com/apppasswords
@@ -184,6 +187,7 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_TIMEOUT = 10  # 10 second timeout to prevent worker timeout
 
 # =========================================
 # Logging Configuration
