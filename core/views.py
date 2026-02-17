@@ -172,7 +172,7 @@ def generate_temp_password(length=12):
 
 
 def send_password_reset_email(email, username, reset_token, request):
-    """Send password reset email with link"""
+    """Send password reset email with link - with timeout protection"""
     try:
         reset_link = request.build_absolute_uri(f'/reset-password-link/?token={reset_token}')
         subject = 'Password Reset Request - Exam Management System'
@@ -195,18 +195,28 @@ Regards,
 Exam Management System Administration
         """
         
-        send_mail(
-            subject,
-            message,
-            settings.DEFAULT_FROM_EMAIL,
-            [email],
-            fail_silently=True,  # Don't block if email fails
-        )
-        logger.info(f"Password reset email queued for {email}")
-        return True
+        # Try to send email with timeout protection
+        import socket
+        from smtplib import SMTPException
+        
+        try:
+            send_mail(
+                subject,
+                message,
+                settings.DEFAULT_FROM_EMAIL,
+                [email],
+                fail_silently=False,
+            )
+            logger.info(f"Password reset email sent successfully to {email}")
+            return True
+        except (socket.timeout, socket.error, SMTPException, OSError, Exception) as e:
+            # Log the error but don't crash - return True for security
+            logger.error(f"Email sending failed for {email}: {type(e).__name__} - {str(e)}")
+            return True
+            
     except Exception as e:
-        logger.error(f"Error sending password reset email to {email}: {str(e)}")
-        return False
+        logger.error(f"Error preparing password reset email for {email}: {str(e)}")
+        return True
 
 
 def forgot_password(request):

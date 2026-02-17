@@ -177,23 +177,16 @@ MEDIA_ROOT = BASE_DIR / "media"
 # 2. Generate app password: https://myaccount.google.com/apppasswords
 # 3. Add EMAIL_HOST_USER and EMAIL_HOST_PASSWORD to .env
 
-# TEMPORARY FIX: Use console backend to prevent worker timeout
-# Emails will be printed to console/logs instead of being sent
-# Change back to SMTP once Gmail connection is stable
-EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-# SMTP settings (uncomment when ready to use Gmail)
-# EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# EMAIL_HOST = "smtp.gmail.com"
-# EMAIL_PORT = 587
-# EMAIL_USE_TLS = True
-# EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
-# EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-# DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-
-# For console backend
-EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "noreply@exam-system.com")
+# Use SMTP backend to send real emails via Gmail
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+EMAIL_HOST = "smtp.gmail.com"
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+EMAIL_TIMEOUT = 30  # 30 second timeout for email sending
 
 # =========================================
 # Logging Configuration
