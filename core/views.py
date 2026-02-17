@@ -224,6 +224,7 @@ def forgot_password(request):
     form = ForgotPasswordForm(request.POST or None)
     message = None
     success = False
+    username = None
     
     if request.method == 'POST' and form.is_valid():
         email = form.cleaned_data['email'].strip().lower()
@@ -235,37 +236,18 @@ def forgot_password(request):
         elif not EligibleAdminEmail.objects.filter(email__iexact=email).exists():
             message = 'This email is not registered for admin password reset.'
         else:
-            # Generate username and token
+            # Generate username from email
             username = generate_username(email)
-            temp_password = generate_temp_password()
-            reset_token = secrets.token_urlsafe(32)
-            expires_at = timezone.now() + timedelta(hours=1)  # 1 hour expiry
             
-            # Create password reset token
-            PasswordResetToken.objects.create(
-                email=email,
-                token=reset_token,
-                username=username,
-                temp_password=temp_password,
-                expires_at=expires_at
-            )
-            
-            # Send email in background thread (non-blocking)
-            email_thread = threading.Thread(
-                target=send_password_reset_email,
-                args=(email, username, reset_token, request)
-            )
-            email_thread.daemon = True  # Thread will not block app shutdown
-            email_thread.start()
-            
-            # Show success immediately (email sending in background)
-            message = 'A password reset link has been sent to your registered email address. Please check your inbox. The link is valid for 1 hour.'
+            # Show success with username - user can now reset password
+            message = f'Email verified successfully. Your username is: {username}'
             success = True
 
     return render(request, 'core/admin_forgot_password.html', {
         'form': form,
         'message': message,
-        'success': success
+        'success': success,
+        'username': username
     })
 
 
