@@ -135,16 +135,15 @@ if (completeSetupBtn) {
 
             // Redirect to dashboard
             console.log('[COMPLETE SETUP] Redirecting to dashboard...');
-            // Use dashboard URL from environment variable (.env)
-            const dashboardUrl = window.ADMIN_DASHBOARD_URL || '/dashboard/';
-            setTimeout(() => { window.location.href = dashboardUrl; }, 250);
+            // Use absolute URL as requested
+            setTimeout(() => { window.location.href = 'https://exam-seat-management-system.onrender.com'; }, 250);
         })
         .catch(err => {
             console.error('[COMPLETE SETUP] Error:', err);
             alert('Error: ' + err.message);
         });
     };
-}
+
 
 // =============================
 // INITIALIZE TEMP EXAM ON PAGE LOAD
@@ -1460,4 +1459,4 @@ function populateQRDetails() {
     totalRoomsQR.textContent = roomsList.length;
 }
 
-// ✅ COMPLETE SETUP HANDLER ATTACHED IN populateSummary() WHEN BUTTON IS ENABLED
+}
