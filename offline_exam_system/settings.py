@@ -149,7 +149,7 @@ AUTH_PASSWORD_VALIDATORS = [
 # =========================================
 
 LANGUAGE_CODE = "en-us"
-TIME_ZONE = "Asia/Kolkata"  # Indian Standard Time (IST) - UTC+5:30
+TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
 
