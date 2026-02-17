@@ -10,6 +10,7 @@ from django.conf import settings
 import secrets
 import string
 import logging
+import threading
 
 import pandas as pd
 import json
@@ -250,7 +251,6 @@ def forgot_password(request):
             )
             
             # Send email in background thread (non-blocking)
-            import threading
             email_thread = threading.Thread(
                 target=send_password_reset_email,
                 args=(email, username, reset_token, request)
