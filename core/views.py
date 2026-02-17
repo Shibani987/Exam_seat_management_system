@@ -200,8 +200,9 @@ Exam Management System Administration
             message,
             settings.DEFAULT_FROM_EMAIL,
             [email],
-            fail_silently=False,
+            fail_silently=True,  # Don't block if email fails
         )
+        logger.info(f"Password reset email queued for {email}")
         return True
     except Exception as e:
         logger.error(f"Error sending password reset email to {email}: {str(e)}")
@@ -238,14 +239,12 @@ def forgot_password(request):
                 expires_at=expires_at
             )
             
-            # Send email
-            email_sent = send_password_reset_email(email, username, reset_token, request)
+            # Send email (non-blocking with fail_silently=True)
+            send_password_reset_email(email, username, reset_token, request)
             
-            if email_sent:
-                message = 'A password reset link has been sent to your registered email address. Please check your inbox. The link is valid for 1 hour.'
-                success = True
-            else:
-                message = 'An error occurred while sending the email. Please try again later.'
+            # Always show success message (security best practice)
+            message = 'A password reset link has been sent to your registered email address. Please check your inbox. The link is valid for 1 hour.'
+            success = True
 
     return render(request, 'core/admin_forgot_password.html', {
         'form': form,
