@@ -2136,8 +2136,17 @@ def get_student_seat(request):
             return JsonResponse({"status": "error", "message": "No seating assignment found"}, status=404)
         
         # Check if exam is accessible (date and time validation)
-        today = date.today()
+        # Use timezone-aware date for accurate comparison in IST
+        from django.utils import timezone as django_timezone
+        import pytz
+        
+        # Get current date in IST timezone
+        ist = pytz.timezone('Asia/Kolkata')
+        today = django_timezone.now().astimezone(ist).date()
         exam_date = seat.exam_date
+        
+        # Log for debugging timezone issues
+        logger.info(f"[SEAT ACCESS] Reg: {reg_number}, Exam: {exam_id}, Server time (IST): {django_timezone.now().astimezone(ist)}, Today (IST): {today}, Exam date: {exam_date}")
         
         # Get exam times from DepartmentExam
         student = Student.objects.filter(registration_number=reg_number).first()
@@ -2200,14 +2209,54 @@ def get_student_seat(request):
             return response
         
         # Check time window (exam_start - 15 min) to exam_end
-        now = datetime.now().time()
+        # Use timezone-aware datetime for accurate comparison
+        from django.utils import timezone as django_timezone
+        import pytz
+        
+        # Get IST timezone
+        ist = pytz.timezone('Asia/Kolkata')
+        now = django_timezone.now().astimezone(ist)
+        
+        # Log for debugging
+        logger.info(f"[TIME CHECK] Current time (IST): {now}, Access start: {access_start_time}, Exam end: {exam_end_time}")
         
         # Check if current time is within valid window
         if access_start_time and exam_end_time:
-            access_start = datetime.strptime(access_start_time, '%H:%M').time()
-            exam_end = datetime.strptime(exam_end_time, '%H:%M').time()
+            # Combine exam date with times to create timezone-aware datetimes in IST
+            access_start_naive = datetime.combine(exam_date, datetime.strptime(access_start_time, '%H:%M').time())
+            exam_end_naive = datetime.combine(exam_date, datetime.strptime(exam_end_time, '%H:%M').time())
             
-            if now < access_start:
+            # Handle midnight crossing: if end time < start time, exam ends next day
+            if exam_end_naive <= access_start_naive:
+                exam_end_naive = exam_end_naive + timedelta(days=1)
+            
+            # Make them timezone-aware in IST
+            access_start_dt = ist.localize(access_start_naive)
+            exam_end_dt = ist.localize(exam_end_naive)
+            
+            logger.info(f"[TIME CHECK] Access start datetime (IST): {access_start_dt}, Exam end datetime (IST): {exam_end_dt}")
+            
+            if now < access_start_dt:
+                # Exam hasn't started yet (time window not opened)
+                time_diff = access_start_dt - now
+                minutes_to_wait = int(time_diff.total_seconds() // 60)
+                response = JsonResponse({
+                    "status": "error",
+                    "message": f"Exam access opens at {access_start_time}",
+                    "exam_id": exam_id,
+                    "requested_exam_id": exam_id,
+                    "is_future": False,
+                    "is_expired": False,
+                    "is_early": True,
+                    "minutes_to_wait": minutes_to_wait,
+                    "exam_start_time": exam_start_time,
+                    "exam_end_time": exam_end_time,
+                    "seat": seat_data
+                }, status=403)
+                response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+                return response
+            
+            if now > exam_end_dt:
                 # Exam hasn't started yet (time window not opened)
                 time_diff = datetime.combine(today, access_start) - datetime.combine(today, now)
                 minutes_to_wait = int(time_diff.total_seconds() // 60)
