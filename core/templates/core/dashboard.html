@@ -598,29 +598,59 @@
     if (printQrBtn) {
       printQrBtn.addEventListener('click', () => {
         const qrImg = document.querySelector('#qr-tab img');
-        if (qrImg) {
-          const printWindow = window.open('', '', 'width=400,height=500');
+        if (qrImg && qrImg.src) {
+          const printWindow = window.open('', '', 'width=600,height=700');
           printWindow.document.write(`
             <html>
               <head>
                 <title>Print QR Code</title>
                 <style>
-                  body { margin:0; padding:20px; text-align:center; font-family:Arial,sans-serif; }
-                  h1 { color:#333; }
-                  img { max-width:320px; border:3px solid #28a745; padding:10px; border-radius:8px; }
-                  p { color:#666; margin-top:10px; }
+                  @media print {
+                    body { margin: 0; }
+                    .no-print { display: none; }
+                  }
+                  body { 
+                    margin: 0; 
+                    padding: 20px; 
+                    text-align: center; 
+                    font-family: Arial, sans-serif; 
+                  }
+                  h1 { 
+                    color: #333; 
+                    margin-bottom: 20px; 
+                  }
+                  img { 
+                    max-width: 300px; 
+                    border: 3px solid #28a745; 
+                    padding: 15px; 
+                    border-radius: 8px; 
+                    display: block;
+                    margin: 0 auto;
+                  }
+                  p { 
+                    color: #666; 
+                    margin: 15px 0; 
+                    font-size: 14px;
+                  }
+                  .portal-url {
+                    word-break: break-all;
+                    font-size: 12px;
+                    color: #999;
+                    margin-top: 20px;
+                  }
                 </style>
               </head>
               <body>
                 <h1>Universal QR Code</h1>
                 <p>Scan to access Student Portal</p>
-                <img src="${qrImg.src}" alt="QR Code">
-                <p style="margin-top:20px; color:#999; font-size:0.9em;">Student Portal: <a href="{{ student_portal_url }}">{{ student_portal_url }}</a></p>
+                <img src="${qrImg.src}" alt="QR Code" onload="window.print();">
+                <p class="portal-url">Student Portal: {{ student_portal_url }}</p>
               </body>
             </html>
           `);
           printWindow.document.close();
-          setTimeout(() => { printWindow.print(); }, 250);
+        } else {
+          alert('QR code image not found. Please wait for the page to load completely.');
         }
       });
     }
