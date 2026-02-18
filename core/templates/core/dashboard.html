@@ -587,9 +587,11 @@
     
     // Display dashboard URL (will be set after exam creation)
     function updateDashboardUrl() {
-      const currentUrl = window.location.origin + window.location.pathname;
-      dashboardUrlDisplay.textContent = currentUrl;
-      dashboardUrlDisplay.style.color = '#1976d2';
+      if (dashboardUrlDisplay) {
+        const currentUrl = window.location.origin + window.location.pathname;
+        dashboardUrlDisplay.textContent = currentUrl;
+        dashboardUrlDisplay.style.color = '#1976d2';
+      }
     }
     
     // Initialize dashboard URL display
