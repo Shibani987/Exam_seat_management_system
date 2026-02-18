@@ -583,15 +583,13 @@
     const printQrBtn = document.getElementById('printQrBtn');
     const copyQrUrlBtn = document.getElementById('copyQrUrlBtn');
     const copyPortalUrlBtn = document.getElementById('copyPortalUrlBtn');
+    const dashboardUrlDisplay = document.getElementById('dashboardUrlDisplay');
     
     // Display dashboard URL (will be set after exam creation)
     function updateDashboardUrl() {
-      const dashboardUrlDisplay = document.getElementById('dashboardUrlDisplay');
-      if (dashboardUrlDisplay) {
-        const currentUrl = window.location.origin + window.location.pathname;
-        dashboardUrlDisplay.textContent = currentUrl;
-        dashboardUrlDisplay.style.color = '#1976d2';
-      }
+      const currentUrl = window.location.origin + window.location.pathname;
+      dashboardUrlDisplay.textContent = currentUrl;
+      dashboardUrlDisplay.style.color = '#1976d2';
     }
     
     // Initialize dashboard URL display
@@ -600,7 +598,7 @@
     if (printQrBtn) {
       printQrBtn.addEventListener('click', () => {
         const qrImg = document.querySelector('#qr-tab img');
-        if (qrImg && qrImg.src) {
+        if (qrImg) {
           const printWindow = window.open('', '', 'width=400,height=500');
           printWindow.document.write(`
             <html>
@@ -617,14 +615,12 @@
                 <h1>Universal QR Code</h1>
                 <p>Scan to access Student Portal</p>
                 <img src="${qrImg.src}" alt="QR Code">
-                <p style="margin-top:20px; color:#999; font-size:0.9em;">Student Portal: {{ student_portal_url }}</p>
+                <p style="margin-top:20px; color:#999; font-size:0.9em;">Student Portal: <a href="{{ student_portal_url }}">{{ student_portal_url }}</a></p>
               </body>
             </html>
           `);
           printWindow.document.close();
           setTimeout(() => { printWindow.print(); }, 250);
-        } else {
-          alert('QR code not found or not loaded yet.');
         }
       });
     }
