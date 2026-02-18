@@ -112,8 +112,10 @@
               <option value="Mechanical Engineering (ME)">Mechanical Engineering (ME)</option>
               <option value="Bachelor of Business Administration (BBA)">Bachelor of Business Administration (BBA)</option>
               <option value="Master of Business Administration (MBA)">Master of Business Administration (MBA)</option>
-              <option value="Bachelor of Computer Applications (BCA)">Bachelor of Compute
-
+              <option value="Bachelor of Computer Applications (BCA)">
+  Bachelor of Computer Applications (BCA)
+</option>
+</select>
           <div class="form-group">
             <label>Select File:</label>
             <input type="file" name="file" id="fileInput" accept=".csv,.xlsx,.xls" required>
@@ -305,7 +307,7 @@
 
   <!-- Scripts -->
   <script src="{% static 'core/js/dash_board.js' %}?v=<?php echo time(); ?>"></script>
-<scr>
+<script>
     const examSetupUrl = "{% url 'exam_setup' %}";
     
     function loadExams() {
