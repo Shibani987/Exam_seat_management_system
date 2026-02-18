@@ -614,13 +614,12 @@
               <body>
                 <h1>Universal QR Code</h1>
                 <p>Scan to access Student Portal</p>
-                <img src="${qrImg.src}" alt="QR Code">
+                <img src="${qrImg.src}" alt="QR Code" onload="setTimeout(() => window.print(), 100);">
                 <p style="margin-top:20px; color:#999; font-size:0.9em;">Student Portal: <a href="{{ student_portal_url }}">{{ student_portal_url }}</a></p>
               </body>
             </html>
           `);
           printWindow.document.close();
-          setTimeout(() => { printWindow.print(); }, 250);
         }
       });
     }
