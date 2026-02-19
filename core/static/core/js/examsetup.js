@@ -1,3 +1,6 @@
+function safeId(str) {
+    return str.replace(/\s+/g, '-').toLowerCase();
+}
 // =============================
 // CSRF Helper
 // =============================
@@ -315,7 +318,9 @@ deptDivs.forEach(dept => {
         renderExamInputs();
         // After rendering, focus first exam name input if present
         setTimeout(() => {
-            const firstInput = document.querySelector(`#exams-${name} .exam-name`);
+            const firstInput =
+    document.querySelector(`#exams-${safeId(name)} .exam-name`);
+
             if (firstInput) firstInput.focus();
         }, 0);
     });
@@ -328,7 +333,7 @@ function renderExamInputs() {
         deptSection.className = 'dept-exam-section';
         deptSection.innerHTML = `
             <h3>${dept}</h3>
-            <div class="exams-list" id="exams-${dept}"></div>
+            <div class="exams-list" id="exams-${safeId(dept)}"></div>
             <button class="add-exam-btn" data-dept="${dept}">+ Add Exam for ${dept}</button>
         `;
         examsContainer.appendChild(deptSection);
@@ -355,7 +360,7 @@ function isExamComplete(exam) {
 // Helper: show/hide warning under a department's exams list
 function updateDeptWarning(dept) {
     const exams = departmentExams[dept] || [];
-    const examsListEl = document.getElementById(`exams-${dept}`);
+    const examsListEl = document.getElementById(`exams-${safeId(dept)}`);
     if (!examsListEl) return;
 
     const warningId = `exam-warning-${dept}`;
@@ -392,7 +397,7 @@ function updateDeptWarning(dept) {
 
 function renderDeptExams(dept) {
     console.log('[DEBUG] renderDeptExams called for dept:', dept);
-    const examsList = document.getElementById(`exams-${dept}`);
+    const examsList = document.getElementById(`exams-${safeId(dept)}`);
     examsList.innerHTML = '';
 
     if (!departmentExams[dept] || departmentExams[dept].length === 0) {
