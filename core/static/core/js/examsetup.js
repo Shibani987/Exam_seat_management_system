@@ -319,19 +319,18 @@ deptDivs.forEach(dept => {
             delete departmentExams[name];
         } else {
             selectedDepartments.push(name);
-            // Initialize with one blank exam so user fills exam data after selecting department
             departmentExams[name] = [{ name: '', code: '', date: '', session: '', start_time: '', end_time: '', start_hour: '12', start_minute: '00', start_ampm: 'AM', end_hour: '12', end_minute: '00', end_ampm: 'AM' }];
         }
         renderExamInputs();
+
         // After rendering, focus first exam name input if present
         setTimeout(() => {
-            const firstInput =
-    document.querySelector(`#exams-${safeId(name)} .exam-name`);
-
+            const firstInput = document.querySelector(`#exams-${deptId} .exam-name`);
             if (firstInput) firstInput.focus();
         }, 0);
     });
 });
+
 
 function renderExamInputs() {
     examsContainer.innerHTML = '';
