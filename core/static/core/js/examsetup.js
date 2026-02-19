@@ -1,6 +1,11 @@
-function safeId(str) {
-    return str.replace(/\s+/g, '-').toLowerCase();
+function safeId(text) {
+    return text
+        .toLowerCase()
+        .replace(/\s+/g, '-')
+        .replace(/[^\w-]/g, '');
 }
+
+
 // =============================
 // CSRF Helper
 // =============================
@@ -306,6 +311,8 @@ if (nextBtn) {
 deptDivs.forEach(dept => {
     dept.addEventListener('click', () => {
         const name = dept.dataset.name;
+        const deptId = safeId(name);
+
         dept.classList.toggle('selected');
         if (selectedDepartments.includes(name)) {
             selectedDepartments = selectedDepartments.filter(d => d !== name);
@@ -363,7 +370,8 @@ function updateDeptWarning(dept) {
     const examsListEl = document.getElementById(`exams-${safeId(dept)}`);
     if (!examsListEl) return;
 
-    const warningId = `exam-warning-${dept}`;
+    const warningId = `exam-warning-${safeId(dept)}`;
+
     let warnEl = document.getElementById(warningId);
 
     const hasComplete = exams.some(isExamComplete);
@@ -398,12 +406,15 @@ function updateDeptWarning(dept) {
 function renderDeptExams(dept) {
     console.log('[DEBUG] renderDeptExams called for dept:', dept);
     const examsList = document.getElementById(`exams-${safeId(dept)}`);
-    examsList.innerHTML = '';
+if (!examsList) return;
+examsList.innerHTML = '';
+
 
     if (!departmentExams[dept] || departmentExams[dept].length === 0) {
         examsList.innerHTML = '<p style="color: #999; font-size: 0.9rem;">No exams added yet</p>';
         // remove any existing warning
-        const existingWarn = document.getElementById(`exam-warning-${dept}`);
+        const existingWarn = document.getElementById(`exam-warning-${safeId(dept)}`);
+
         if (existingWarn) existingWarn.remove();
         return;
     }
