@@ -55,6 +55,16 @@ def _get_client_ip(request):
 
 def ensure_default_admin():
     try:
+        # DEBUG: Print out students, departments, and rooms for this exam
+        print("=== DEBUG: Seating Generation ===")
+        print(f"Exam ID: {exam.id}, Exam Name: {exam.name}")
+        print(f"Total Students: {exam_students.count()}")
+        print("Departments in DepartmentExam:", list(dept_exam_map.keys()))
+        print(f"Rooms for this exam: {len(rooms)}")
+        for r in rooms:
+            print(f"  Room: {r.id} {r.building} {r.room_number} Capacity: {r.capacity}")
+        print("Student departments:", set(s.student.department for s in exam_students))
+        print("===============================")
         if AdminAccount.objects.filter(username__iexact=ENV_ADMIN_USERNAME).count() == 0:
             username = ENV_ADMIN_USERNAME
             default_password = ENV_ADMIN_PASSWORD

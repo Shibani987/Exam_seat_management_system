@@ -297,16 +297,15 @@ examForm.addEventListener('submit', e => {
 });
 
 // =============================
-// STEP 2 - DEPARTMENTS & EXAMS
+// STEP 2 - DEPARTMENTS & EXAMS (Robust Version)
 // =============================
 const deptDivs = document.querySelectorAll('.department');
 const examsContainer = document.getElementById('examsContainer');
 const backBtn = document.getElementById('backBtn');
 const nextBtn = document.getElementById('nextBtn');
 let departmentExams = {};
-if (nextBtn) {
-    nextBtn.disabled = true;
-}
+
+if (nextBtn) nextBtn.disabled = true;
 
 deptDivs.forEach(dept => {
     dept.addEventListener('click', () => {
@@ -314,16 +313,23 @@ deptDivs.forEach(dept => {
         const deptId = safeId(name);
 
         dept.classList.toggle('selected');
+
         if (selectedDepartments.includes(name)) {
             selectedDepartments = selectedDepartments.filter(d => d !== name);
             delete departmentExams[name];
         } else {
             selectedDepartments.push(name);
-            departmentExams[name] = [{ name: '', code: '', date: '', session: '', start_time: '', end_time: '', start_hour: '12', start_minute: '00', start_ampm: 'AM', end_hour: '12', end_minute: '00', end_ampm: 'AM' }];
+            departmentExams[name] = [{
+                name: '', code: '', date: '', session: '',
+                start_time: '', end_time: '',
+                start_hour: '12', start_minute: '00', start_ampm: 'AM',
+                end_hour: '12', end_minute: '00', end_ampm: 'AM'
+            }];
         }
+
         renderExamInputs();
 
-        // After rendering, focus first exam name input if present
+        // Focus first exam input safely
         setTimeout(() => {
             const firstInput = document.querySelector(`#exams-${deptId} .exam-name`);
             if (firstInput) firstInput.focus();
@@ -331,9 +337,11 @@ deptDivs.forEach(dept => {
     });
 });
 
-
 function renderExamInputs() {
+    if (!examsContainer) return;
+
     examsContainer.innerHTML = '';
+
     selectedDepartments.forEach(dept => {
         const deptSection = document.createElement('div');
         deptSection.className = 'dept-exam-section';
@@ -350,7 +358,12 @@ function renderExamInputs() {
         btn.addEventListener('click', e => {
             e.preventDefault();
             const dept = btn.dataset.dept;
-            departmentExams[dept].push({ name: '', code: '', date: '', session: '', start_time: '', end_time: '', start_hour: '12', start_minute: '00', start_ampm: 'AM', end_hour: '12', end_minute: '00', end_ampm: 'AM' });
+            departmentExams[dept].push({
+                name: '', code: '', date: '', session: '',
+                start_time: '', end_time: '',
+                start_hour: '12', start_minute: '00', start_ampm: 'AM',
+                end_hour: '12', end_minute: '00', end_ampm: 'AM'
+            });
             renderDeptExams(dept);
         });
     });
@@ -358,21 +371,17 @@ function renderExamInputs() {
     checkDeptInputs();
 }
 
-// Helper: check if an exam entry is fully filled
 function isExamComplete(exam) {
     return Boolean(exam && exam.name && exam.code && exam.date && exam.session && exam.start_time && exam.end_time);
 }
 
-// Helper: show/hide warning under a department's exams list
 function updateDeptWarning(dept) {
     const exams = departmentExams[dept] || [];
     const examsListEl = document.getElementById(`exams-${safeId(dept)}`);
     if (!examsListEl) return;
 
     const warningId = `exam-warning-${safeId(dept)}`;
-
     let warnEl = document.getElementById(warningId);
-
     const hasComplete = exams.some(isExamComplete);
 
     if (exams.length === 0) {
@@ -383,7 +392,7 @@ function updateDeptWarning(dept) {
             warnEl.style.color = '#c00';
             warnEl.style.fontSize = '0.9rem';
             warnEl.style.marginTop = '8px';
-            warnEl.textContent = 'Please add at least one exam (Name, Code, Date, Session, Start Time, End Time) for this department.';
+            warnEl.textContent = 'Please add at least one exam for this department.';
             examsListEl.appendChild(warnEl);
         }
     } else if (!hasComplete) {
@@ -403,42 +412,30 @@ function updateDeptWarning(dept) {
 }
 
 function renderDeptExams(dept) {
-    console.log('[DEBUG] renderDeptExams called for dept:', dept);
     const examsList = document.getElementById(`exams-${safeId(dept)}`);
-if (!examsList) return;
-examsList.innerHTML = '';
+    if (!examsList) return;
 
+    examsList.innerHTML = '';
 
-    if (!departmentExams[dept] || departmentExams[dept].length === 0) {
+    const exams = departmentExams[dept] || [];
+    if (exams.length === 0) {
         examsList.innerHTML = '<p style="color: #999; font-size: 0.9rem;">No exams added yet</p>';
-        // remove any existing warning
         const existingWarn = document.getElementById(`exam-warning-${safeId(dept)}`);
-
         if (existingWarn) existingWarn.remove();
         return;
     }
 
-    departmentExams[dept].forEach((exam, idx) => {
-        console.log('[DEBUG] Rendering exam:', exam);
-        // Convert 24-hour times to 12-hour format for display
-        const startTime12hr = exam.start_hour ? 
-            { hour: exam.start_hour, minute: exam.start_minute, ampm: exam.start_ampm } :
-            convertTo12HourFormat(exam.start_time);
-        const endTime12hr = exam.end_hour ?
-            { hour: exam.end_hour, minute: exam.end_minute, ampm: exam.end_ampm } :
-            convertTo12HourFormat(exam.end_time);
-        
-        console.log('[DEBUG] Start time 12hr:', startTime12hr);
-        console.log('[DEBUG] End time 12hr:', endTime12hr);
-        
-        // Store these for later use
+    exams.forEach((exam, idx) => {
+        const startTime12hr = exam.start_hour ? { hour: exam.start_hour, minute: exam.start_minute, ampm: exam.start_ampm } : convertTo12HourFormat(exam.start_time);
+        const endTime12hr = exam.end_hour ? { hour: exam.end_hour, minute: exam.end_minute, ampm: exam.end_ampm } : convertTo12HourFormat(exam.end_time);
+
         exam.start_hour = startTime12hr.hour;
         exam.start_minute = startTime12hr.minute;
         exam.start_ampm = startTime12hr.ampm;
         exam.end_hour = endTime12hr.hour;
         exam.end_minute = endTime12hr.minute;
         exam.end_ampm = endTime12hr.ampm;
-        
+
         const examDiv = document.createElement('div');
         examDiv.className = 'exam-input-group';
         examDiv.innerHTML = `
@@ -450,40 +447,32 @@ examsList.innerHTML = '';
                 <input type="date" class="exam-date" data-dept="${dept}" data-idx="${idx}" value="${exam.date}">
                 <select class="exam-session" data-dept="${dept}" data-idx="${idx}">
                     <option value="">Select Session</option>
-                    <option value="1st Half" ${exam.session === '1st Half' ? 'selected' : ''}>1st Half</option>
-                    <option value="2nd Half" ${exam.session === '2nd Half' ? 'selected' : ''}>2nd Half</option>
+                    <option value="1st Half" ${exam.session==='1st Half'?'selected':''}>1st Half</option>
+                    <option value="2nd Half" ${exam.session==='2nd Half'?'selected':''}>2nd Half</option>
                 </select>
             </div>
             <div class="exam-row">
                 <div class="time-input-group">
                     <label>Start Time</label>
                     <div class="time-selectors">
-                        <select class="exam-start_hour" data-dept="${dept}" data-idx="${idx}">
-                            ${generateHourOptions(exam.start_hour)}
-                        </select>
+                        <select class="exam-start_hour" data-dept="${dept}" data-idx="${idx}">${generateHourOptions(exam.start_hour)}</select>
                         <span>:</span>
-                        <select class="exam-start_minute" data-dept="${dept}" data-idx="${idx}">
-                            ${generateMinuteOptions(exam.start_minute)}
-                        </select>
+                        <select class="exam-start_minute" data-dept="${dept}" data-idx="${idx}">${generateMinuteOptions(exam.start_minute)}</select>
                         <select class="exam-start_ampm" data-dept="${dept}" data-idx="${idx}">
-                            <option value="AM" ${exam.start_ampm === 'AM' ? 'selected' : ''}>AM</option>
-                            <option value="PM" ${exam.start_ampm === 'PM' ? 'selected' : ''}>PM</option>
+                            <option value="AM" ${exam.start_ampm==='AM'?'selected':''}>AM</option>
+                            <option value="PM" ${exam.start_ampm==='PM'?'selected':''}>PM</option>
                         </select>
                     </div>
                 </div>
                 <div class="time-input-group">
                     <label>End Time</label>
                     <div class="time-selectors">
-                        <select class="exam-end_hour" data-dept="${dept}" data-idx="${idx}">
-                            ${generateHourOptions(exam.end_hour)}
-                        </select>
+                        <select class="exam-end_hour" data-dept="${dept}" data-idx="${idx}">${generateHourOptions(exam.end_hour)}</select>
                         <span>:</span>
-                        <select class="exam-end_minute" data-dept="${dept}" data-idx="${idx}">
-                            ${generateMinuteOptions(exam.end_minute)}
-                        </select>
+                        <select class="exam-end_minute" data-dept="${dept}" data-idx="${idx}">${generateMinuteOptions(exam.end_minute)}</select>
                         <select class="exam-end_ampm" data-dept="${dept}" data-idx="${idx}">
-                            <option value="AM" ${exam.end_ampm === 'AM' ? 'selected' : ''}>AM</option>
-                            <option value="PM" ${exam.end_ampm === 'PM' ? 'selected' : ''}>PM</option>
+                            <option value="AM" ${exam.end_ampm==='AM'?'selected':''}>AM</option>
+                            <option value="PM" ${exam.end_ampm==='PM'?'selected':''}>PM</option>
                         </select>
                     </div>
                 </div>
@@ -493,29 +482,28 @@ examsList.innerHTML = '';
         examsList.appendChild(examDiv);
     });
 
+    // Event listeners safely
     examsList.querySelectorAll('.exam-name, .exam-code, .exam-date, .exam-session, .exam-start_hour, .exam-start_minute, .exam-start_ampm, .exam-end_hour, .exam-end_minute, .exam-end_ampm').forEach(input => {
         input.addEventListener('change', e => {
             const dept = e.target.dataset.dept;
             const idx = e.target.dataset.idx;
             const className = e.target.className.split(' ')[0];
-            
+
+            if (!departmentExams[dept] || !departmentExams[dept][idx]) return;
+
             if (className.includes('start_hour') || className.includes('start_minute') || className.includes('start_ampm')) {
-                // Convert 12-hour format to 24-hour format for storage
-                const hour = parseInt(examsList.querySelector(`select.exam-start_hour[data-dept="${dept}"][data-idx="${idx}"]`).value);
-                const minute = examsList.querySelector(`select.exam-start_minute[data-dept="${dept}"][data-idx="${idx}"]`).value;
-                const ampm = examsList.querySelector(`select.exam-start_ampm[data-dept="${dept}"][data-idx="${idx}"]`).value;
-                const time24hr = convertTo24HourFormat(hour, minute, ampm);
-                departmentExams[dept][idx]['start_time'] = time24hr;
+                const hour = parseInt(examsList.querySelector(`select.exam-start_hour[data-dept="${dept}"][data-idx="${idx}"]`)?.value || 12);
+                const minute = examsList.querySelector(`select.exam-start_minute[data-dept="${dept}"][data-idx="${idx}"]`)?.value || '00';
+                const ampm = examsList.querySelector(`select.exam-start_ampm[data-dept="${dept}"][data-idx="${idx}"]`)?.value || 'AM';
+                departmentExams[dept][idx]['start_time'] = convertTo24HourFormat(hour, minute, ampm);
                 departmentExams[dept][idx]['start_hour'] = hour;
                 departmentExams[dept][idx]['start_minute'] = minute;
                 departmentExams[dept][idx]['start_ampm'] = ampm;
             } else if (className.includes('end_hour') || className.includes('end_minute') || className.includes('end_ampm')) {
-                // Convert 12-hour format to 24-hour format for storage
-                const hour = parseInt(examsList.querySelector(`select.exam-end_hour[data-dept="${dept}"][data-idx="${idx}"]`).value);
-                const minute = examsList.querySelector(`select.exam-end_minute[data-dept="${dept}"][data-idx="${idx}"]`).value;
-                const ampm = examsList.querySelector(`select.exam-end_ampm[data-dept="${dept}"][data-idx="${idx}"]`).value;
-                const time24hr = convertTo24HourFormat(hour, minute, ampm);
-                departmentExams[dept][idx]['end_time'] = time24hr;
+                const hour = parseInt(examsList.querySelector(`select.exam-end_hour[data-dept="${dept}"][data-idx="${idx}"]`)?.value || 12);
+                const minute = examsList.querySelector(`select.exam-end_minute[data-dept="${dept}"][data-idx="${idx}"]`)?.value || '00';
+                const ampm = examsList.querySelector(`select.exam-end_ampm[data-dept="${dept}"][data-idx="${idx}"]`)?.value || 'AM';
+                departmentExams[dept][idx]['end_time'] = convertTo24HourFormat(hour, minute, ampm);
                 departmentExams[dept][idx]['end_hour'] = hour;
                 departmentExams[dept][idx]['end_minute'] = minute;
                 departmentExams[dept][idx]['end_ampm'] = ampm;
@@ -523,7 +511,7 @@ examsList.innerHTML = '';
                 const fieldType = className.replace('exam-', '');
                 departmentExams[dept][idx][fieldType] = e.target.value;
             }
-            
+
             checkDeptInputs();
         });
     });
@@ -533,24 +521,22 @@ examsList.innerHTML = '';
             e.preventDefault();
             const dept = btn.dataset.dept;
             const idx = btn.dataset.idx;
-            departmentExams[dept].splice(idx, 1);
-            renderDeptExams(dept);
+            if (departmentExams[dept]) {
+                departmentExams[dept].splice(idx, 1);
+                renderDeptExams(dept);
+            }
         });
     });
 
-    // Update warning state for this dept after rendering
     try { updateDeptWarning(dept); } catch (err) { console.warn('updateDeptWarning failed:', err); }
 }
 
 function checkDeptInputs() {
-    // Enable Next when at least one department is selected.
-    // If a department has exams, require at least ONE fully filled exam (Name, Code, Date, Session).
     const hasDept = selectedDepartments.length >= 1;
     let allValid = hasDept;
 
     selectedDepartments.forEach(dept => {
         const exams = departmentExams[dept] || [];
-        // Require at least one exam and at least one complete exam for selected departments
         const hasComplete = exams.some(isExamComplete);
         updateDeptWarning(dept);
         if (exams.length === 0 || !hasComplete) allValid = false;
@@ -560,79 +546,6 @@ function checkDeptInputs() {
         nextBtn.disabled = !allValid;
         nextBtn.classList.toggle('enabled', allValid);
     }
-}
-
-// Validate exam dates are within start and end date
-function validateExamDates() {
-    const startDate = new Date(examStartDate.value);
-    const endDate = new Date(examEndDate.value);
-    
-    let invalidDates = [];
-    
-    selectedDepartments.forEach(dept => {
-        (departmentExams[dept] || []).forEach((exam, idx) => {
-            if (exam.date) {
-                const examDate = new Date(exam.date);
-                if (examDate < startDate || examDate > endDate) {
-                    invalidDates.push({
-                        dept: dept,
-                        exam: exam.name,
-                        date: exam.date,
-                        startDate: examStartDate.value,
-                        endDate: examEndDate.value
-                    });
-                }
-            }
-        });
-    });
-    
-    return invalidDates;
-}
-
-if (backBtn) {
-    backBtn.onclick = e => {
-        e.preventDefault();
-        step2.classList.remove('active');
-        step1.classList.add('active');
-        step2Content.style.display = 'none';
-        examForm.style.display = 'block';
-    };
-}
-
-if (nextBtn) {
-    nextBtn.onclick = e => {
-        e.preventDefault();
-        
-        // VALIDATION 1: Check if exam dates are within start and end date
-        const invalidDates = validateExamDates();
-        if (invalidDates.length > 0) {
-            let errorMsg = 'EXAM DATE ERROR\n\n';
-            errorMsg += `Exam dates must be between ${examStartDate.value} and ${examEndDate.value}\n\n`;
-            errorMsg += 'Invalid exam dates found:\n\n';
-            invalidDates.forEach(item => {
-                errorMsg += `${item.dept} - ${item.exam}\nExam Date: ${item.date}\n\n`;
-            });
-            alert(errorMsg);
-            return;
-        }
-        
-        const payload = selectedDepartments.map(dept => ({ department: dept, exams: departmentExams[dept] }));
-        fetch('/add_departments/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            body: JSON.stringify({ exam_id: examId, departments: payload })
-        })
-        .then(r => r.json())
-        .then(r => {
-            if (r.status === 'success') {
-                step2.classList.remove('active');
-                step2.classList.add('completed');
-                step3.classList.add('active');
-                step2Content.style.display = 'none';
-                step3Content.style.display = 'block';
-            } else alert(r.message);
-        });
-    };
 }
 
 // =============================
