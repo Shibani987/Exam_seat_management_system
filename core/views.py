@@ -865,39 +865,63 @@ def add_departments(request):
             departments = data.get("departments", [])
 
             exam = Exam.objects.get(id=exam_id)
-            print(f"\n[DEBUG] add_departments: Creating departments for exam {exam_id}")
+            print(f"\n[DEBUG add_departments] Creating departments for exam {exam_id}")
             print(f"[DEBUG] Departments received: {[d.get('department') for d in departments]}")
+            
+            if not departments:
+                raise ValueError("No departments provided!")
+            
+            total_exams_created = 0
 
             for dept in departments:
                 department_name = dept.get("department")
+                exams_list = dept.get("exams", [])
+                
                 print(f"[DEBUG] Processing department: '{department_name}'")
+                print(f"[DEBUG]   Total exams for this dept: {len(exams_list)}")
+                
+                if not exams_list:
+                    print(f"[DEBUG]   ⚠ WARNING: No exams for department '{department_name}'")
+                    continue
 
-                for ex in dept.get("exams", []):
-                    de = DepartmentExam.objects.create(
-                        exam=exam,
-                        department=department_name,
-                        exam_name=ex.get("name"),
-                        paper_code=ex.get("code"),
-                        exam_date=ex.get("date"),
-                        session=ex.get("session"),
-                        start_time=ex.get("start_time") or None,
-                        end_time=ex.get("end_time") or None
-                    )
-                    print(f"[DEBUG] Created DepartmentExam: dept='{de.department}', date={de.exam_date}, session={de.session}")
+                for idx, ex in enumerate(exams_list):
+                    try:
+                        de = DepartmentExam.objects.create(
+                            exam=exam,
+                            department=department_name,
+                            exam_name=ex.get("name"),
+                            paper_code=ex.get("code"),
+                            exam_date=ex.get("date"),
+                            session=ex.get("session"),
+                            start_time=ex.get("start_time") or None,
+                            end_time=ex.get("end_time") or None
+                        )
+                        print(f"[DEBUG]   ✓ Exam {idx+1}: dept='{de.department}', date={de.exam_date}, session={de.session}, time={de.start_time}-{de.end_time}")
+                        total_exams_created += 1
+                    except Exception as exam_err:
+                        print(f"[DEBUG]   ✗ ERROR creating exam {idx+1}: {str(exam_err)}")
+                        raise
 
             # Log all created DepartmentExam records
-            all_depts = DepartmentExam.objects.filter(exam=exam).values('department').distinct()
-            print(f"[DEBUG] Total unique departments in exam: {[d['department'] for d in all_depts]}")
+            all_depts = DepartmentExam.objects.filter(exam=exam).values_list('department', flat=True).distinct()
+            print(f"[DEBUG] ===== RESULT =====")
+            print(f"[DEBUG] Department exams created: {total_exams_created}")
+            print(f"[DEBUG] Unique departments: {list(all_depts)}")
+            print(f"[DEBUG] ====================\n")
             
-            return JsonResponse({"status": "success"})
+            return JsonResponse({"status": "success", "message": f"Created {total_exams_created} department exam entries"})
 
         except Exception as e:
+            error_msg = f"Error in add_departments: {str(e)}"
+            print(f"[DEBUG] ✗ {error_msg}")
+            import traceback
+            traceback.print_exc()
             return JsonResponse({
                 "status": "error",
-                "message": str(e)
+                "message": error_msg
             }, status=400)
 
-    return JsonResponse({"status": "error"}, status=400)
+    return JsonResponse({"status": "error", "message": "POST request required"}, status=400)
 
 from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt

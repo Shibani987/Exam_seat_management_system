@@ -308,13 +308,42 @@ let departmentExams = {};
 if (nextBtn) {
     nextBtn.addEventListener('click', function(e) {
         e.preventDefault();
-        // Hide step 2, show step 3
-        step2.classList.remove('active');
-        step2.classList.add('completed');
-        step3.classList.add('active');
-        step2Content.style.display = 'none';
-        step3Content.style.display = 'block';
-        // Optionally, call renderRooms() or any setup needed for step 3
+        
+        // Submit departments BEFORE moving to step 3
+        console.log('[STEP 2] Next button clicked - submitting departments...');
+        console.log('[STEP 2] Selected departments:', selectedDepartments);
+        console.log('[STEP 2] Department exams:', departmentExams);
+        
+        const payload = selectedDepartments.map(dept => ({ department: dept, exams: departmentExams[dept] }));
+        
+        fetch('/add_departments/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
+            body: JSON.stringify({ exam_id: examId, departments: payload })
+        })
+        .then(r => {
+            console.log('[STEP 2] Response status:', r.status);
+            return r.json();
+        })
+        .then(r => {
+            console.log('[STEP 2] Response data:', r);
+            if (r.status === 'success') {
+                console.log('[STEP 2] ✓ Departments created successfully');
+                step2.classList.remove('active');
+                step2.classList.add('completed');
+                step3.classList.add('active');
+                step2Content.style.display = 'none';
+                step3Content.style.display = 'block';
+                renderRooms();
+            } else {
+                console.error('[STEP 2] ✗ Error:', r.message);
+                alert('❌ Error adding departments:\n' + r.message);
+            }
+        })
+        .catch(err => {
+            console.error('[STEP 2] Fetch error:', err);
+            alert('❌ Error submitting departments:\n' + err.message);
+        });
     });
 }
 if (nextBtn) nextBtn.disabled = true;
