@@ -1342,6 +1342,11 @@ def save_selected_files(request):
             # Fetch all Student records from these files
             students = Student.objects.filter(student_file__in=student_files)
             
+            print(f"\n[DEBUG save_selected_files] Exam: {exam_id}")
+            print(f"[DEBUG] Selected files: {list(student_files.values_list('id', 'department'))}")
+            print(f"[DEBUG] Total students from selected files: {students.count()}")
+            print(f"[DEBUG] Student departments: {list(set(students.values_list('department', flat=True)))}")
+            
             # Delete previous allocations for this exam (if any)
             ExamStudent.objects.filter(exam=exam).delete()
             
@@ -1358,7 +1363,13 @@ def save_selected_files(request):
             # Bulk create for efficiency
             ExamStudent.objects.bulk_create(exam_student_records)
             
-            # Prepare response data with merged info
+            print(f"[DEBUG] Created {len(exam_student_records)} ExamStudent records")
+            
+            # Check what DepartmentExam records exist for this exam
+            dept_exams_query = DepartmentExam.objects.filter(exam=exam).values_list('department', flat=True).distinct()
+            print(f"[DEBUG] DepartmentExam departments for this exam: {list(dept_exams_query)}")
+            
+            # Prepare response
             files_data = []
             for file_obj in student_files:
                 file_students = Student.objects.filter(student_file=file_obj)
@@ -1368,17 +1379,7 @@ def save_selected_files(request):
                     'semester': file_obj.semester,
                     'department': file_obj.department,
                     'file_name': file_obj.file_name,
-                    'student_count': file_students.count(),
-                    'students': [
-                        {
-                            'id': s.id,
-                            'name': s.name,
-                            'roll_number': s.roll_number,
-                            'registration_number': s.registration_number,
-                            'department': s.department,
-                        }
-                        for s in file_students
-                    ]
+                    'student_count': file_students.count()
                 })
             
             return JsonResponse({
@@ -1469,6 +1470,17 @@ def generate_seating(request):
             return JsonResponse({"status": "error", "message": "No students found"}, status=400)
         if not rooms:
             return JsonResponse({"status": "error", "message": "No rooms configured"}, status=400)
+        
+        # CHECK: If no DepartmentExam records, that's the problem!
+        if not dept_exams.exists():
+            student_depts = list(set(s.student.department for s in exam_students))
+            print(f"\n[DEBUG] ⚠ CRITICAL: NO DepartmentExam records for this exam!")
+            print(f"[DEBUG] Students have departments: {student_depts}")
+            print(f"[DEBUG] Please go back to Step 2 and ADD departments & exams for: {', '.join(student_depts)}")
+            return JsonResponse({
+                "status": "error", 
+                "message": f"NO DEPARTMENTS CONFIGURED! Please go back to Step 2 and add departments & exams.\nYour students are in: {', '.join(student_depts)}"
+            }, status=400)
         
         # Build dept_exam_map
         dept_exam_map = {}
