@@ -1795,9 +1795,14 @@ def generate_seating(request):
                         return JsonResponse({"status": "error", "message": f"Not enough seats to allocate all students in department {dept}. {len(dept_students)} students remain. Please add more rooms or adjust capacities."}, status=400)
         
         response_rooms = []
+        print(f"[DEBUG] Building response_rooms from {len(rooms)} rooms")
+        print(f"[DEBUG] seating_results keys (room IDs with seats): {list(seating_results.keys())}")
+        
         for room in rooms:
+            print(f"[DEBUG] Checking room {room.id} (Building: {room.building}, Room: {room.room_number})")
             if room.id in seating_results:
                 seats = seating_results[room.id]
+                print(f"[DEBUG]   ✓ Found {len(seats)} seats for this room")
                 response_rooms.append({
                     'id': room.id,
                     'building': room.building,
@@ -1806,6 +1811,8 @@ def generate_seating(request):
                     'departments': list(set(s['department'] for s in seats)),
                     'seats': seats
                 })
+            else:
+                print(f"[DEBUG]   ✗ No seats found for this room")
         
         print(f"\n[DEBUG] ===== SEATING GENERATION SUMMARY =====")
         print(f"[DEBUG] DepartmentExam departments: {list(dept_exam_map.keys())}")
@@ -1825,6 +1832,17 @@ def generate_seating(request):
             print(f"[DEBUG] ⚠ WARNING: NO SEATING DATA! All students were skipped due to department mismatch!")
         print(f"[DEBUG] ==========================================\n")
         
+        # Final validation before returning
+        if not response_rooms:
+            print("[DEBUG] ✗ CRITICAL: response_rooms is empty!")
+        else:
+            print(f"[DEBUG] ✓ response_rooms has {len(response_rooms)} rooms")
+            for idx, r in enumerate(response_rooms[:1]):  # Show first room
+                print(f"[DEBUG] Room {idx} keys: {r.keys()}")
+                print(f"[DEBUG] Room {idx} has {len(r.get('seats', []))} seats")
+                if r.get('seats'):
+                    print(f"[DEBUG] First seat keys: {r['seats'][0].keys()}")
+        
         # ===== SAVE SEATING TO DATABASE =====
         print(f"[DEBUG] Saving seating allocations to database...")
         SeatAllocation.objects.filter(exam=exam).delete()  # Clear previous allocations
@@ -1832,12 +1850,20 @@ def generate_seating(request):
         seat_allocations = []
         for room in response_rooms:
             for seat in room['seats']:
+                # Extract row and column from seat data
+                row = seat.get('row', 'A')
+                column = seat.get('column', 1)
+                
+                print(f"[DEBUG] Creating SeatAllocation: reg={seat['registration']}, row={row}, column={column}, seat_code={seat['seat']}")
+                
                 sa = SeatAllocation(
                     exam=exam,
                     room_id=room['id'],
                     registration_number=seat['registration'],
                     department=seat['department'],
                     seat_code=seat['seat'],
+                    row=row,
+                    column=column,
                     exam_date=seat['exam_date'],
                     exam_session=seat['session'],
                     exam_name=seat['exam_name']

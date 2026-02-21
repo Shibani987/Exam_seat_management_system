@@ -907,7 +907,23 @@ if (proceedStep4Btn) {
             }
             
             console.log('[STEP 5] Seating generated successfully');
-            console.log('Rooms:', genResult.rooms);
+            console.log('[STEP 5] genResult:', genResult);
+            console.log('[STEP 5] genResult.rooms:', genResult.rooms);
+            console.log('[STEP 5] genResult.rooms.length:', genResult.rooms?.length);
+            
+            if (!genResult.rooms || genResult.rooms.length === 0) {
+                console.error('[STEP 5] ✗ NO ROOMS DATA! Cannot display seating');
+                alert('Error: No rooms data returned from seating generation');
+                return;
+            }
+            
+            // Show first room structure for debugging
+            if (genResult.rooms[0]) {
+                console.log('[STEP 5] First room structure:', genResult.rooms[0]);
+                if (genResult.rooms[0].seats && genResult.rooms[0].seats.length > 0) {
+                    console.log('[STEP 5] First seat structure:', genResult.rooms[0].seats[0]);
+                }
+            }
             
             // Store seating data for lock feature
             currentSeatingData = genResult.rooms;
@@ -922,6 +938,7 @@ if (proceedStep4Btn) {
             step5Content.style.display = 'block';
             
             // Display seating results
+            console.log('[STEP 5] Calling renderSeatGrid with rooms:', genResult.rooms);
             renderSeatGrid(genResult.rooms);
             
             // Enable both buttons
@@ -1252,14 +1269,28 @@ function populateSummary(data) {
 }
 
 function renderSeatGrid(rooms) {
+    console.log('[renderSeatGrid] Input rooms:', rooms);
+    console.log('[renderSeatGrid] rooms is array?', Array.isArray(rooms));
+    console.log('[renderSeatGrid] rooms length:', rooms?.length);
+    
     roomSection.innerHTML = '';
     
-    if (!rooms || rooms.length === 0) {
-        roomSection.innerHTML = '<p>No seating data available</p>';
+    if (!rooms || !Array.isArray(rooms) || rooms.length === 0) {
+        console.error('[renderSeatGrid] ✗ No rooms! rooms=', rooms);
+        roomSection.innerHTML = '<p style="color:red;">No seating data available</p>';
         return;
     }
     
-    rooms.forEach(room => {
+    console.log('[renderSeatGrid] Processing', rooms.length, 'room(s)');
+    
+    rooms.forEach((room, roomIdx) => {
+        console.log(`[renderSeatGrid] Rendering room ${roomIdx}:`, room);
+        
+        if (!room) {
+            console.warn(`[renderSeatGrid] Room ${roomIdx} is null/undefined`);
+            return;
+        }
+        
         // Create room container
         const roomDiv = document.createElement('div');
         roomDiv.className = 'room-container';
@@ -1267,7 +1298,7 @@ function renderSeatGrid(rooms) {
         // Room header
         const header = document.createElement('div');
         header.className = 'room-header';
-        header.innerHTML = `<strong>${room.building} - ${room.room_number}</strong><span>Capacity: ${room.capacity} seats</span>`;
+        header.innerHTML = `<strong>${room.building || 'Main'} - ${room.room_number || 'N/A'}</strong><span>Capacity: ${room.capacity || 0} seats</span>`;
         roomDiv.appendChild(header);
 
         // Department exams info
@@ -1313,6 +1344,8 @@ function renderSeatGrid(rooms) {
         const rows = [];
         for (let i = 0; i < rowsNeeded; i++) rows.push(String.fromCharCode(65 + i));
 
+        console.log(`[renderSeatGrid] Room ${roomIdx}: rowsNeeded=${rowsNeeded}, rows=${rows}, total seats in data=${room.seats?.length || 0}`);
+
         if (rows.length === 0) {
             grid.innerHTML = '<div style="color:#666; padding:10px;">No seats (capacity set to 0)</div>';
         } else {
@@ -1332,10 +1365,12 @@ function renderSeatGrid(rooms) {
                     const seatDiv = document.createElement('div');
                     seatDiv.className = 'seat';
 
-                    const seat = room.seats.find(s => s.row === row && s.column === col);
+                    // Find seat matching this row and column
+                    const seat = room.seats?.find(s => s.row === row && s.column === col);
+                    
                     if (seat) {
                         seatDiv.classList.add('allocated');
-                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${seat.registration}</div><div class="seat-dept">${seat.department}</div>`;
+                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${seat.registration || 'N/A'}</div><div class="seat-dept">${seat.department || 'N/A'}</div>`;
                     } else {
                         seatDiv.classList.add('empty');
                         seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">Empty</div>`;
@@ -1350,6 +1385,8 @@ function renderSeatGrid(rooms) {
         roomDiv.appendChild(grid);
         roomSection.appendChild(roomDiv);
     });
+    
+    console.log('[renderSeatGrid] ✓ Rendering complete');
 }
 
 
