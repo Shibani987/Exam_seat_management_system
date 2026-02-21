@@ -1290,13 +1290,6 @@ function renderSeatGrid(rooms) {
     });
 }
 
-if (backStep5Btn) {
-    backStep5Btn.onclick = e => {
-        e.preventDefault();
-        step5.classList.remove('active');
-        step4.classList.add('active');
-    };
-}
 
 if (lockStep5Btn) {
     lockStep5Btn.onclick = e => {
