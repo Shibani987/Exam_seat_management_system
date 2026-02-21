@@ -1496,6 +1496,7 @@ def generate_seating(request):
             
             if dept not in dept_exam_map:
                 skipped_students.append((student.registration_number, dept))
+                print(f"[DEBUG] SKIPPED student {student.registration_number} with dept='{dept}' (not in dept_exam_map)")
                 continue
             
             # Add student to ALL matching exam groups
@@ -1770,15 +1771,22 @@ def generate_seating(request):
                     'seats': seats
                 })
         
+        print(f"\n[DEBUG] ===== SEATING GENERATION SUMMARY =====")
+        print(f"[DEBUG] DepartmentExam departments: {list(dept_exam_map.keys())}")
+        print(f"[DEBUG] Total exam students: {exam_students.count()}")
         print(f"[DEBUG] Skipped students: {len(skipped_students)}")
         if skipped_students:
             for reg, dept in skipped_students[:10]:  # Show first 10
-                print(f"[DEBUG]   - {reg} (dept: '{dept}')")
+                print(f"[DEBUG]   ✗ {reg} has dept='{dept}' (NOT IN DEPARTMENTEXAM)")
             if len(skipped_students) > 10:
                 print(f"[DEBUG]   ... and {len(skipped_students) - 10} more")
         
+        print(f"[DEBUG] Room groups created: {len(room_groups)}")
         print(f"[DEBUG] Total rooms with seating: {len(response_rooms)}")
         print(f"[DEBUG] Total seats allocated: {sum(len(r.get('seats', [])) for r in response_rooms)}")
+        if len(response_rooms) == 0 and len(skipped_students) > 0:
+            print(f"[DEBUG] ⚠ WARNING: NO SEATING DATA! All students were skipped due to department mismatch!")
+        print(f"[DEBUG] ==========================================\n")
         
         return JsonResponse({"status": "success", "message": "Seating generated", "rooms": response_rooms})
     
