@@ -55,16 +55,6 @@ def _get_client_ip(request):
 
 def ensure_default_admin():
     try:
-        # DEBUG: Print out students, departments, and rooms for this exam
-        print("=== DEBUG: Seating Generation ===")
-        print(f"Exam ID: {exam.id}, Exam Name: {exam.name}")
-        print(f"Total Students: {exam_students.count()}")
-        print("Departments in DepartmentExam:", list(dept_exam_map.keys()))
-        print(f"Rooms for this exam: {len(rooms)}")
-        for r in rooms:
-            print(f"  Room: {r.id} {r.building} {r.room_number} Capacity: {r.capacity}")
-        print("Student departments:", set(s.student.department for s in exam_students))
-        print("===============================")
         if AdminAccount.objects.filter(username__iexact=ENV_ADMIN_USERNAME).count() == 0:
             username = ENV_ADMIN_USERNAME
             default_password = ENV_ADMIN_PASSWORD
@@ -875,12 +865,15 @@ def add_departments(request):
             departments = data.get("departments", [])
 
             exam = Exam.objects.get(id=exam_id)
+            print(f"\n[DEBUG] add_departments: Creating departments for exam {exam_id}")
+            print(f"[DEBUG] Departments received: {[d.get('department') for d in departments]}")
 
             for dept in departments:
                 department_name = dept.get("department")
+                print(f"[DEBUG] Processing department: '{department_name}'")
 
                 for ex in dept.get("exams", []):
-                    DepartmentExam.objects.create(
+                    de = DepartmentExam.objects.create(
                         exam=exam,
                         department=department_name,
                         exam_name=ex.get("name"),
@@ -890,7 +883,12 @@ def add_departments(request):
                         start_time=ex.get("start_time") or None,
                         end_time=ex.get("end_time") or None
                     )
+                    print(f"[DEBUG] Created DepartmentExam: dept='{de.department}', date={de.exam_date}, session={de.session}")
 
+            # Log all created DepartmentExam records
+            all_depts = DepartmentExam.objects.filter(exam=exam).values('department').distinct()
+            print(f"[DEBUG] Total unique departments in exam: {[d['department'] for d in all_depts]}")
+            
             return JsonResponse({"status": "success"})
 
         except Exception as e:
@@ -1461,6 +1459,12 @@ def generate_seating(request):
         dept_exams = DepartmentExam.objects.filter(exam=exam)
         rooms = list(Room.objects.filter(exam=exam).order_by('id'))
         
+        print(f"\n[DEBUG generate_seating] Exam: {exam_id}")
+        print(f"[DEBUG] Total exam students: {exam_students.count()}")
+        print(f"[DEBUG] Student departments: {list(set(s.student.department for s in exam_students))}")
+        print(f"[DEBUG] Total rooms: {len(rooms)}")
+        print(f"[DEBUG] DepartmentExam records: {dept_exams.count()}")
+        
         if not exam_students.exists():
             return JsonResponse({"status": "error", "message": "No students found"}, status=400)
         if not rooms:
@@ -1479,15 +1483,19 @@ def generate_seating(request):
                 'end_time': str(de.end_time) if de.end_time else None
             })
         
+        print(f"[DEBUG] DepartmentExam map departments: {list(dept_exam_map.keys())}")
+        
         # Group students by (year, semester, exam_date, session)
         # Students can take MULTIPLE exams (different dates)
         room_groups = defaultdict(list)
+        skipped_students = []
         
         for exam_student in exam_students:
             student = exam_student.student
             year, semester, dept = student.year, student.semester, student.department
             
             if dept not in dept_exam_map:
+                skipped_students.append((student.registration_number, dept))
                 continue
             
             # Add student to ALL matching exam groups
@@ -1761,6 +1769,16 @@ def generate_seating(request):
                     'departments': list(set(s['department'] for s in seats)),
                     'seats': seats
                 })
+        
+        print(f"[DEBUG] Skipped students: {len(skipped_students)}")
+        if skipped_students:
+            for reg, dept in skipped_students[:10]:  # Show first 10
+                print(f"[DEBUG]   - {reg} (dept: '{dept}')")
+            if len(skipped_students) > 10:
+                print(f"[DEBUG]   ... and {len(skipped_students) - 10} more")
+        
+        print(f"[DEBUG] Total rooms with seating: {len(response_rooms)}")
+        print(f"[DEBUG] Total seats allocated: {sum(len(r.get('seats', [])) for r in response_rooms)}")
         
         return JsonResponse({"status": "success", "message": "Seating generated", "rooms": response_rooms})
     
