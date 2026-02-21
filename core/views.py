@@ -1825,6 +1825,28 @@ def generate_seating(request):
             print(f"[DEBUG] ⚠ WARNING: NO SEATING DATA! All students were skipped due to department mismatch!")
         print(f"[DEBUG] ==========================================\n")
         
+        # ===== SAVE SEATING TO DATABASE =====
+        print(f"[DEBUG] Saving seating allocations to database...")
+        SeatAllocation.objects.filter(exam=exam).delete()  # Clear previous allocations
+        
+        seat_allocations = []
+        for room in response_rooms:
+            for seat in room['seats']:
+                sa = SeatAllocation(
+                    exam=exam,
+                    room_id=room['id'],
+                    registration_number=seat['registration'],
+                    department=seat['department'],
+                    seat_code=seat['seat'],
+                    exam_date=seat['exam_date'],
+                    exam_session=seat['session'],
+                    exam_name=seat['exam_name']
+                )
+                seat_allocations.append(sa)
+        
+        SeatAllocation.objects.bulk_create(seat_allocations)
+        print(f"[DEBUG] Saved {len(seat_allocations)} seat allocations to database")
+        
         return JsonResponse({
             "status": "success", 
             "message": "Seating generated", 

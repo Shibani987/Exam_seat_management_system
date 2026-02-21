@@ -1083,9 +1083,13 @@ function populateSummary(data) {
     console.log('[STEP 6] Populating summary data');
     
     // Exam details
-    document.getElementById('summaryExamName').textContent = data.exam.name || '-';
-    document.getElementById('summaryStartDate').textContent = data.exam.start_date || '-';
-    document.getElementById('summaryEndDate').textContent = data.exam.end_date || '-';
+    const summaryExamName = document.getElementById('summaryExamName');
+    const summaryStartDate = document.getElementById('summaryStartDate');
+    const summaryEndDate = document.getElementById('summaryEndDate');
+    
+    if (summaryExamName) summaryExamName.textContent = data.exam?.name || '-';
+    if (summaryStartDate) summaryStartDate.textContent = data.exam?.start_date || '-';
+    if (summaryEndDate) summaryEndDate.textContent = data.exam?.end_date || '-';
     
     // Departments
     const deptBody = document.getElementById('summaryDepartmentsBody');
@@ -1142,49 +1146,63 @@ function populateSummary(data) {
     if (totalStudEl) totalStudEl.textContent = data.total_students || 0;
     if (totalSeatsEl) totalSeatsEl.textContent = data.total_seats_allocated || 0;
     
-    // Seating details - backend returns rooms with seats inside
+    // Seating details - group seating by room
     const seatingPreview = document.getElementById('seatingPreview');
-    if (seatingPreview && data.rooms && data.rooms.length > 0) {
-        let html = '';
-        let totalSeatsCount = 0;
+    if (seatingPreview) {
+        // Get seating data (could be from generate_seating or get_exam_summary)
+        const seatingList = data.seating || [];
         
-        data.rooms.forEach(room => {
-            const seats = room.seats || [];
-            totalSeatsCount += seats.length;
+        if (seatingList.length > 0) {
+            // Group seating by room
+            const byRoom = {};
+            seatingList.forEach(seat => {
+                const key = `${seat.room_building || 'Main'}-${seat.room_number || 'N/A'}`;
+                if (!byRoom[key]) {
+                    byRoom[key] = {
+                        building: seat.room_building || 'Main',
+                        room_number: seat.room_number || 'N/A',
+                        seats: []
+                    };
+                }
+                byRoom[key].seats.push(seat);
+            });
             
-            html += `
-                <div style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
-                    <h4>${room.building} - Room ${room.room_number} (${seats.length} seats / ${room.capacity} capacity)</h4>
-                    <table style="width:100%; font-size: 12px; border-collapse: collapse;">
-                        <thead>
-                            <tr style="background: #007bcd; color: white;">
-                                <th style="padding: 5px; border: 1px solid #ddd;">Reg No</th>
-                                <th style="padding: 5px; border: 1px solid #ddd;">Dept</th>
-                                <th style="padding: 5px; border: 1px solid #ddd;">Seat</th>
-                                <th style="padding: 5px; border: 1px solid #ddd;">Exam</th>
-                                <th style="padding: 5px; border: 1px solid #ddd;">Date</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${seats.map(s => `
-                                <tr>
-                                    <td style="padding: 5px; border: 1px solid #ddd;">${s.registration}</td>
-                                    <td style="padding: 5px; border: 1px solid #ddd;">${s.department}</td>
-                                    <td style="padding: 5px; border: 1px solid #ddd;"><strong>${s.seat}</strong></td>
-                                    <td style="padding: 5px; border: 1px solid #ddd;">${s.exam_name}</td>
-                                    <td style="padding: 5px; border: 1px solid #ddd;">${s.exam_date}</td>
+            let html = '';
+            Object.values(byRoom).forEach(room => {
+                const count = room.seats.length;
+                html += `
+                    <div style="margin-bottom: 15px; border: 1px solid #ddd; padding: 10px; border-radius: 5px;">
+                        <h4>${room.building} - Room ${room.room_number} (${count} seats)</h4>
+                        <table style="width:100%; font-size: 12px; border-collapse: collapse;">
+                            <thead>
+                                <tr style="background: #007bcd; color: white;">
+                                    <th style="padding: 5px; border: 1px solid #ddd;">Reg No</th>
+                                    <th style="padding: 5px; border: 1px solid #ddd;">Dept</th>
+                                    <th style="padding: 5px; border: 1px solid #ddd;">Seat</th>
+                                    <th style="padding: 5px; border: 1px solid #ddd;">Exam</th>
+                                    <th style="padding: 5px; border: 1px solid #ddd;">Date</th>
                                 </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-        });
-        
-        if (totalSeatsEl) totalSeatsEl.textContent = totalSeatsCount;
-        seatingPreview.innerHTML = html;
-    } else if (seatingPreview) {
-        seatingPreview.innerHTML = '<p style="text-align:center;color:#999;">No seating arrangement available</p>';
+                            </thead>
+                            <tbody>
+                                ${room.seats.map(s => `
+                                    <tr>
+                                        <td style="padding: 5px; border: 1px solid #ddd;">${s.registration_number || s.registration || 'N/A'}</td>
+                                        <td style="padding: 5px; border: 1px solid #ddd;">${s.department || 'N/A'}</td>
+                                        <td style="padding: 5px; border: 1px solid #ddd;"><strong>${s.seat_code || s.seat || 'N/A'}</strong></td>
+                                        <td style="padding: 5px; border: 1px solid #ddd;">${s.exam_name || 'N/A'}</td>
+                                        <td style="padding: 5px; border: 1px solid #ddd;">${s.exam_date || 'N/A'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                `;
+            });
+            
+            seatingPreview.innerHTML = html;
+        } else {
+            seatingPreview.innerHTML = '<p style="text-align:center;color:#999;">No seating arrangement available</p>';
+        }
     }
     
     // QR Code details
