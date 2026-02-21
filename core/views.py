@@ -1819,12 +1819,20 @@ def generate_seating(request):
         
         print(f"[DEBUG] Room groups created: {len(room_groups)}")
         print(f"[DEBUG] Total rooms with seating: {len(response_rooms)}")
-        print(f"[DEBUG] Total seats allocated: {sum(len(r.get('seats', [])) for r in response_rooms)}")
+        total_seats = sum(len(r.get('seats', [])) for r in response_rooms)
+        print(f"[DEBUG] Total seats allocated: {total_seats}")
         if len(response_rooms) == 0 and len(skipped_students) > 0:
             print(f"[DEBUG] ⚠ WARNING: NO SEATING DATA! All students were skipped due to department mismatch!")
         print(f"[DEBUG] ==========================================\n")
         
-        return JsonResponse({"status": "success", "message": "Seating generated", "rooms": response_rooms})
+        return JsonResponse({
+            "status": "success", 
+            "message": "Seating generated", 
+            "rooms": response_rooms,
+            "total_students": exam_students.count(),
+            "total_seats_allocated": total_seats,
+            "total_rooms": len(response_rooms)
+        })
     
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
