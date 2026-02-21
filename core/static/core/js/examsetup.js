@@ -305,6 +305,18 @@ const backBtn = document.getElementById('backBtn');
 const nextBtn = document.getElementById('nextBtn');
 let departmentExams = {};
 
+if (nextBtn) {
+    nextBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        // Hide step 2, show step 3
+        step2.classList.remove('active');
+        step2.classList.add('completed');
+        step3.classList.add('active');
+        step2Content.style.display = 'none';
+        step3Content.style.display = 'block';
+        // Optionally, call renderRooms() or any setup needed for step 3
+    });
+}
 if (nextBtn) nextBtn.disabled = true;
 
 deptDivs.forEach(dept => {
