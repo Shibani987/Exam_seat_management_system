@@ -1390,27 +1390,7 @@ function renderSeatGrid(rooms) {
 }
 
 
-if (lockStep5Btn) {
-    lockStep5Btn.onclick = e => {
-        e.preventDefault();
-        fetch('/lock_seating/', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            body: JSON.stringify({ exam_id: examId })
-        })
-        .then(r => r.json())
-        .then(() => {
-            step5.classList.add('completed');
-            step5.classList.remove('active');
-            step6.classList.add('active');
-            step5Content.style.display = 'none';
-            step6Content.style.display = 'block';
-            populateQRDetails();
-        });
-    };
-}
-
-// Regenerate Seating Button Handler
+// NOTE: lockStep5Btn handler already defined above at line 1013
 // =============================
 // COMPLETE SETUP BUTTON HANDLER (Defined as separate function)
 // =============================

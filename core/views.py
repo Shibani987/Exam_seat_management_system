@@ -1828,8 +1828,23 @@ def generate_seating(request):
         print(f"[DEBUG] Total rooms with seating: {len(response_rooms)}")
         total_seats = sum(len(r.get('seats', [])) for r in response_rooms)
         print(f"[DEBUG] Total seats allocated: {total_seats}")
+        
+        # CRITICAL: If ALL students were skipped, return error
+        if len(skipped_students) == exam_students.count():
+            print(f"[DEBUG] ✗ CRITICAL: ALL {exam_students.count()} STUDENTS WERE SKIPPED!")
+            print(f"[DEBUG] Department mismatch between student file and Step 2 departments")
+            student_depts_in_file = list(set(s.student.department for s in exam_students))
+            configured_depts = list(dept_exam_map.keys())
+            print(f"[DEBUG] Departments in student file: {student_depts_in_file}")
+            print(f"[DEBUG] Departments in Step 2: {configured_depts}")
+            print(f"[DEBUG] ==========================================\n")
+            return JsonResponse({
+                "status": "error",
+                "message": f"DEPARTMENT MISMATCH!\nStudents in file: {student_depts_in_file}\nConfigured in Step 2: {configured_depts}\nMake sure department names match EXACTLY (case-sensitive)!"
+            }, status=400)
+        
         if len(response_rooms) == 0 and len(skipped_students) > 0:
-            print(f"[DEBUG] ⚠ WARNING: NO SEATING DATA! All students were skipped due to department mismatch!")
+            print(f"[DEBUG] ⚠ WARNING: NO SEATING DATA! Some students were skipped due to department mismatch!")
         print(f"[DEBUG] ==========================================\n")
         
         # Final validation before returning
