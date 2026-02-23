@@ -4,7 +4,7 @@ from .models import StudentDataFile
 class StudentDataUploadForm(forms.ModelForm):
     class Meta:
         model = StudentDataFile
-        fields = ['year', 'semester', 'department']
+        fields = []
 
 
 class ForgotPasswordForm(forms.Form):

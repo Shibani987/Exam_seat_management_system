@@ -444,9 +444,6 @@ def upload_student_data(request):
 
             # Save metadata + filename ONLY
             student_file_obj = StudentDataFile.objects.create(
-                year=form.cleaned_data['year'],
-                semester=form.cleaned_data['semester'],
-                department=form.cleaned_data['department'],
                 file_name=uploaded_file.name
             )
 
@@ -484,13 +481,9 @@ def upload_student_data(request):
                     name=get_value(row, col_map["name"]),
                     roll_number=get_value(row, col_map["roll_number"]),
                     registration_number=get_value(row, col_map["registration_number"]),
-                    department=get_value(
-                        row,
-                        col_map["department"],
-                        student_file_obj.department
-                    ),
-                    year=student_file_obj.year,
-                    semester=student_file_obj.semester
+                    department=get_value(row, col_map["department"]),
+                    year=get_value(row, ["year"]),
+                    semester=get_value(row, ["semester"])
                 ))
 
             Student.objects.bulk_create(students)

@@ -4,9 +4,9 @@ from django.db import models
 # Upload Student Data (DB only, NO file storage)
 # =========================
 class StudentDataFile(models.Model):
-    year = models.CharField(max_length=10)
-    semester = models.CharField(max_length=10)
-    department = models.CharField(max_length=50)
+    year = models.CharField(max_length=10, blank=True, null=True)
+    semester = models.CharField(max_length=10, blank=True, null=True)
+    department = models.CharField(max_length=50, blank=True, null=True)
 
     # store filename ONLY (not the actual file)
     file_name = models.CharField(max_length=255)
@@ -14,7 +14,7 @@ class StudentDataFile(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.department} - {self.semester} ({self.year})"
+        return f"{self.file_name}"
 
 
 # =========================
@@ -29,9 +29,9 @@ class Student(models.Model):
     name = models.CharField(max_length=100)
     roll_number = models.CharField(max_length=50)
     registration_number = models.CharField(max_length=50)
-    department = models.CharField(max_length=50)
-    year = models.CharField(max_length=10)
-    semester = models.CharField(max_length=10)
+    department = models.CharField(max_length=50, blank=True, null=True)
+    year = models.CharField(max_length=10, blank=True, null=True)
+    semester = models.CharField(max_length=10, blank=True, null=True)
 
     def __str__(self):
         return f"{self.name} ({self.roll_number})"
