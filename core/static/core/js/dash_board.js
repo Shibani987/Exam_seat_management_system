@@ -116,30 +116,20 @@ if (continueBtn) {
   });
 }
 
-// ================= ENABLE UPLOAD BUTTON ONLY WHEN ALL FILLED =================
-const yearSelect = document.getElementById("yearSelect");
-const semesterSelect = document.getElementById("semesterSelect");
-const deptSelect = document.getElementById("deptSelect");
-const fileInput = document.getElementById("fileInput");
+// ================= ENABLE UPLOAD BUTTON ONLY WHEN FILE SELECTED =================
+const fileInput = document.getElementById("id_file");
 const uploadDataBtn = document.getElementById("uploadBtn");
 
-if (uploadDataBtn) {
-  function checkFormFilled() {
-    if (
-      yearSelect.value &&
-      semesterSelect.value &&
-      deptSelect.value &&
-      fileInput.files.length > 0
-    ) {
+if (uploadDataBtn && fileInput) {
+  function checkFileSelected() {
+    if (fileInput.files.length > 0) {
       uploadDataBtn.disabled = false;
     } else {
       uploadDataBtn.disabled = true;
     }
   }
 
-  [yearSelect, semesterSelect, deptSelect, fileInput].forEach(el => {
-    if (el) el.addEventListener("change", checkFormFilled);
-  });
+  fileInput.addEventListener("change", checkFileSelected);
 }
 
 
