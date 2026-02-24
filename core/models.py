@@ -4,21 +4,16 @@ from django.db import models
 # Upload Student Data (DB only, NO file storage)
 # =========================
 class StudentDataFile(models.Model):
-    year = models.CharField(max_length=10)
-    semester = models.CharField(max_length=10)
-    department = models.CharField(max_length=50)
-
-    # store filename ONLY (not the actual file)
+    # Store filename ONLY (not the actual file)
     file_name = models.CharField(max_length=255)
-
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.department} - {self.semester} ({self.year})"
+        return f"{self.file_name} (uploaded {self.uploaded_at.strftime('%Y-%m-%d %H:%M')})"
 
 
 # =========================
-# Student Model (same as before)
+# Student Model
 # =========================
 class Student(models.Model):
     student_file = models.ForeignKey(
@@ -26,15 +21,24 @@ class Student(models.Model):
         on_delete=models.CASCADE,
         related_name="students"
     )
-    name = models.CharField(max_length=100)
-    roll_number = models.CharField(max_length=50)
-    registration_number = models.CharField(max_length=50)
-    department = models.CharField(max_length=50)
-    year = models.CharField(max_length=10)
-    semester = models.CharField(max_length=10)
+    course = models.CharField(max_length=50, blank=True)  # From COURSE column
+    semester = models.CharField(max_length=10, blank=True)  # From SEM column
+    branch = models.CharField(max_length=50, blank=True)  # From BRANCH column
+    name = models.CharField(max_length=100)  # From STUDENT NAME column
+    roll_number = models.CharField(max_length=50)  # From ROLLNO column
+    registration_number = models.CharField(max_length=50)  # From REG NO column
+    student_id = models.CharField(max_length=50)  # From STD ID column
+    academic_status = models.CharField(max_length=50, blank=True)  # From ACADEMIC_STATUS column
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.name} ({self.roll_number})"
+
+    class Meta:
+        # Ensure uniqueness across roll_number, registration_number, and student_id
+        unique_together = ('roll_number', 'registration_number', 'student_id')
 
 
 # =========================

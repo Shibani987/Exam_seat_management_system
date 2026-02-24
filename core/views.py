@@ -434,7 +434,7 @@ def block_admin_email(request):
 @admin_required
 def upload_student_data(request):
     if request.method == "POST":
-        form = StudentDataUploadForm(request.POST)
+        form = StudentDataUploadForm(request.POST, request.FILES)
 
         if form.is_valid():
             uploaded_file = request.FILES.get("file")
@@ -450,9 +450,6 @@ def upload_student_data(request):
 
             # Save metadata + filename ONLY
             student_file_obj = StudentDataFile.objects.create(
-                year=form.cleaned_data['year'],
-                semester=form.cleaned_data['semester'],
-                department=form.cleaned_data['department'],
                 file_name=uploaded_file.name
             )
 
@@ -463,17 +460,23 @@ def upload_student_data(request):
                 else:
                     df = pd.read_excel(uploaded_file)
             except Exception as e:
+                student_file_obj.delete()
                 messages.error(request, f"Error reading file: {e}")
                 return redirect("dashboard")
 
-            # Normalize column names
+            # Normalize column names (lowercase, strip whitespace)
             df.columns = [c.strip().lower() for c in df.columns]
 
+            # Column mapping for expected columns
             col_map = {
-                "name": ["name", "student name"],
-                "roll_number": ["roll", "roll number", "roll_no"],
-                "registration_number": ["registration", "registration number", "reg_no"],
-                "department": ["department", "dept"],
+                "course": ["course"],
+                "semester": ["sem", "semester"],
+                "branch": ["branch"],
+                "name": ["student name", "name"],
+                "roll_number": ["rollno", "roll number", "roll_no", "roll"],
+                "registration_number": ["reg no", "reg_no", "registration", "registration number"],
+                "student_id": ["std id", "student id", "stud id"],
+                "academic_status": ["academic_status", "academic status", "status"],
             }
 
             def get_value(row, keys, default=""):
@@ -482,34 +485,62 @@ def upload_student_data(request):
                         return str(row[key]).strip()
                 return default
 
-            # Save students
+            # Save students with all columns from the file
             students = []
+            student_count = 0
+            duplicate_count = 0
+            
             for _, row in df.iterrows():
-                students.append(Student(
-                    student_file=student_file_obj,
-                    name=get_value(row, col_map["name"]),
-                    roll_number=get_value(row, col_map["roll_number"]),
-                    registration_number=get_value(row, col_map["registration_number"]),
-                    department=get_value(
-                        row,
-                        col_map["department"],
-                        student_file_obj.department
-                    ),
-                    year=student_file_obj.year,
-                    semester=student_file_obj.semester
-                ))
+                try:
+                    roll_no = get_value(row, col_map["roll_number"])
+                    reg_no = get_value(row, col_map["registration_number"])
+                    std_id = get_value(row, col_map["student_id"])
+                    
+                    # Skip if any of the unique fields are empty
+                    if not roll_no or not reg_no or not std_id:
+                        continue
+                    
+                    # Check if student already exists (uniqueness check)
+                    if Student.objects.filter(
+                        roll_number=roll_no,
+                        registration_number=reg_no,
+                        student_id=std_id
+                    ).exists():
+                        duplicate_count += 1
+                        continue
+                    
+                    student = Student(
+                        student_file=student_file_obj,
+                        course=get_value(row, col_map["course"]),
+                        semester=get_value(row, col_map["semester"]),
+                        branch=get_value(row, col_map["branch"]),
+                        name=get_value(row, col_map["name"]),
+                        roll_number=roll_no,
+                        registration_number=reg_no,
+                        student_id=std_id,
+                        academic_status=get_value(row, col_map["academic_status"]),
+                    )
+                    students.append(student)
+                    student_count += 1
+                except Exception as e:
+                    logger.error(f"Error processing student row: {str(e)}")
+                    continue
 
-            Student.objects.bulk_create(students)
-
-            messages.success(request, "Student data uploaded successfully!")
+            try:
+                Student.objects.bulk_create(students)
+                msg = f"Student data uploaded successfully! Added {student_count} students."
+                if duplicate_count > 0:
+                    msg += f" (Skipped {duplicate_count} duplicates)"
+                messages.success(request, msg)
+            except Exception as e:
+                student_file_obj.delete()
+                messages.error(request, f"Error saving students: {str(e)}")
+                logger.error(f"Bulk create error: {str(e)}")
+            
             return redirect("dashboard")
 
-    uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
-    years = range(2020, 2036)
-
     return render(request, "core/dashboard.html", {
-        "uploaded_files": uploaded_files,
-        "years": years,
+        "uploaded_files": StudentDataFile.objects.all().order_by("-uploaded_at"),
     })
 
 

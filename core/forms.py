@@ -1,10 +1,11 @@
 from django import forms
 from .models import StudentDataFile
 
-class StudentDataUploadForm(forms.ModelForm):
-    class Meta:
-        model = StudentDataFile
-        fields = ['year', 'semester', 'department']
+class StudentDataUploadForm(forms.Form):
+    file = forms.FileField(
+        label='Upload Student Data (Excel/CSV)',
+        help_text='File should contain columns: COURSE, SEM, BRANCH, STUDENT NAME, ROLLNO, REG NO, STD ID, ACADEMIC_STATUS'
+    )
 
 
 class ForgotPasswordForm(forms.Form):
