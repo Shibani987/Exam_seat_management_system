@@ -75,7 +75,8 @@
         {% csrf_token %}
         <div class="form-row">
           <div class="form-group" style="width:100%; max-width:600px;">
-            {{ form.file }}
+            <label for="id_file" style="display: block; margin-bottom: 10px; font-weight: bold;">Select Excel/CSV File:</label>
+            <input type="file" id="id_file" name="file" accept=".csv,.xlsx,.xls" style="padding: 10px; border: 1px solid #ddd; border-radius: 4px; width: 100%; cursor: pointer;">
             {% if form.file.errors %}
               <div style="color: red; margin-top: 5px;">
                 {% for error in form.file.errors %}{{ error }}{% endfor %}
@@ -84,7 +85,7 @@
           </div>
         </div>
 
-        <button class="upload-btn" id="uploadBtn" disabled>Upload</button>
+        <button type="submit" class="upload-btn" id="uploadBtn" disabled>Upload</button>
       </form>
 
 <div class="uploaded-files">
