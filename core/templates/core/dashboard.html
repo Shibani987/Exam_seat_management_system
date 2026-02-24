@@ -75,7 +75,6 @@
         {% csrf_token %}
         <div class="form-row">
           <div class="form-group" style="width:100%; max-width:600px;">
-            <label for="id_file">Select Excel/CSV File:</label>
             {{ form.file }}
             {% if form.file.errors %}
               <div style="color: red; margin-top: 5px;">
