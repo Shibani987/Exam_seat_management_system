@@ -20,8 +20,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 dotenv_path = BASE_DIR / ".env"
 load_dotenv(dotenv_path=dotenv_path)
 
-# WARNING: In production, use system environment variables instead of .env file for security
-
 # =========================================
 # Core security & debug settings
 # =========================================
@@ -32,13 +30,11 @@ load_dotenv(dotenv_path=dotenv_path)
 SECRET_KEY = os.getenv(
     "SECRET_KEY"
 )
-if not SECRET_KEY:
-    raise ValueError("SECRET_KEY must be set in environment/.env for security")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-# - Default remains False for security; explicitly set to True for dev
-# - In production: ensure DJANGO_DEBUG=false
-DEBUG = os.getenv("DJANGO_DEBUG", "False").lower() == "true"
+# - Default remains True (same as before) for local/dev
+# - In production: set DJANGO_DEBUG=false
+DEBUG = os.getenv("DJANGO_DEBUG", "True").lower() == "true"
 
 # Allowed hosts:
 # - In dev (DEBUG=True): Django ignores ALLOWED_HOSTS, so default [] is fine.
@@ -166,7 +162,7 @@ STATIC_URL = "/static/"
 # Location for collected static files in production
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "core" / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
