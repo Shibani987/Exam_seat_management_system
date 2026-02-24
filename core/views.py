@@ -434,7 +434,7 @@ def block_admin_email(request):
 @admin_required
 def upload_student_data(request):
     if request.method == "POST":
-        form = StudentDataUploadForm(request.POST)
+        form = StudentDataUploadForm(request.POST, request.FILES)
 
         if form.is_valid():
             uploaded_file = request.FILES.get("file")
@@ -442,11 +442,14 @@ def upload_student_data(request):
                 messages.error(request, "No file uploaded")
                 return redirect("dashboard")
 
+            # Validate file size (max 10MB)
+            max_size = 10 * 1024 * 1024  # 10MB
+            if uploaded_file.size > max_size:
+                messages.error(request, "File size too large. Maximum allowed is 10MB.")
+                return redirect("dashboard")
+
             # Save metadata + filename ONLY
             student_file_obj = StudentDataFile.objects.create(
-                year=form.cleaned_data['year'],
-                semester=form.cleaned_data['semester'],
-                department=form.cleaned_data['department'],
                 file_name=uploaded_file.name
             )
 
@@ -464,10 +467,14 @@ def upload_student_data(request):
             df.columns = [c.strip().lower() for c in df.columns]
 
             col_map = {
-                "name": ["name", "student name"],
-                "roll_number": ["roll", "roll number", "roll_no"],
-                "registration_number": ["registration", "registration number", "reg_no"],
-                "department": ["department", "dept"],
+                "course": ["course"],
+                "semester": ["sem", "semester"],
+                "branch": ["branch"],
+                "name": ["student name", "name"],
+                "roll_number": ["rollno", "roll_no", "roll number"],
+                "registration_number": ["reg no", "registration number", "reg_no"],
+                "student_id": ["std id", "student id", "student_id"],
+                "academic_status": ["academic_status", "academic status", "status"],
             }
 
             def get_value(row, keys, default=""):
@@ -476,34 +483,47 @@ def upload_student_data(request):
                         return str(row[key]).strip()
                 return default
 
-            # Save students
+            # Save students with duplicate detection
             students = []
+            duplicates = 0
             for _, row in df.iterrows():
+                roll = get_value(row, col_map["roll_number"])
+                reg = get_value(row, col_map["registration_number"])
+                std_id = get_value(row, col_map["student_id"])
+
+                # Check if this combination already exists
+                if Student.objects.filter(
+                    roll_number=roll,
+                    registration_number=reg,
+                    student_id=std_id
+                ).exists():
+                    duplicates += 1
+                    continue
+
                 students.append(Student(
                     student_file=student_file_obj,
+                    course=get_value(row, col_map["course"]),
+                    semester=get_value(row, col_map["semester"]),
+                    branch=get_value(row, col_map["branch"]),
                     name=get_value(row, col_map["name"]),
-                    roll_number=get_value(row, col_map["roll_number"]),
-                    registration_number=get_value(row, col_map["registration_number"]),
-                    department=get_value(
-                        row,
-                        col_map["department"],
-                        student_file_obj.department
-                    ),
-                    year=student_file_obj.year,
-                    semester=student_file_obj.semester
+                    roll_number=roll,
+                    registration_number=reg,
+                    student_id=std_id,
+                    academic_status=get_value(row, col_map["academic_status"])
                 ))
 
             Student.objects.bulk_create(students)
 
-            messages.success(request, "Student data uploaded successfully!")
+            if duplicates > 0:
+                messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates skipped)")
+            else:
+                messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
             return redirect("dashboard")
 
     uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
-    years = range(2020, 2036)
 
     return render(request, "core/dashboard.html", {
         "uploaded_files": uploaded_files,
-        "years": years,
     })
 
 
@@ -527,16 +547,13 @@ def get_file_students(request):
             return JsonResponse({'status': 'error', 'message': 'file_id required'}, status=400)
         file_obj = StudentDataFile.objects.get(id=file_id)
         students = list(Student.objects.filter(student_file=file_obj).values(
-            'id', 'name', 'roll_number', 'registration_number', 'department', 'year', 'semester'
+            'id', 'name', 'roll_number', 'registration_number', 'student_id', 'course', 'semester', 'branch', 'academic_status'
         ))
         return JsonResponse({
             'status': 'success',
             'file': {
                 'id': file_obj.id,
-                'file_name': file_obj.file_name,
-                'year': file_obj.year,
-                'semester': file_obj.semester,
-                'department': file_obj.department
+                'file_name': file_obj.file_name
             },
             'students': students,
             'total_students': len(students)
@@ -549,7 +566,7 @@ def get_file_students(request):
 
 @admin_required_json
 def update_students(request):
-    """Update multiple students. POST JSON: { students: [ {id, name, roll_number, registration_number, department, year, semester}, ... ] }"""
+    """Update multiple students. POST JSON: { students: [ {id, name, roll_number, registration_number, student_id, course, semester, branch, academic_status}, ... ] }"""
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'POST required'}, status=400)
     try:
@@ -562,7 +579,7 @@ def update_students(request):
                 continue
             try:
                 st = Student.objects.get(id=sid)
-                for field in ['name', 'roll_number', 'registration_number', 'department', 'year', 'semester']:
+                for field in ['name', 'roll_number', 'registration_number', 'student_id', 'course', 'semester', 'branch', 'academic_status']:
                     if field in s:
                         setattr(st, field, s.get(field))
                 st.save()
@@ -577,7 +594,7 @@ def update_students(request):
 
 @admin_required_json
 def add_file_students(request):
-    """Add new students to a StudentDataFile. POST JSON: { file_id: int, students: [ {name, roll_number, registration_number, department, year, semester}, ... ] }"""
+    """Add new students to a StudentDataFile. POST JSON: { file_id: int, students: [ {name, roll_number, registration_number, student_id, course, semester, branch, academic_status}, ... ] }"""
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'POST required'}, status=400)
     try:
@@ -592,17 +609,22 @@ def add_file_students(request):
             name = s.get('name') or ''
             roll = s.get('roll_number') or ''
             reg = s.get('registration_number') or ''
-            dept = s.get('department') or file_obj.department
-            year = s.get('year') or file_obj.year
-            sem = s.get('semester') or file_obj.semester
+            std_id = s.get('student_id') or ''
+            course = s.get('course') or ''
+            semester = s.get('semester') or ''
+            branch = s.get('branch') or ''
+            academic_status = s.get('academic_status') or ''
+            
             to_create.append(Student(
                 student_file=file_obj,
                 name=name,
                 roll_number=roll,
                 registration_number=reg,
-                department=dept,
-                year=year,
-                semester=sem
+                student_id=std_id,
+                course=course,
+                semester=semester,
+                branch=branch,
+                academic_status=academic_status
             ))
 
         Student.objects.bulk_create(to_create)
