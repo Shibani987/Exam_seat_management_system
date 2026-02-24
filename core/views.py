@@ -442,8 +442,17 @@ def upload_student_data(request):
                 messages.error(request, "No file uploaded")
                 return redirect("dashboard")
 
+            # Validate file size (max 10MB)
+            max_size = 10 * 1024 * 1024  # 10MB
+            if uploaded_file.size > max_size:
+                messages.error(request, "File size too large. Maximum allowed is 10MB.")
+                return redirect("dashboard")
+
             # Save metadata + filename ONLY
             student_file_obj = StudentDataFile.objects.create(
+                year=form.cleaned_data['year'],
+                semester=form.cleaned_data['semester'],
+                department=form.cleaned_data['department'],
                 file_name=uploaded_file.name
             )
 
@@ -481,9 +490,13 @@ def upload_student_data(request):
                     name=get_value(row, col_map["name"]),
                     roll_number=get_value(row, col_map["roll_number"]),
                     registration_number=get_value(row, col_map["registration_number"]),
-                    department=get_value(row, col_map["department"]),
-                    year=get_value(row, ["year"]),
-                    semester=get_value(row, ["semester"])
+                    department=get_value(
+                        row,
+                        col_map["department"],
+                        student_file_obj.department
+                    ),
+                    year=student_file_obj.year,
+                    semester=student_file_obj.semester
                 ))
 
             Student.objects.bulk_create(students)
@@ -858,8 +871,6 @@ def add_departments(request):
             departments = data.get("departments", [])
 
             exam = Exam.objects.get(id=exam_id)
-            print(f"\n[DEBUG add_departments] Creating departments for exam {exam_id}")
-            print(f"[DEBUG] Departments received: {[d.get('department') for d in departments]}")
             
             if not departments:
                 raise ValueError("No departments provided!")
@@ -870,11 +881,7 @@ def add_departments(request):
                 department_name = dept.get("department")
                 exams_list = dept.get("exams", [])
                 
-                print(f"[DEBUG] Processing department: '{department_name}'")
-                print(f"[DEBUG]   Total exams for this dept: {len(exams_list)}")
-                
                 if not exams_list:
-                    print(f"[DEBUG]   ⚠ WARNING: No exams for department '{department_name}'")
                     continue
 
                 for idx, ex in enumerate(exams_list):
@@ -889,26 +896,17 @@ def add_departments(request):
                             start_time=ex.get("start_time") or None,
                             end_time=ex.get("end_time") or None
                         )
-                        print(f"[DEBUG]   ✓ Exam {idx+1}: dept='{de.department}', date={de.exam_date}, session={de.session}, time={de.start_time}-{de.end_time}")
                         total_exams_created += 1
                     except Exception as exam_err:
-                        print(f"[DEBUG]   ✗ ERROR creating exam {idx+1}: {str(exam_err)}")
                         raise
 
             # Log all created DepartmentExam records
             all_depts = DepartmentExam.objects.filter(exam=exam).values_list('department', flat=True).distinct()
-            print(f"[DEBUG] ===== RESULT =====")
-            print(f"[DEBUG] Department exams created: {total_exams_created}")
-            print(f"[DEBUG] Unique departments: {list(all_depts)}")
-            print(f"[DEBUG] ====================\n")
             
             return JsonResponse({"status": "success", "message": f"Created {total_exams_created} department exam entries"})
 
         except Exception as e:
             error_msg = f"Error in add_departments: {str(e)}"
-            print(f"[DEBUG] ✗ {error_msg}")
-            import traceback
-            traceback.print_exc()
             return JsonResponse({
                 "status": "error",
                 "message": error_msg
@@ -1380,11 +1378,8 @@ def save_selected_files(request):
             # Bulk create for efficiency
             ExamStudent.objects.bulk_create(exam_student_records)
             
-            print(f"[DEBUG] Created {len(exam_student_records)} ExamStudent records")
-            
             # Check what DepartmentExam records exist for this exam
             dept_exams_query = DepartmentExam.objects.filter(exam=exam).values_list('department', flat=True).distinct()
-            print(f"[DEBUG] DepartmentExam departments for this exam: {list(dept_exams_query)}")
             
             # Prepare response
             files_data = []
@@ -1477,12 +1472,6 @@ def generate_seating(request):
         dept_exams = DepartmentExam.objects.filter(exam=exam)
         rooms = list(Room.objects.filter(exam=exam).order_by('id'))
         
-        print(f"\n[DEBUG generate_seating] Exam: {exam_id}")
-        print(f"[DEBUG] Total exam students: {exam_students.count()}")
-        print(f"[DEBUG] Student departments: {list(set(s.student.department for s in exam_students))}")
-        print(f"[DEBUG] Total rooms: {len(rooms)}")
-        print(f"[DEBUG] DepartmentExam records: {dept_exams.count()}")
-        
         if not exam_students.exists():
             return JsonResponse({"status": "error", "message": "No students found"}, status=400)
         if not rooms:
@@ -1491,9 +1480,6 @@ def generate_seating(request):
         # CHECK: If no DepartmentExam records, that's the problem!
         if not dept_exams.exists():
             student_depts = list(set(s.student.department for s in exam_students))
-            print(f"\n[DEBUG] ⚠ CRITICAL: NO DepartmentExam records for this exam!")
-            print(f"[DEBUG] Students have departments: {student_depts}")
-            print(f"[DEBUG] Please go back to Step 2 and ADD departments & exams for: {', '.join(student_depts)}")
             return JsonResponse({
                 "status": "error", 
                 "message": f"NO DEPARTMENTS CONFIGURED! Please go back to Step 2 and add departments & exams.\nYour students are in: {', '.join(student_depts)}"
@@ -1512,8 +1498,6 @@ def generate_seating(request):
                 'end_time': str(de.end_time) if de.end_time else None
             })
         
-        print(f"[DEBUG] DepartmentExam map departments: {list(dept_exam_map.keys())}")
-        
         # Group students by (year, semester, exam_date, session)
         # Students can take MULTIPLE exams (different dates)
         room_groups = defaultdict(list)
@@ -1525,7 +1509,6 @@ def generate_seating(request):
             
             if dept not in dept_exam_map:
                 skipped_students.append((student.registration_number, dept))
-                print(f"[DEBUG] SKIPPED student {student.registration_number} with dept='{dept}' (not in dept_exam_map)")
                 continue
             
             # Add student to ALL matching exam groups
@@ -2187,8 +2170,11 @@ import qrcode
 def generate_qr(request):
     """Return a PNG QR image. Query params:
         - type=student_portal (default) => points to student_portal page
-        - data=<url> => generate QR for given absolute URL
+        - data=<url> => generate QR for given absolute URL (admin only)
     """
+    if not request.session.get('admin_logged_in'):
+        return JsonResponse({'status': 'error', 'message': 'Admin login required'}, status=401)
+    
     try:
         qr_type = request.GET.get('type', 'student_portal')
         if qr_type == 'student_portal':

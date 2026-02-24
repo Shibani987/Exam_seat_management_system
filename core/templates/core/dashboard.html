@@ -75,10 +75,55 @@
         {% csrf_token %}
         <div class="form-row">
           <div class="form-group">
-            <label>Select File:</label>
-            <input type="file" name="file" id="fileInput" accept=".csv,.xlsx,.xls" required>
+            <label>Select Year:</label>
+            <select name="year" id="yearSelect" required>
+              <option value="">--Select Year--</option>
+              {% for y in years %}
+              <option value="{{ y }}">{{ y }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label>Select Semester:</label>
+            <select name="semester" id="semesterSelect" required>
+              <option value="">--Select Semester--</option>
+              {% for i in "12345678" %}
+              <option value="{{ forloop.counter }}">{{ forloop.counter }} Semester</option>
+              {% endfor %}
+            </select>
           </div>
         </div>
+
+      <div class="form-row">
+
+  <div class="form-group">
+    <label>Select Department:</label>
+    <select name="department" id="deptSelect" required>
+      <option value="">--Select Department--</option>
+      <option value="Agricultural Engineering">Agricultural Engineering</option>
+      <option value="Bio-Medical Engineering">Bio-Medical Engineering</option>
+      <option value="Civil Engineering">Civil Engineering</option>
+      <option value="Computer Science and Engineering (CSE)">Computer Science and Engineering (CSE)</option>
+      <option value="Computer Science & Technology (CST)">Computer Science & Technology (CST)</option>
+      <option value="Computer Science & Engineering – AI & ML">Computer Science & Engineering – AI & ML</option>
+      <option value="Electronics & Communication Engineering (ECE)">Electronics & Communication Engineering (ECE)</option>
+      <option value="Electrical Engineering (EE)">Electrical Engineering (EE)</option>
+      <option value="Information Technology (IT)">Information Technology (IT)</option>
+      <option value="Mechanical Engineering (ME)">Mechanical Engineering (ME)</option>
+      <option value="Bachelor of Business Administration (BBA)">Bachelor of Business Administration (BBA)</option>
+      <option value="Master of Business Administration (MBA)">Master of Business Administration (MBA)</option>
+      <option value="Bachelor of Computer Applications (BCA)">Bachelor of Computer Applications (BCA)</option>
+    </select>
+  </div>
+
+  <div class="form-group">
+    <label>Select File:</label>
+    <input type="file" name="file" id="fileInput" accept=".csv,.xlsx,.xls" required>
+  </div>
+
+</div>
+
 
         <button class="upload-btn" id="uploadBtn" disabled>Upload</button>
       </form>
@@ -89,6 +134,9 @@
       <thead>
         <tr>
           <th>File Name</th>
+          <th>Year</th>
+          <th>Semester</th>
+          <th>Department</th>
           <th>Uploaded At</th>
           <th>Action</th> <!-- New column -->
         </tr>
@@ -98,6 +146,9 @@
           {% for file in uploaded_files %}
           <tr>
             <td>{{ file.file_name }}</td>
+            <td>{{ file.year }}</td>
+            <td>{{ file.semester }}</td>
+            <td>{{ file.department }}</td>
             <td>{{ file.uploaded_at|date:"Y-m-d H:i" }}</td>
             <td>
               <button type="button" class="view-file-btn" data-file-id="{{ file.id }}" style="background:#2196F3; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; margin-right:5px;">View</button>
@@ -110,7 +161,7 @@
           {% endfor %}
         {% else %}
         <tr>
-          <td colspan="3" style="text-align:center; padding:20px; color:#999;">
+          <td colspan="6" style="text-align:center; padding:20px; color:#999;">
             No files uploaded yet.
           </td>
         </tr>
@@ -242,11 +293,14 @@
                 <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Name</th>
                 <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Roll Number</th>
                 <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Registration Number</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Department</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Year</th>
+                <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Semester</th>
                 <th style="padding:10px; text-align:left; border-bottom:1px solid #ddd;">Action</th>
               </tr>
             </thead>
             <tbody id="fileStudentsTableBody">
-              <tr><td colspan="4" style="text-align:center; padding:20px;">Loading students...</td></tr>
+              <tr><td colspan="7" style="text-align:center; padding:20px;">Loading students...</td></tr>
             </tbody>
           </table>
         </div>
@@ -420,6 +474,9 @@
         <td style="padding:10px;" contenteditable="true"></td>
         <td style="padding:10px;" contenteditable="true"></td>
         <td style="padding:10px;" contenteditable="true"></td>
+        <td style="padding:10px;" contenteditable="true"></td>
+        <td style="padding:10px;" contenteditable="true"></td>
+        <td style="padding:10px;" contenteditable="true"></td>
         <td style="padding:10px;"><button class="remove-file-student" style="background:#e53935;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;">Remove</button></td>
       `;
       tbody.prepend(tr);
@@ -434,12 +491,15 @@
       const adds = [];
       rows.forEach(tr => {
         const tds = tr.querySelectorAll('td');
-        if (tds.length < 4) return;
+        if (tds.length < 6) return;
         const id = tr.getAttribute('data-id');
         const obj = {
           name: tds[0].textContent.trim(),
           roll_number: tds[1].textContent.trim(),
-          registration_number: tds[2].textContent.trim()
+          registration_number: tds[2].textContent.trim(),
+          department: tds[3].textContent.trim(),
+          year: tds[4].textContent.trim(),
+          semester: tds[5].textContent.trim()
         };
         if (id) {
           obj.id = id;
@@ -481,7 +541,7 @@
 
     function loadFileStudents(fileId) {
       const fileStudentsTableBody = document.getElementById('fileStudentsTableBody');
-      fileStudentsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">Loading students...</td></tr>';
+      fileStudentsTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">Loading students...</td></tr>';
       fileStudentsModal.style.display = 'flex';
       currentFileId = fileId;
 
@@ -492,9 +552,9 @@
             const file = data.file;
             const students = data.students || [];
             document.getElementById('fileStudentsTitle').textContent = `File: ${file.file_name}`;
-            document.getElementById('fileStudentsInfo').innerHTML = `Total: ${data.total_students}`;
+            document.getElementById('fileStudentsInfo').innerHTML = `Department: ${file.department} | Year: ${file.year} | Semester: ${file.semester} | Total: ${data.total_students}`;
             if (students.length === 0) {
-              fileStudentsTableBody.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:20px;">No students found in this file.</td></tr>';
+              fileStudentsTableBody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:20px;">No students found in this file.</td></tr>';
               return;
             }
             let html = '';
@@ -504,6 +564,9 @@
                 <td style="padding:10px;" contenteditable="true">${s.name || ''}</td>
                 <td style="padding:10px;" contenteditable="true">${s.roll_number || ''}</td>
                 <td style="padding:10px;" contenteditable="true">${s.registration_number || ''}</td>
+                <td style="padding:10px;" contenteditable="true">${s.department || ''}</td>
+                <td style="padding:10px;" contenteditable="true">${s.year || ''}</td>
+                <td style="padding:10px;" contenteditable="true">${s.semester || ''}</td>
                 <td style="padding:10px;"><button class="remove-file-student" style="background:#e53935;color:#fff;border:none;padding:6px 10px;border-radius:4px;cursor:pointer;">Remove</button></td>
               </tr>
               `;
