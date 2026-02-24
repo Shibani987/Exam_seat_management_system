@@ -15,10 +15,6 @@ class Migration(migrations.Migration):
             old_name='department',
             new_name='branch',
         ),
-        migrations.AlterUniqueTogether(
-            name='student',
-            unique_together={('roll_number', 'registration_number', 'student_id')},
-        ),
         migrations.RemoveField(
             model_name='studentdatafile',
             name='department',
@@ -48,6 +44,10 @@ class Migration(migrations.Migration):
             name='student_id',
             field=models.CharField(default=1, max_length=50),
             preserve_default=False,
+        ),
+        migrations.AlterUniqueTogether(
+            name='student',
+            unique_together={('roll_number', 'registration_number', 'student_id')},
         ),
         migrations.RemoveField(
             model_name='student',
