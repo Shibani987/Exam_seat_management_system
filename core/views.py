@@ -14,6 +14,7 @@ import logging
 import pandas as pd
 import json
 from django.contrib.auth.hashers import make_password, check_password
+import traceback
 
 # Setup logging for security events
 logger = logging.getLogger('exam_system')
@@ -434,13 +435,24 @@ def block_admin_email(request):
 @admin_required
 def upload_student_data(request):
     if request.method == "POST":
-        form = StudentDataUploadForm(request.POST, request.FILES)
+        try:
+            form = StudentDataUploadForm(request.POST, request.FILES)
 
-        if form.is_valid():
-            uploaded_file = request.FILES.get("file")
-            if not uploaded_file:
-                messages.error(request, "No file uploaded")
+            if form.is_valid():
+                uploaded_file = request.FILES.get("file")
+                if not uploaded_file:
+                    messages.error(request, "No file uploaded")
+                    return redirect("dashboard")
+            else:
+                messages.error(request, "Invalid form submission")
                 return redirect("dashboard")
+
+        except Exception as e:
+            err = traceback.format_exc()
+            print(f"[ERROR] Unexpected error in upload_student_data POST: {e}\n{err}")
+            logger.error(f"Unexpected error in upload_student_data POST: {e}\n{err}")
+            messages.error(request, f"Unexpected server error: {str(e)}")
+            return redirect("dashboard")
 
             # Validate file size (max 10MB)
             max_size = 10 * 1024 * 1024  # 10MB
