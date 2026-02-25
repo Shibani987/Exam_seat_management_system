@@ -437,63 +437,84 @@ def block_admin_email(request):
 # =========================
 @admin_required
 def upload_student_data(request):
+    # Create log file for debugging
+    log_file = Path(__file__).parent.parent / "logs" / "upload_debug.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    
+    def log_msg(msg):
+        """Write to both console and file"""
+        print(msg)
+        try:
+            with open(log_file, 'a', encoding='utf-8') as f:
+                f.write(msg + "\n")
+        except Exception:
+            pass
+    
     if request.method == "POST":
+        log_msg(f"\n{'='*60}")
+        log_msg(f"[START] File upload request at {datetime.now()}")
+        log_msg(f"{'='*60}")
+        
         form = StudentDataUploadForm(request.POST, request.FILES)
         if not form.is_valid():
+            log_msg(f"[ERROR] Form validation failed: {form.errors}")
             messages.error(request, "Invalid form submission")
             return redirect("dashboard")
 
         uploaded_file = request.FILES.get("file")
         if not uploaded_file:
+            log_msg("[ERROR] No file in request.FILES")
             messages.error(request, "No file uploaded")
             return redirect("dashboard")
 
         # Validate file size (max 10MB)
         max_size = 10 * 1024 * 1024  # 10MB
         if uploaded_file.size > max_size:
+            log_msg(f"[ERROR] File too large: {uploaded_file.size} bytes (max {max_size})")
             messages.error(request, "File size too large. Maximum allowed is 10MB.")
             return redirect("dashboard")
 
         # Read file directly from memory (NOT disk)
         try:
-            print(f"[DEBUG] Reading file: {uploaded_file.name}")
+            log_msg(f"[DEBUG] Reading file: {uploaded_file.name}")
             if uploaded_file.name.endswith(".csv"):
-                print(f"[DEBUG] Parsing as CSV")
+                log_msg(f"[DEBUG] Parsing as CSV")
                 df = pd.read_csv(uploaded_file)
             else:
-                print(f"[DEBUG] Parsing as Excel (.xlsx/.xls)")
+                log_msg(f"[DEBUG] Parsing as Excel (.xlsx/.xls)")
                 df = pd.read_excel(uploaded_file)
-            print(f"[DEBUG] File read successfully, shape: {df.shape}")
+            log_msg(f"[DEBUG] File read successfully, shape: {df.shape}")
         except Exception as e:
             err = traceback.format_exc()
-            print(f"[ERROR] Error reading file: {e}\n{err}")
+            log_msg(f"[ERROR] Error reading file: {e}\n{err}")
             messages.error(request, f"Error reading file: {e}")
             return redirect("dashboard")
 
         # Normalize column names
         df.columns = [c.strip().lower() for c in df.columns]
-        print(f"[DEBUG] File columns: {list(df.columns)}")
-        print(f"[DEBUG] File shape: {df.shape}")
-        print(f"[DEBUG] Total rows to process: {len(df)}")
+        log_msg(f"[DEBUG] Normalized columns: {list(df.columns)}")
+        log_msg(f"[DEBUG] File shape: {df.shape}")
+        log_msg(f"[DEBUG] Total rows to process: {len(df)}")
         if df.empty:
-            print(f"[ERROR] File is empty after parsing")
+            log_msg(f"[ERROR] File is empty after parsing")
             messages.error(request, "File is empty. Please check your file.")
             return redirect("dashboard")
 
         # Check if required columns exist
         available_cols = set(df.columns)
-        print(f"[DEBUG] Checking for required columns. Available: {available_cols}")
+        log_msg(f"[DEBUG] Checking for required columns. Available: {available_cols}")
         has_roll = any(col in available_cols for col in ['rollno', 'roll_no', 'roll number', 'roll no'])
         has_reg = any(col in available_cols for col in ['reg no', 'registration number', 'reg_no'])
         has_std_id = any(col in available_cols for col in ['std id', 'student id', 'student_id'])
+        log_msg(f"[DEBUG] Column check: has_roll={has_roll}, has_reg={has_reg}, has_std_id={has_std_id}")
         if not (has_roll and has_reg and has_std_id):
-            print(f"[ERROR] Missing required columns. has_roll={has_roll}, has_reg={has_reg}, has_std_id={has_std_id}")
+            log_msg(f"[ERROR] Missing required columns!")
             messages.error(request, "File missing required columns: ROLL NO, REG NO, STD ID")
             return redirect("dashboard")
 
         # Save metadata + filename ONLY (after basic validation)
         student_file_obj = StudentDataFile.objects.create(file_name=uploaded_file.name)
-        print(f"[DEBUG] Created StudentDataFile record with ID: {student_file_obj.id}")
+        log_msg(f"[DEBUG] Created StudentDataFile record with ID: {student_file_obj.id}")
 
         col_map = {
             "course": ["course"],
@@ -527,7 +548,7 @@ def upload_student_data(request):
                     reg = get_value(row, col_map["registration_number"])
                     std_id = get_value(row, col_map["student_id"])
                 except Exception as e:
-                    print(f"[ERROR] Row {row_count} - get_value error: {e}")
+                    log_msg(f"[ERROR] Row {row_count} - get_value error: {e}")
                     skipped_empty += 1
                     continue
 
@@ -535,7 +556,7 @@ def upload_student_data(request):
                 if not roll or not reg or not std_id:
                     skipped_empty += 1
                     if skipped_empty <= 3:  # Print first 3 skipped rows
-                        print(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
+                        log_msg(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
                     continue
 
                 combo = (roll, reg, std_id)
@@ -543,7 +564,7 @@ def upload_student_data(request):
                 # Check if this combination already exists in DB or in current upload
                 if combo in seen:
                     skipped_existing += 1
-                    print(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
+                    log_msg(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
                     duplicates += 1
                     continue
 
@@ -553,7 +574,7 @@ def upload_student_data(request):
                     student_id=std_id
                 ).exists():
                     skipped_existing += 1
-                    print(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
+                    log_msg(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
                     duplicates += 1
                     continue
 
@@ -571,11 +592,11 @@ def upload_student_data(request):
                     academic_status=get_value(row, col_map["academic_status"])
                 ))
 
-            print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+            log_msg(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
 
         except Exception as e:
             err = traceback.format_exc()
-            print(f"[ERROR] Error processing rows: {e}\n{err}")
+            log_msg(f"[ERROR] Error processing rows: {e}\n{err}")
             logger.error(f"Error processing rows: {e}\n{err}")
             messages.error(request, f"Error processing data: {e}")
             return redirect("dashboard")
@@ -583,11 +604,11 @@ def upload_student_data(request):
         try:
             if len(students) > 0:
                 Student.objects.bulk_create(students)
-                print(f"[DEBUG] Successfully saved {len(students)} students to database")
+                log_msg(f"[DEBUG] Successfully saved {len(students)} students to database")
             else:
-                print(f"[DEBUG] No students to save. duplicates={duplicates}")
+                log_msg(f"[DEBUG] No students to save. duplicates={duplicates}")
         except Exception as e:
-            print(f"[ERROR] Error saving students: {str(e)}")
+            log_msg(f"[ERROR] Error saving students: {str(e)}")
             messages.error(request, f"Error saving students to database: {e}")
             return redirect("dashboard")
 
@@ -601,7 +622,8 @@ def upload_student_data(request):
         else:
             messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
 
-        print(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
+        log_msg(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
+        log_msg(f"{'='*60}\n")
 
         return redirect("dashboard")
 
