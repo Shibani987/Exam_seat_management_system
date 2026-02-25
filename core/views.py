@@ -440,106 +440,97 @@ def block_admin_email(request):
 def upload_student_data(request):
     """Upload and process student data from Excel/CSV files"""
     import os
-    
-    # Create log file - use absolute path
-    log_dir = os.path.join(settings.BASE_DIR, "logs")
-    os.makedirs(log_dir, exist_ok=True)
-    log_file = os.path.join(log_dir, "upload_debug.log")
+    import sys
     
     def log_msg(msg):
-        """Write to both console and file"""
+        """Log to both file and stderr (visible in Render)"""
+        print(msg, file=sys.stderr)
         print(msg)
         try:
+            log_dir = os.path.join(settings.BASE_DIR, "logs")
+            os.makedirs(log_dir, exist_ok=True)
+            log_file = os.path.join(log_dir, "upload_debug.log")
             with open(log_file, 'a', encoding='utf-8', errors='replace') as f:
                 f.write(msg + "\n")
                 f.flush()
         except Exception as log_err:
-            print(f"[LOG WRITE ERROR] Could not write to log: {log_err}")
+            print(f"[LOG ERROR] {log_err}", file=sys.stderr)
     
     try:
         if request.method == "POST":
-            log_msg(f"\n{'='*70}")
-            log_msg(f"[START] Upload request at {datetime.now()} from {_get_client_ip(request)}")
-            log_msg(f"{'='*70}")
+            log_msg(f"\n{'='*80}")
+            log_msg(f"[START] POST upload at {datetime.now()}")
+            log_msg(f"{'='*80}")
             
-            # Check form
+            # Validate form
             form = StudentDataUploadForm(request.POST, request.FILES)
             if not form.is_valid():
-                log_msg(f"[ERROR] Form invalid: {form.errors}")
-                messages.error(request, "Form validation failed")
+                log_msg(f"[ERROR] Form validation failed: {form.errors}")
+                messages.error(request, "Form is invalid")
                 return redirect("dashboard")
 
             # Get file
             uploaded_file = request.FILES.get("file")
             if not uploaded_file:
                 log_msg("[ERROR] No file in request.FILES")
-                messages.error(request, "No file uploaded")
+                messages.error(request, "No file provided")
                 return redirect("dashboard")
             
-            log_msg(f"[DEBUG] File received: {uploaded_file.name} ({uploaded_file.size} bytes)")
+            log_msg(f"[DEBUG] File: {uploaded_file.name} ({uploaded_file.size} bytes)")
 
             # Check size
-            max_size = 10 * 1024 * 1024
-            if uploaded_file.size > max_size:
-                log_msg(f"[ERROR] File too large: {uploaded_file.size} > {max_size}")
-                messages.error(request, f"File too large (max {max_size})")
+            if uploaded_file.size > 10*1024*1024:
+                log_msg(f"[ERROR] File too large")
+                messages.error(request, "File exceeds 10MB limit")
                 return redirect("dashboard")
 
-            # Read file
-            log_msg(f"[DEBUG] Reading file...")
+            # Parse file
             try:
                 if uploaded_file.name.lower().endswith(".csv"):
                     df = pd.read_csv(uploaded_file)
-                    log_msg(f"[DEBUG] Parsed as CSV")
                 else:
                     df = pd.read_excel(uploaded_file)
-                    log_msg(f"[DEBUG] Parsed as Excel")
-                log_msg(f"[DEBUG] Shape: {df.shape}")
-            except Exception as read_err:
-                log_msg(f"[ERROR] File read error: {read_err}\n{traceback.format_exc()}")
-                messages.error(request, f"Cannot read file: {read_err}")
+                log_msg(f"[DEBUG] Parsed successfully: {df.shape}")
+            except Exception as e:
+                log_msg(f"[ERROR] Parse failed: {e}")
+                messages.error(request, "Cannot parse file")
                 return redirect("dashboard")
 
             # Normalize columns
-            orig_cols = list(df.columns)
             df.columns = [str(c).strip().lower() for c in df.columns]
-            log_msg(f"[DEBUG] Original columns: {orig_cols}")
-            log_msg(f"[DEBUG] Normalized columns: {list(df.columns)}")
+            log_msg(f"[DEBUG] Columns after normalization: {list(df.columns)}")
             
             if df.empty:
                 log_msg("[ERROR] DataFrame is empty")
                 messages.error(request, "File is empty")
                 return redirect("dashboard")
 
-            # Check required columns
-            req_cols = {
+            # Validate required columns
+            cols = set(df.columns)
+            needed = {
                 'roll': ['rollno', 'roll_no', 'roll number', 'roll no'],
                 'reg': ['reg no', 'registration number', 'reg_no', 'regn_no'],
-                'std_id': ['std id', 'student id', 'student_id', 'stdid'],
+                'std': ['std id', 'student id', 'student_id', 'stdid'],
             }
             
-            found = {}
-            for req_name, variants in req_cols.items():
-                found[req_name] = any(v in df.columns for v in variants)
-            
-            log_msg(f"[DEBUG] Required column check: {found}")
+            found = {k: any(v in cols for v in variants) for k, variants in needed.items()}
+            log_msg(f"[DEBUG] Column validation: {found}")
             
             if not all(found.values()):
-                missing = [k for k, v in found.items() if not v]
-                log_msg(f"[ERROR] Missing columns: {missing}")
-                messages.error(request, f"Missing required columns: {', '.join(missing)}")
+                log_msg(f"[ERROR] Missing required columns: {[k for k,v in found.items() if not v]}")
+                messages.error(request, "Missing required columns (ROLL NO, REG NO, STD ID)")
                 return redirect("dashboard")
 
             # Create file record
             try:
                 student_file = StudentDataFile.objects.create(file_name=uploaded_file.name)
-                log_msg(f"[DEBUG] Created StudentDataFile ID={student_file.id}")
-            except Exception as create_err:
-                log_msg(f"[ERROR] Could not create StudentDataFile: {create_err}\n{traceback.format_exc()}")
-                messages.error(request, f"Database error: {create_err}")
+                log_msg(f"[DEBUG] Created StudentDataFile: ID={student_file.id}")
+            except Exception as e:
+                log_msg(f"[ERROR] Could not create StudentDataFile: {e}")
+                messages.error(request, "Database error")
                 return redirect("dashboard")
 
-            # Column mapping
+            # Column mappings
             col_map = {
                 "course": ["course"],
                 "semester": ["sem", "semester"],
@@ -551,94 +542,123 @@ def upload_student_data(request):
                 "academic_status": ["academic_status", "academic status", "status"],
             }
 
-            def get_value(row, keys, default=""):
-                """Extract value from row for any of the keys"""
-                for key in keys:
-                    try:
-                        if key in row.index and pd.notna(row[key]):
-                            val = str(row[key]).strip()
-                            if val:
-                                return val
-                    except Exception:
-                        pass
+            def safe_get(row, keys, default="", max_len=None):
+                """Extract and truncate value from row"""
+                try:
+                    for key in keys:
+                        if key in row.index:
+                            val = row[key]
+                            if pd.notna(val):
+                                val_str = str(val).strip()
+                                if val_str:
+                                    if max_len and len(val_str) > max_len:
+                                        log_msg(f"[WARN] Value too long (>{max_len}): {val_str[:50]}")
+                                        return val_str[:max_len]
+                                    return val_str
+                except Exception as e:
+                    log_msg(f"[WARN] safe_get error: {e}")
                 return default
 
+            # Field configs {name: (keys, max_length)}
+            field_config = {
+                "name": (col_map["name"], 100),
+                "roll_number": (col_map["roll_number"], 50),
+                "registration_number": (col_map["registration_number"], 50),
+                "student_id": (col_map["student_id"], 50),
+                "course": (col_map["course"], 50),
+                "semester": (col_map["semester"], 10),
+                "branch": (col_map["branch"], 50),
+                "academic_status": (col_map["academic_status"], 50),
+            }
+
             # Process rows
-            log_msg(f"[DEBUG] Processing {len(df)} rows...")
             students = []
             seen = set()
-            rows_processed = 0
+            saved = 0
             duplicates = 0
+            errors = 0
+
+            log_msg(f"[DEBUG] Processing {len(df)} rows...")
 
             for idx, (_, row) in enumerate(df.iterrows()):
-                rows_processed += 1
-                
                 try:
-                    roll = get_value(row, col_map["roll_number"])
-                    reg = get_value(row, col_map["registration_number"])
-                    std_id = get_value(row, col_map["student_id"])
-                except Exception as val_err:
-                    log_msg(f"[ERROR] Row {idx+1}: get_value failed: {val_err}")
-                    continue
+                    # Extract required fields
+                    roll = safe_get(row, field_config["roll_number"][0], max_len=field_config["roll_number"][1])
+                    reg = safe_get(row, field_config["registration_number"][0], max_len=field_config["registration_number"][1])
+                    std_id = safe_get(row, field_config["student_id"][0], max_len=field_config["student_id"][1])
 
-                # Check required fields
-                if not (roll and reg and std_id):
-                    if idx < 3:
-                        log_msg(f"[DEBUG] Row {idx+1}: Skipped (empty: roll={bool(roll)} reg={bool(reg)} std_id={bool(std_id)})")
-                    continue
+                    # Skip if any required field is empty
+                    if not (roll and reg and std_id):
+                        if idx < 2:
+                            log_msg(f"[DEBUG] Row {idx+1}: Skipped (empty required field)")
+                        continue
 
-                # Check duplicates
-                key = (roll, reg, std_id)
-                if key in seen or Student.objects.filter(
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id
-                ).exists():
-                    duplicates += 1
-                    continue
+                    # Check duplicates
+                    key = (roll, reg, std_id)
+                    if key in seen:
+                        duplicates += 1
+                        continue
+                    seen.add(key)
 
-                seen.add(key)
+                    # Check if already in DB
+                    if Student.objects.filter(
+                        roll_number=roll,
+                        registration_number=reg,
+                        student_id=std_id
+                    ).exists():
+                        duplicates += 1
+                        continue
 
-                try:
-                    students.append(Student(
+                    # Extract other fields with truncation
+                    student_obj = Student(
                         student_file=student_file,
-                        course=get_value(row, col_map["course"]),
-                        semester=get_value(row, col_map["semester"]),
-                        branch=get_value(row, col_map["branch"]),
-                        name=get_value(row, col_map["name"]),
+                        name=safe_get(row, field_config["name"][0], max_len=field_config["name"][1]),
                         roll_number=roll,
                         registration_number=reg,
                         student_id=std_id,
-                        academic_status=get_value(row, col_map["academic_status"])
-                    ))
-                except Exception as obj_err:
-                    log_msg(f"[ERROR] Row {idx+1}: Could not create Student: {obj_err}")
+                        course=safe_get(row, field_config["course"][0], max_len=field_config["course"][1]),
+                        semester=safe_get(row, field_config["semester"][0], max_len=field_config["semester"][1]),
+                        branch=safe_get(row, field_config["branch"][0], max_len=field_config["branch"][1]),
+                        academic_status=safe_get(row, field_config["academic_status"][0], max_len=field_config["academic_status"][1])
+                    )
+                    students.append(student_obj)
+
+                except Exception as row_err:
+                    log_msg(f"[ERROR] Row {idx+1}: {row_err}")
+                    errors += 1
                     continue
 
-            log_msg(f"[DEBUG] Row processing: {rows_processed} total, {len(students)} created, {duplicates} duplicates")
+            log_msg(f"[DEBUG] Processed: {len(students)} new, {duplicates} duplicates, {errors} errors")
 
-            # Save to DB
-            if len(students) > 0:
+            # Bulk insert
+            if students:
                 try:
+                    from django.db import IntegrityError
                     Student.objects.bulk_create(students)
-                    log_msg(f"[SUCCESS] Saved {len(students)} students to database")
-                    messages.success(request, f"✓ {len(students)} students uploaded successfully!")
-                except Exception as save_err:
-                    log_msg(f"[ERROR] bulk_create failed: {save_err}\n{traceback.format_exc()}")
-                    messages.error(request, f"Database save error: {save_err}")
+                    saved = len(students)
+                    log_msg(f"[SUCCESS] Saved {saved} students to database")
+                    messages.success(request, f"✅ Uploaded {saved} students!")
+                except IntegrityError as ie:
+                    log_msg(f"[ERROR] IntegrityError: {ie}")
+                    messages.error(request, "Database constraint violation (duplicate data?)")
+                    return redirect("dashboard")
+                except Exception as e:
+                    log_msg(f"[ERROR] bulk_create: {e}")
+                    messages.error(request, f"Save failed: {str(e)[:100]}")
                     return redirect("dashboard")
             else:
                 if duplicates > 0:
-                    messages.warning(request, f"No new students (all {rows_processed} rows were duplicates)")
+                    log_msg(f"[WARN] No new students ({duplicates} duplicates)")
+                    messages.warning(request, f"No new students (all duplicates)")
                 else:
-                    messages.warning(request, "No valid students found in file")
-                log_msg(f"[WARNING] No students saved (duplicates={duplicates}, rows={rows_processed})")
+                    log_msg(f"[WARN] No valid students found")
+                    messages.warning(request, "No students found in file")
 
-            log_msg(f"[END] Upload complete - {len(students)} saved\n")
+            log_msg(f"[END] Complete - {saved} saved\n")
             return redirect("dashboard")
 
         else:
-            # GET request - show dashboard
+            # GET - show dashboard
             uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
             years = range(2020, 2036)
             eligible_emails = EligibleAdminEmail.objects.all().order_by('-added_at')
@@ -655,9 +675,9 @@ def upload_student_data(request):
             })
 
     except Exception as e:
-        log_msg(f"\n[CRITICAL] Unhandled exception: {e}\n{traceback.format_exc()}\n")
-        logger.error(f"Upload critical error: {e}")
-        messages.error(request, f"Unexpected error: {str(e)[:100]}")
+        log_msg(f"\n[CRITICAL] Unhandled error: {e}\n{traceback.format_exc()}\n")
+        logger.error(f"Critical upload error: {e}")
+        messages.error(request, "Server error occurred")
         return redirect("dashboard")
 
 
