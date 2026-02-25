@@ -465,6 +465,11 @@ def upload_student_data(request):
 
             # Normalize column names
             df.columns = [c.strip().lower() for c in df.columns]
+            
+            # Log the actual column names for debugging
+            logger.info(f"File columns after normalization: {list(df.columns)}")
+            logger.info(f"File shape: {df.shape}")
+            logger.info(f"First row: {df.iloc[0].to_dict() if len(df) > 0 else 'Empty'}")
 
             col_map = {
                 "course": ["course"],
@@ -487,7 +492,11 @@ def upload_student_data(request):
             students = []
             duplicates = 0
             seen = set()  # Track combinations in this upload
+            row_count = 0
             for _, row in df.iterrows():
+                row_count += 1
+                if row_count == 1:  # Log first row for debugging
+                    logger.info(f"First row data: {row.to_dict()}")
                 roll = get_value(row, col_map["roll_number"])
                 reg = get_value(row, col_map["registration_number"])
                 std_id = get_value(row, col_map["student_id"])
@@ -524,7 +533,9 @@ def upload_student_data(request):
 
             try:
                 Student.objects.bulk_create(students)
+                logger.info(f"Successfully saved {len(students)} students from file {student_file_obj.file_name}")
             except Exception as e:
+                logger.error(f"Error saving students: {str(e)}", exc_info=True)
                 messages.error(request, f"Error saving students: {e}")
                 return redirect("dashboard")
 
@@ -532,6 +543,8 @@ def upload_student_data(request):
                 messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates skipped)")
             else:
                 messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
+            
+            logger.info(f"Upload summary: {len(students)} students added, {duplicates} duplicates skipped")
             return redirect("dashboard")
 
     uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
@@ -567,7 +580,8 @@ def get_file_students(request):
             'status': 'success',
             'file': {
                 'id': file_obj.id,
-                'file_name': file_obj.file_name
+                'file_name': file_obj.file_name,
+                'uploaded_at': file_obj.uploaded_at.strftime('%Y-%m-%d %H:%M') if file_obj.uploaded_at else 'Unknown'
             },
             'students': students,
             'total_students': len(students)
