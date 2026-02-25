@@ -602,12 +602,6 @@ def upload_student_data(request):
             messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
 
         print(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
-        except Exception as e:
-            err = traceback.format_exc()
-            print(f"[ERROR] Unexpected error during upload: {e}\n{err}")
-            logger.error(f"Unexpected upload error: {e}\n{err}")
-            messages.error(request, f"Unexpected error: {e}")
-            return redirect("dashboard")
 
         return redirect("dashboard")
 
