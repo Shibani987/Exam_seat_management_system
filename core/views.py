@@ -436,212 +436,229 @@ def block_admin_email(request):
 # Upload Student Data (DB only, NO file storage)
 # =========================
 @admin_required
+@admin_required
 def upload_student_data(request):
-    # Create log file for debugging
-    log_file = Path(__file__).parent.parent / "logs" / "upload_debug.log"
-    log_file.parent.mkdir(parents=True, exist_ok=True)
+    """Upload and process student data from Excel/CSV files"""
+    import os
+    
+    # Create log file - use absolute path
+    log_dir = os.path.join(settings.BASE_DIR, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, "upload_debug.log")
     
     def log_msg(msg):
         """Write to both console and file"""
         print(msg)
         try:
-            with open(log_file, 'a', encoding='utf-8') as f:
+            with open(log_file, 'a', encoding='utf-8', errors='replace') as f:
                 f.write(msg + "\n")
-        except Exception:
-            pass
+                f.flush()
+        except Exception as log_err:
+            print(f"[LOG WRITE ERROR] Could not write to log: {log_err}")
     
-    if request.method == "POST":
-        log_msg(f"\n{'='*60}")
-        log_msg(f"[START] File upload request at {datetime.now()}")
-        log_msg(f"{'='*60}")
-        
-        form = StudentDataUploadForm(request.POST, request.FILES)
-        if not form.is_valid():
-            log_msg(f"[ERROR] Form validation failed: {form.errors}")
-            messages.error(request, "Invalid form submission")
-            return redirect("dashboard")
+    try:
+        if request.method == "POST":
+            log_msg(f"\n{'='*70}")
+            log_msg(f"[START] Upload request at {datetime.now()} from {_get_client_ip(request)}")
+            log_msg(f"{'='*70}")
+            
+            # Check form
+            form = StudentDataUploadForm(request.POST, request.FILES)
+            if not form.is_valid():
+                log_msg(f"[ERROR] Form invalid: {form.errors}")
+                messages.error(request, "Form validation failed")
+                return redirect("dashboard")
 
-        uploaded_file = request.FILES.get("file")
-        if not uploaded_file:
-            log_msg("[ERROR] No file in request.FILES")
-            messages.error(request, "No file uploaded")
-            return redirect("dashboard")
+            # Get file
+            uploaded_file = request.FILES.get("file")
+            if not uploaded_file:
+                log_msg("[ERROR] No file in request.FILES")
+                messages.error(request, "No file uploaded")
+                return redirect("dashboard")
+            
+            log_msg(f"[DEBUG] File received: {uploaded_file.name} ({uploaded_file.size} bytes)")
 
-        # Validate file size (max 10MB)
-        max_size = 10 * 1024 * 1024  # 10MB
-        if uploaded_file.size > max_size:
-            log_msg(f"[ERROR] File too large: {uploaded_file.size} bytes (max {max_size})")
-            messages.error(request, "File size too large. Maximum allowed is 10MB.")
-            return redirect("dashboard")
+            # Check size
+            max_size = 10 * 1024 * 1024
+            if uploaded_file.size > max_size:
+                log_msg(f"[ERROR] File too large: {uploaded_file.size} > {max_size}")
+                messages.error(request, f"File too large (max {max_size})")
+                return redirect("dashboard")
 
-        # Read file directly from memory (NOT disk)
-        try:
-            log_msg(f"[DEBUG] Reading file: {uploaded_file.name}")
-            if uploaded_file.name.endswith(".csv"):
-                log_msg(f"[DEBUG] Parsing as CSV")
-                df = pd.read_csv(uploaded_file)
-            else:
-                log_msg(f"[DEBUG] Parsing as Excel (.xlsx/.xls)")
-                df = pd.read_excel(uploaded_file)
-            log_msg(f"[DEBUG] File read successfully, shape: {df.shape}")
-        except Exception as e:
-            err = traceback.format_exc()
-            log_msg(f"[ERROR] Error reading file: {e}\n{err}")
-            messages.error(request, f"Error reading file: {e}")
-            return redirect("dashboard")
+            # Read file
+            log_msg(f"[DEBUG] Reading file...")
+            try:
+                if uploaded_file.name.lower().endswith(".csv"):
+                    df = pd.read_csv(uploaded_file)
+                    log_msg(f"[DEBUG] Parsed as CSV")
+                else:
+                    df = pd.read_excel(uploaded_file)
+                    log_msg(f"[DEBUG] Parsed as Excel")
+                log_msg(f"[DEBUG] Shape: {df.shape}")
+            except Exception as read_err:
+                log_msg(f"[ERROR] File read error: {read_err}\n{traceback.format_exc()}")
+                messages.error(request, f"Cannot read file: {read_err}")
+                return redirect("dashboard")
 
-        # Normalize column names
-        df.columns = [c.strip().lower() for c in df.columns]
-        log_msg(f"[DEBUG] Normalized columns: {list(df.columns)}")
-        log_msg(f"[DEBUG] File shape: {df.shape}")
-        log_msg(f"[DEBUG] Total rows to process: {len(df)}")
-        if df.empty:
-            log_msg(f"[ERROR] File is empty after parsing")
-            messages.error(request, "File is empty. Please check your file.")
-            return redirect("dashboard")
+            # Normalize columns
+            orig_cols = list(df.columns)
+            df.columns = [str(c).strip().lower() for c in df.columns]
+            log_msg(f"[DEBUG] Original columns: {orig_cols}")
+            log_msg(f"[DEBUG] Normalized columns: {list(df.columns)}")
+            
+            if df.empty:
+                log_msg("[ERROR] DataFrame is empty")
+                messages.error(request, "File is empty")
+                return redirect("dashboard")
 
-        # Check if required columns exist
-        available_cols = set(df.columns)
-        log_msg(f"[DEBUG] Checking for required columns. Available: {available_cols}")
-        has_roll = any(col in available_cols for col in ['rollno', 'roll_no', 'roll number', 'roll no'])
-        has_reg = any(col in available_cols for col in ['reg no', 'registration number', 'reg_no'])
-        has_std_id = any(col in available_cols for col in ['std id', 'student id', 'student_id'])
-        log_msg(f"[DEBUG] Column check: has_roll={has_roll}, has_reg={has_reg}, has_std_id={has_std_id}")
-        if not (has_roll and has_reg and has_std_id):
-            log_msg(f"[ERROR] Missing required columns!")
-            messages.error(request, "File missing required columns: ROLL NO, REG NO, STD ID")
-            return redirect("dashboard")
+            # Check required columns
+            req_cols = {
+                'roll': ['rollno', 'roll_no', 'roll number', 'roll no'],
+                'reg': ['reg no', 'registration number', 'reg_no', 'regn_no'],
+                'std_id': ['std id', 'student id', 'student_id', 'stdid'],
+            }
+            
+            found = {}
+            for req_name, variants in req_cols.items():
+                found[req_name] = any(v in df.columns for v in variants)
+            
+            log_msg(f"[DEBUG] Required column check: {found}")
+            
+            if not all(found.values()):
+                missing = [k for k, v in found.items() if not v]
+                log_msg(f"[ERROR] Missing columns: {missing}")
+                messages.error(request, f"Missing required columns: {', '.join(missing)}")
+                return redirect("dashboard")
 
-        # Save metadata + filename ONLY (after basic validation)
-        student_file_obj = StudentDataFile.objects.create(file_name=uploaded_file.name)
-        log_msg(f"[DEBUG] Created StudentDataFile record with ID: {student_file_obj.id}")
+            # Create file record
+            try:
+                student_file = StudentDataFile.objects.create(file_name=uploaded_file.name)
+                log_msg(f"[DEBUG] Created StudentDataFile ID={student_file.id}")
+            except Exception as create_err:
+                log_msg(f"[ERROR] Could not create StudentDataFile: {create_err}\n{traceback.format_exc()}")
+                messages.error(request, f"Database error: {create_err}")
+                return redirect("dashboard")
 
-        col_map = {
-            "course": ["course"],
-            "semester": ["sem", "semester"],
-            "branch": ["branch"],
-            "name": ["student name", "name"],
-            "roll_number": ["rollno", "roll_no", "roll number", "roll no"],
-            "registration_number": ["reg no", "registration number", "reg_no"],
-            "student_id": ["std id", "student id", "student_id"],
-            "academic_status": ["academic_status", "academic status", "status"],
-        }
-        def get_value(row, keys, default=""):
-            for key in keys:
-                if key in row and pd.notna(row[key]):
-                    return str(row[key]).strip()
-            return default
+            # Column mapping
+            col_map = {
+                "course": ["course"],
+                "semester": ["sem", "semester"],
+                "branch": ["branch"],
+                "name": ["student name", "name"],
+                "roll_number": ['rollno', 'roll_no', 'roll number', 'roll no'],
+                "registration_number": ['reg no', 'registration number', 'reg_no', 'regn_no'],
+                "student_id": ['std id', 'student id', 'student_id', 'stdid'],
+                "academic_status": ["academic_status", "academic status", "status"],
+            }
 
-        # Save students with duplicate detection
-        students = []
-        duplicates = 0
-        seen = set()  # Track combinations in this upload
-        row_count = 0
-        skipped_empty = 0
-        skipped_existing = 0
+            def get_value(row, keys, default=""):
+                """Extract value from row for any of the keys"""
+                for key in keys:
+                    try:
+                        if key in row.index and pd.notna(row[key]):
+                            val = str(row[key]).strip()
+                            if val:
+                                return val
+                    except Exception:
+                        pass
+                return default
 
-        try:
-            for _, row in df.iterrows():
-                row_count += 1
+            # Process rows
+            log_msg(f"[DEBUG] Processing {len(df)} rows...")
+            students = []
+            seen = set()
+            rows_processed = 0
+            duplicates = 0
+
+            for idx, (_, row) in enumerate(df.iterrows()):
+                rows_processed += 1
+                
                 try:
                     roll = get_value(row, col_map["roll_number"])
                     reg = get_value(row, col_map["registration_number"])
                     std_id = get_value(row, col_map["student_id"])
-                except Exception as e:
-                    log_msg(f"[ERROR] Row {row_count} - get_value error: {e}")
-                    skipped_empty += 1
+                except Exception as val_err:
+                    log_msg(f"[ERROR] Row {idx+1}: get_value failed: {val_err}")
                     continue
 
-                # Skip if required fields are empty
-                if not roll or not reg or not std_id:
-                    skipped_empty += 1
-                    if skipped_empty <= 3:  # Print first 3 skipped rows
-                        log_msg(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
+                # Check required fields
+                if not (roll and reg and std_id):
+                    if idx < 3:
+                        log_msg(f"[DEBUG] Row {idx+1}: Skipped (empty: roll={bool(roll)} reg={bool(reg)} std_id={bool(std_id)})")
                     continue
 
-                combo = (roll, reg, std_id)
-
-                # Check if this combination already exists in DB or in current upload
-                if combo in seen:
-                    skipped_existing += 1
-                    log_msg(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
-                    duplicates += 1
-                    continue
-
-                if Student.objects.filter(
+                # Check duplicates
+                key = (roll, reg, std_id)
+                if key in seen or Student.objects.filter(
                     roll_number=roll,
                     registration_number=reg,
                     student_id=std_id
                 ).exists():
-                    skipped_existing += 1
-                    log_msg(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
                     duplicates += 1
                     continue
 
-                seen.add(combo)
+                seen.add(key)
 
-                students.append(Student(
-                    student_file=student_file_obj,
-                    course=get_value(row, col_map["course"]),
-                    semester=get_value(row, col_map["semester"]),
-                    branch=get_value(row, col_map["branch"]),
-                    name=get_value(row, col_map["name"]),
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id,
-                    academic_status=get_value(row, col_map["academic_status"])
-                ))
+                try:
+                    students.append(Student(
+                        student_file=student_file,
+                        course=get_value(row, col_map["course"]),
+                        semester=get_value(row, col_map["semester"]),
+                        branch=get_value(row, col_map["branch"]),
+                        name=get_value(row, col_map["name"]),
+                        roll_number=roll,
+                        registration_number=reg,
+                        student_id=std_id,
+                        academic_status=get_value(row, col_map["academic_status"])
+                    ))
+                except Exception as obj_err:
+                    log_msg(f"[ERROR] Row {idx+1}: Could not create Student: {obj_err}")
+                    continue
 
-            log_msg(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+            log_msg(f"[DEBUG] Row processing: {rows_processed} total, {len(students)} created, {duplicates} duplicates")
 
-        except Exception as e:
-            err = traceback.format_exc()
-            log_msg(f"[ERROR] Error processing rows: {e}\n{err}")
-            logger.error(f"Error processing rows: {e}\n{err}")
-            messages.error(request, f"Error processing data: {e}")
-            return redirect("dashboard")
-
-        try:
+            # Save to DB
             if len(students) > 0:
-                Student.objects.bulk_create(students)
-                log_msg(f"[DEBUG] Successfully saved {len(students)} students to database")
+                try:
+                    Student.objects.bulk_create(students)
+                    log_msg(f"[SUCCESS] Saved {len(students)} students to database")
+                    messages.success(request, f"✓ {len(students)} students uploaded successfully!")
+                except Exception as save_err:
+                    log_msg(f"[ERROR] bulk_create failed: {save_err}\n{traceback.format_exc()}")
+                    messages.error(request, f"Database save error: {save_err}")
+                    return redirect("dashboard")
             else:
-                log_msg(f"[DEBUG] No students to save. duplicates={duplicates}")
-        except Exception as e:
-            log_msg(f"[ERROR] Error saving students: {str(e)}")
-            messages.error(request, f"Error saving students to database: {e}")
+                if duplicates > 0:
+                    messages.warning(request, f"No new students (all {rows_processed} rows were duplicates)")
+                else:
+                    messages.warning(request, "No valid students found in file")
+                log_msg(f"[WARNING] No students saved (duplicates={duplicates}, rows={rows_processed})")
+
+            log_msg(f"[END] Upload complete - {len(students)} saved\n")
             return redirect("dashboard")
 
-        # Show appropriate message
-        if len(students) == 0 and duplicates > 0:
-            messages.warning(request, f"No new students added. All {row_count} rows were duplicates or invalid.")
-        elif len(students) == 0:
-            messages.warning(request, f"No students found in file. Please check your file format and data.")
-        elif duplicates > 0:
-            messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates/invalid skipped)")
         else:
-            messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
+            # GET request - show dashboard
+            uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
+            years = range(2020, 2036)
+            eligible_emails = EligibleAdminEmail.objects.all().order_by('-added_at')
+            from django.urls import reverse
+            qr_url = request.build_absolute_uri(reverse('generate_qr')) + '?type=student_portal'
+            student_portal_url = request.build_absolute_uri(reverse('student_portal'))
 
-        log_msg(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
-        log_msg(f"{'='*60}\n")
+            return render(request, "core/dashboard.html", {
+                'uploaded_files': uploaded_files,
+                'years': years,
+                'eligible_emails': eligible_emails,
+                'qr_url': qr_url,
+                'student_portal_url': student_portal_url,
+            })
 
+    except Exception as e:
+        log_msg(f"\n[CRITICAL] Unhandled exception: {e}\n{traceback.format_exc()}\n")
+        logger.error(f"Upload critical error: {e}")
+        messages.error(request, f"Unexpected error: {str(e)[:100]}")
         return redirect("dashboard")
-
-    # Handle GET request - show dashboard with uploaded files
-    uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
-    years = range(2020, 2036)
-    eligible_emails = EligibleAdminEmail.objects.all().order_by('-added_at')
-    from django.urls import reverse
-    qr_url = request.build_absolute_uri(reverse('generate_qr')) + '?type=student_portal'
-    student_portal_url = request.build_absolute_uri(reverse('student_portal'))
-
-    return render(request, "core/dashboard.html", {
-        'uploaded_files': uploaded_files,
-        'years': years,
-        'eligible_emails': eligible_emails,
-        'qr_url': qr_url,
-        'student_portal_url': student_portal_url,
-    })
 
 
 # =========================
