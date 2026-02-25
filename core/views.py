@@ -435,93 +435,73 @@ def block_admin_email(request):
 @admin_required
 def upload_student_data(request):
     if request.method == "POST":
-        try:
-            form = StudentDataUploadForm(request.POST, request.FILES)
-
-            if form.is_valid():
-                uploaded_file = request.FILES.get("file")
-                if not uploaded_file:
-                    messages.error(request, "No file uploaded")
-                    return redirect("dashboard")
-            else:
-                messages.error(request, "Invalid form submission")
-                return redirect("dashboard")
-
-        except Exception as e:
-            err = traceback.format_exc()
-            print(f"[ERROR] Unexpected error in upload_student_data POST: {e}\n{err}")
-            logger.error(f"Unexpected error in upload_student_data POST: {e}\n{err}")
-            messages.error(request, f"Unexpected server error: {str(e)}")
+        form = StudentDataUploadForm(request.POST, request.FILES)
+        if not form.is_valid():
+            messages.error(request, "Invalid form submission")
             return redirect("dashboard")
 
-            # Validate file size (max 10MB)
-            max_size = 10 * 1024 * 1024  # 10MB
-            if uploaded_file.size > max_size:
-                messages.error(request, "File size too large. Maximum allowed is 10MB.")
-                return redirect("dashboard")
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            messages.error(request, "No file uploaded")
+            return redirect("dashboard")
 
-            # Save metadata + filename ONLY
-            student_file_obj = StudentDataFile.objects.create(
-                file_name=uploaded_file.name
-            )
-            print(f"[DEBUG] Created StudentDataFile record with ID: {student_file_obj.id}")
+        # Validate file size (max 10MB)
+        max_size = 10 * 1024 * 1024  # 10MB
+        if uploaded_file.size > max_size:
+            messages.error(request, "File size too large. Maximum allowed is 10MB.")
+            return redirect("dashboard")
 
-            # Read file directly from memory (NOT disk)
-            try:
-                print(f"[DEBUG] Reading file: {uploaded_file.name}")
-                if uploaded_file.name.endswith(".csv"):
-                    print(f"[DEBUG] Parsing as CSV")
-                    df = pd.read_csv(uploaded_file)
-                else:
-                    print(f"[DEBUG] Parsing as Excel (.xlsx/.xls)")
-                    df = pd.read_excel(uploaded_file)
-                print(f"[DEBUG] File read successfully, shape: {df.shape}")
-            except Exception as e:
-                print(f"[ERROR] Error reading file: {str(e)}")
-                student_file_obj.delete()  # Clean up failed record
-                messages.error(request, f"Error reading file: {e}")
-                return redirect("dashboard")
+        # Read file directly from memory (NOT disk)
+        try:
+            print(f"[DEBUG] Reading file: {uploaded_file.name}")
+            if uploaded_file.name.endswith(".csv"):
+                print(f"[DEBUG] Parsing as CSV")
+                df = pd.read_csv(uploaded_file)
+            else:
+                print(f"[DEBUG] Parsing as Excel (.xlsx/.xls)")
+                df = pd.read_excel(uploaded_file)
+            print(f"[DEBUG] File read successfully, shape: {df.shape}")
+        except Exception as e:
+            err = traceback.format_exc()
+            print(f"[ERROR] Error reading file: {e}\n{err}")
+            messages.error(request, f"Error reading file: {e}")
+            return redirect("dashboard")
 
-            # Normalize column names
-            df.columns = [c.strip().lower() for c in df.columns]
-            
-            print(f"[DEBUG] File columns: {list(df.columns)}")
-            print(f"[DEBUG] File shape: {df.shape}")
-            print(f"[DEBUG] Total rows to process: {len(df)}")
-            if len(df) > 0:
-                print(f"[DEBUG] First row: {df.iloc[0].to_dict()}")
-            
-            if df.empty or len(df) == 0:
-                print(f"[ERROR] File is empty after parsing")
-                student_file_obj.delete()
-                messages.error(request, "File is empty. Please check your file.")
-                return redirect("dashboard")
-            
-            # Check if required columns exist
-            required_cols = ['roll_number', 'registration_number', 'student_id']
-            available_cols = set(df.columns)
-            print(f"[DEBUG] Checking for required columns. Available: {available_cols}")
-            
-            has_roll = any(col in available_cols for col in ['rollno', 'roll_no', 'roll number', 'roll no'])
-            has_reg = any(col in available_cols for col in ['reg no', 'registration number', 'reg_no'])
-            has_std_id = any(col in available_cols for col in ['std id', 'student id', 'student_id'])
-            
-            if not (has_roll and has_reg and has_std_id):
-                print(f"[ERROR] Missing required columns. has_roll={has_roll}, has_reg={has_reg}, has_std_id={has_std_id}")
-                student_file_obj.delete()
-                messages.error(request, "File missing required columns: ROLL NO, REG NO, STD ID")
-                return redirect("dashboard")
+        # Normalize column names
+        df.columns = [c.strip().lower() for c in df.columns]
+        print(f"[DEBUG] File columns: {list(df.columns)}")
+        print(f"[DEBUG] File shape: {df.shape}")
+        print(f"[DEBUG] Total rows to process: {len(df)}")
+        if df.empty:
+            print(f"[ERROR] File is empty after parsing")
+            messages.error(request, "File is empty. Please check your file.")
+            return redirect("dashboard")
 
-            col_map = {
-                "course": ["course"],
-                "semester": ["sem", "semester"],
-                "branch": ["branch"],
-                "name": ["student name", "name"],
-                "roll_number": ["rollno", "roll_no", "roll number", "roll no"],
-                "registration_number": ["reg no", "registration number", "reg_no"],
-                "student_id": ["std id", "student id", "student_id"],
-                "academic_status": ["academic_status", "academic status", "status"],
-            }
+        # Check if required columns exist
+        available_cols = set(df.columns)
+        print(f"[DEBUG] Checking for required columns. Available: {available_cols}")
+        has_roll = any(col in available_cols for col in ['rollno', 'roll_no', 'roll number', 'roll no'])
+        has_reg = any(col in available_cols for col in ['reg no', 'registration number', 'reg_no'])
+        has_std_id = any(col in available_cols for col in ['std id', 'student id', 'student_id'])
+        if not (has_roll and has_reg and has_std_id):
+            print(f"[ERROR] Missing required columns. has_roll={has_roll}, has_reg={has_reg}, has_std_id={has_std_id}")
+            messages.error(request, "File missing required columns: ROLL NO, REG NO, STD ID")
+            return redirect("dashboard")
+
+        # Save metadata + filename ONLY (after basic validation)
+        student_file_obj = StudentDataFile.objects.create(file_name=uploaded_file.name)
+        print(f"[DEBUG] Created StudentDataFile record with ID: {student_file_obj.id}")
+
+        col_map = {
+            "course": ["course"],
+            "semester": ["sem", "semester"],
+            "branch": ["branch"],
+            "name": ["student name", "name"],
+            "roll_number": ["rollno", "roll_no", "roll number", "roll no"],
+            "registration_number": ["reg no", "registration number", "reg_no"],
+            "student_id": ["std id", "student id", "student_id"],
+            "academic_status": ["academic_status", "academic status", "status"],
+        }
 
             def get_value(row, keys, default=""):
                 for key in keys:
