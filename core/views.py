@@ -436,6 +436,7 @@ def block_admin_email(request):
 # Upload Student Data (DB only, NO file storage)
 # =========================
 @admin_required
+@csrf_exempt
 @admin_required
 def upload_student_data(request):
     """Upload and process student data from Excel/CSV files"""
