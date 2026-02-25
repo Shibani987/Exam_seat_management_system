@@ -98,44 +98,32 @@ WSGI_APPLICATION = "offline_exam_system.wsgi.application"
 # Database
 # =========================================
 
-# Check if we're in production (hosted environment)
-IS_PRODUCTION = os.getenv("RENDER", False) or os.getenv("PRODUCTION", False)
+# DATABASE_URL must be provided via .env (same behavior as before).
+DATABASE_URL = os.getenv("DATABASE_URL")
+if not DATABASE_URL:
+    raise ValueError(f"DATABASE_URL not set. Check your .env file at {dotenv_path}")
 
-if IS_PRODUCTION:
-    # Production: Use Supabase via DATABASE_URL
-    DATABASE_URL = os.getenv("DATABASE_URL")
-    if not DATABASE_URL:
-        raise ValueError(f"DATABASE_URL not set. Check your .env file at {dotenv_path}")
+# Parse the DATABASE_URL and ensure sensible production defaults.
+# - set a reasonable connection pooling `conn_max_age`
+# - require SSL for hosts like Supabase if not already specified
+# - add connection timeout and keepalive options for Render/Supabase IPv6/IPv4 resilience
+db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
 
-    # Parse the DATABASE_URL and ensure sensible production defaults.
-    # - set a reasonable connection pooling `conn_max_age`
-    # - require SSL for hosts like Supabase if not already specified
-    # - add connection timeout and keepalive options for Render/Supabase IPv6/IPv4 resilience
-    db_config = dj_database_url.parse(DATABASE_URL, conn_max_age=600)
+# Configure connection options for Postgres reliability
+options = db_config.setdefault("OPTIONS", {})
 
-    # Configure connection options for Postgres reliability
-    options = db_config.setdefault("OPTIONS", {})
+# SSL: require for managed services like Supabase
+if "sslmode" not in DATABASE_URL.lower():
+    options.setdefault("sslmode", "require")
 
-    # SSL: require for managed services like Supabase
-    if "sslmode" not in DATABASE_URL.lower():
-        options.setdefault("sslmode", "require")
+# Connection reliability options for Render/Supabase IPv6 issues
+options.setdefault("connect_timeout", 15)  # Wait up to 15 seconds for connection
+options.setdefault("keepalives", 1)         # Enable TCP keepalives
+options.setdefault("keepalives_idle", 30)   # Send keepalive every 30 seconds of idle
+options.setdefault("keepalives_interval", 10)  # Wait 10 seconds between keepalives
+options.setdefault("keepalives_count", 5)   # Try 5 times before giving up
 
-    # Connection reliability options for Render/Supabase IPv6 issues
-    options.setdefault("connect_timeout", 15)  # Wait up to 15 seconds for connection
-    options.setdefault("keepalives", 1)         # Enable TCP keepalives
-    options.setdefault("keepalives_idle", 30)   # Send keepalive every 30 seconds of idle
-    options.setdefault("keepalives_interval", 10)  # Wait 10 seconds between keepalives
-    options.setdefault("keepalives_count", 5)   # Try 5 times before giving up
-
-    DATABASES = {"default": db_config}
-else:
-    # Local development: Use SQLite
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.sqlite3",
-            "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
+DATABASES = {"default": db_config}
 
 # =========================================
 # Password validation
@@ -174,7 +162,7 @@ STATIC_URL = "/static/"
 # Location for collected static files in production
 STATIC_URL = "/static/"
 STATIC_ROOT = BASE_DIR / "staticfiles"
-STATICFILES_DIRS = [BASE_DIR / "core" / "static"]
+STATICFILES_DIRS = [BASE_DIR / "static"]
 STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
 
