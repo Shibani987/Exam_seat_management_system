@@ -471,7 +471,7 @@ def upload_student_data(request):
                 "semester": ["sem", "semester"],
                 "branch": ["branch"],
                 "name": ["student name", "name"],
-                "roll_number": ["rollno", "roll_no", "roll number"],
+                "roll_number": ["rollno", "roll_no", "roll number", "roll no"],
                 "registration_number": ["reg no", "registration number", "reg_no"],
                 "student_id": ["std id", "student id", "student_id"],
                 "academic_status": ["academic_status", "academic status", "status"],
