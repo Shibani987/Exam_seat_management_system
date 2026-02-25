@@ -486,19 +486,29 @@ def upload_student_data(request):
             # Save students with duplicate detection
             students = []
             duplicates = 0
+            seen = set()  # Track combinations in this upload
             for _, row in df.iterrows():
                 roll = get_value(row, col_map["roll_number"])
                 reg = get_value(row, col_map["registration_number"])
                 std_id = get_value(row, col_map["student_id"])
 
-                # Check if this combination already exists
-                if Student.objects.filter(
+                # Skip if required fields are empty
+                if not roll or not reg or not std_id:
+                    duplicates += 1
+                    continue
+
+                combo = (roll, reg, std_id)
+
+                # Check if this combination already exists in DB or in current upload
+                if combo in seen or Student.objects.filter(
                     roll_number=roll,
                     registration_number=reg,
                     student_id=std_id
                 ).exists():
                     duplicates += 1
                     continue
+
+                seen.add(combo)
 
                 students.append(Student(
                     student_file=student_file_obj,
@@ -512,7 +522,11 @@ def upload_student_data(request):
                     academic_status=get_value(row, col_map["academic_status"])
                 ))
 
-            Student.objects.bulk_create(students)
+            try:
+                Student.objects.bulk_create(students)
+            except Exception as e:
+                messages.error(request, f"Error saving students: {e}")
+                return redirect("dashboard")
 
             if duplicates > 0:
                 messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates skipped)")
