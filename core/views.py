@@ -10,11 +10,14 @@ from django.conf import settings
 import secrets
 import string
 import logging
+from django.http import HttpResponse, HttpResponseRedirect, JsonResponse
+from django.shortcuts import render, redirect
 
 import pandas as pd
 import json
 from django.contrib.auth.hashers import make_password, check_password
 import traceback
+from pathlib import Path
 
 # Setup logging for security events
 logger = logging.getLogger('exam_system')
@@ -502,99 +505,93 @@ def upload_student_data(request):
             "student_id": ["std id", "student id", "student_id"],
             "academic_status": ["academic_status", "academic status", "status"],
         }
+        def get_value(row, keys, default=""):
+            for key in keys:
+                if key in row and pd.notna(row[key]):
+                    return str(row[key]).strip()
+            return default
 
-            def get_value(row, keys, default=""):
-                for key in keys:
-                    if key in row and pd.notna(row[key]):
-                        return str(row[key]).strip()
-                return default
+        # Save students with duplicate detection
+        students = []
+        duplicates = 0
+        seen = set()  # Track combinations in this upload
+        row_count = 0
+        skipped_empty = 0
+        skipped_existing = 0
 
-            # Save students with duplicate detection
-            students = []
-            duplicates = 0
-            seen = set()  # Track combinations in this upload
-            row_count = 0
-            skipped_empty = 0
-            skipped_existing = 0
-            
-            for _, row in df.iterrows():
-                row_count += 1
-                roll = get_value(row, col_map["roll_number"])
-                reg = get_value(row, col_map["registration_number"])
-                std_id = get_value(row, col_map["student_id"])
+        for _, row in df.iterrows():
+            row_count += 1
+            roll = get_value(row, col_map["roll_number"])
+            reg = get_value(row, col_map["registration_number"])
+            std_id = get_value(row, col_map["student_id"])
 
-                # Skip if required fields are empty
-                if not roll or not reg or not std_id:
-                    skipped_empty += 1
-                    if skipped_empty <= 3:  # Print first 3 skipped rows
-                        print(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
-                    continue
+            # Skip if required fields are empty
+            if not roll or not reg or not std_id:
+                skipped_empty += 1
+                if skipped_empty <= 3:  # Print first 3 skipped rows
+                    print(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
+                continue
 
-                combo = (roll, reg, std_id)
+            combo = (roll, reg, std_id)
 
-                # Check if this combination already exists in DB or in current upload
-                if combo in seen:
-                    skipped_existing += 1
-                    print(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
-                    duplicates += 1
-                    continue
-                    
-                if Student.objects.filter(
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id
-                ).exists():
-                    skipped_existing += 1
-                    print(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
-                    duplicates += 1
-                    continue
+            # Check if this combination already exists in DB or in current upload
+            if combo in seen:
+                skipped_existing += 1
+                print(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
+                duplicates += 1
+                continue
 
-                seen.add(combo)
+            if Student.objects.filter(
+                roll_number=roll,
+                registration_number=reg,
+                student_id=std_id
+            ).exists():
+                skipped_existing += 1
+                print(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
+                duplicates += 1
+                continue
 
-                students.append(Student(
-                    student_file=student_file_obj,
-                    course=get_value(row, col_map["course"]),
-                    semester=get_value(row, col_map["semester"]),
-                    branch=get_value(row, col_map["branch"]),
-                    name=get_value(row, col_map["name"]),
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id,
-                    academic_status=get_value(row, col_map["academic_status"])
-                ))
-            
-            print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+            seen.add(combo)
 
-            try:
-                if len(students) > 0:
-                    Student.objects.bulk_create(students)
-                    print(f"[DEBUG] Successfully saved {len(students)} students to database")
-                else:
-                    print(f"[DEBUG] No students to save. duplicates={duplicates}")
-                    
-            except Exception as e:
-                print(f"[ERROR] Error saving students: {str(e)}")
-                messages.error(request, f"Error saving students to database: {e}")
-                return redirect("dashboard")
+            students.append(Student(
+                student_file=student_file_obj,
+                course=get_value(row, col_map["course"]),
+                semester=get_value(row, col_map["semester"]),
+                branch=get_value(row, col_map["branch"]),
+                name=get_value(row, col_map["name"]),
+                roll_number=roll,
+                registration_number=reg,
+                student_id=std_id,
+                academic_status=get_value(row, col_map["academic_status"])
+            ))
 
-            # Show appropriate message
-            if len(students) == 0 and duplicates > 0:
-                messages.warning(request, f"No new students added. All {row_count} rows were duplicates or invalid.")
-            elif len(students) == 0:
-                messages.warning(request, f"No students found in file. Please check your file format and data.")
-            elif duplicates > 0:
-                messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates/invalid skipped)")
+        print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+
+        try:
+            if len(students) > 0:
+                Student.objects.bulk_create(students)
+                print(f"[DEBUG] Successfully saved {len(students)} students to database")
             else:
-                messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
-            
-            print(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
+                print(f"[DEBUG] No students to save. duplicates={duplicates}")
+        except Exception as e:
+            print(f"[ERROR] Error saving students: {str(e)}")
+            messages.error(request, f"Error saving students to database: {e}")
             return redirect("dashboard")
 
-    uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
+        # Show appropriate message
+        if len(students) == 0 and duplicates > 0:
+            messages.warning(request, f"No new students added. All {row_count} rows were duplicates or invalid.")
+        elif len(students) == 0:
+            messages.warning(request, f"No students found in file. Please check your file format and data.")
+        elif duplicates > 0:
+            messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates/invalid skipped)")
+        else:
+            messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
 
-    return render(request, "core/dashboard.html", {
-        "uploaded_files": uploaded_files,
-    })
+        print(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
+        return redirect("dashboard")
+
+
 
 
 # =========================
