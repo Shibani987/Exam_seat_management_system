@@ -519,53 +519,66 @@ def upload_student_data(request):
         skipped_empty = 0
         skipped_existing = 0
 
-        for _, row in df.iterrows():
-            row_count += 1
-            roll = get_value(row, col_map["roll_number"])
-            reg = get_value(row, col_map["registration_number"])
-            std_id = get_value(row, col_map["student_id"])
+        try:
+            for _, row in df.iterrows():
+                row_count += 1
+                try:
+                    roll = get_value(row, col_map["roll_number"])
+                    reg = get_value(row, col_map["registration_number"])
+                    std_id = get_value(row, col_map["student_id"])
+                except Exception as e:
+                    print(f"[ERROR] Row {row_count} - get_value error: {e}")
+                    skipped_empty += 1
+                    continue
 
-            # Skip if required fields are empty
-            if not roll or not reg or not std_id:
-                skipped_empty += 1
-                if skipped_empty <= 3:  # Print first 3 skipped rows
-                    print(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
-                continue
+                # Skip if required fields are empty
+                if not roll or not reg or not std_id:
+                    skipped_empty += 1
+                    if skipped_empty <= 3:  # Print first 3 skipped rows
+                        print(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
+                    continue
 
-            combo = (roll, reg, std_id)
+                combo = (roll, reg, std_id)
 
-            # Check if this combination already exists in DB or in current upload
-            if combo in seen:
-                skipped_existing += 1
-                print(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
-                duplicates += 1
-                continue
+                # Check if this combination already exists in DB or in current upload
+                if combo in seen:
+                    skipped_existing += 1
+                    print(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
+                    duplicates += 1
+                    continue
 
-            if Student.objects.filter(
-                roll_number=roll,
-                registration_number=reg,
-                student_id=std_id
-            ).exists():
-                skipped_existing += 1
-                print(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
-                duplicates += 1
-                continue
+                if Student.objects.filter(
+                    roll_number=roll,
+                    registration_number=reg,
+                    student_id=std_id
+                ).exists():
+                    skipped_existing += 1
+                    print(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
+                    duplicates += 1
+                    continue
 
-            seen.add(combo)
+                seen.add(combo)
 
-            students.append(Student(
-                student_file=student_file_obj,
-                course=get_value(row, col_map["course"]),
-                semester=get_value(row, col_map["semester"]),
-                branch=get_value(row, col_map["branch"]),
-                name=get_value(row, col_map["name"]),
-                roll_number=roll,
-                registration_number=reg,
-                student_id=std_id,
-                academic_status=get_value(row, col_map["academic_status"])
-            ))
+                students.append(Student(
+                    student_file=student_file_obj,
+                    course=get_value(row, col_map["course"]),
+                    semester=get_value(row, col_map["semester"]),
+                    branch=get_value(row, col_map["branch"]),
+                    name=get_value(row, col_map["name"]),
+                    roll_number=roll,
+                    registration_number=reg,
+                    student_id=std_id,
+                    academic_status=get_value(row, col_map["academic_status"])
+                ))
 
-        print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+            print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+
+        except Exception as e:
+            err = traceback.format_exc()
+            print(f"[ERROR] Error processing rows: {e}\n{err}")
+            logger.error(f"Error processing rows: {e}\n{err}")
+            messages.error(request, f"Error processing data: {e}")
+            return redirect("dashboard")
 
         try:
             if len(students) > 0:
@@ -589,9 +602,30 @@ def upload_student_data(request):
             messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
 
         print(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
+        except Exception as e:
+            err = traceback.format_exc()
+            print(f"[ERROR] Unexpected error during upload: {e}\n{err}")
+            logger.error(f"Unexpected upload error: {e}\n{err}")
+            messages.error(request, f"Unexpected error: {e}")
+            return redirect("dashboard")
+
         return redirect("dashboard")
 
+    # Handle GET request - show dashboard with uploaded files
+    uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
+    years = range(2020, 2036)
+    eligible_emails = EligibleAdminEmail.objects.all().order_by('-added_at')
+    from django.urls import reverse
+    qr_url = request.build_absolute_uri(reverse('generate_qr')) + '?type=student_portal'
+    student_portal_url = request.build_absolute_uri(reverse('student_portal'))
 
+    return render(request, "core/dashboard.html", {
+        'uploaded_files': uploaded_files,
+        'years': years,
+        'eligible_emails': eligible_emails,
+        'qr_url': qr_url,
+        'student_portal_url': student_portal_url,
+    })
 
 
 # =========================
