@@ -76,6 +76,12 @@ tabLinks.forEach(link => {
       const u = new URL(window.location);
       u.searchParams.set('tab','generate-sheet');
       window.history.replaceState({},'',u);
+    } else {
+      // Clear sheets container when leaving generate-sheet tab
+      const sheetsContainer = document.getElementById('sheetsContainer');
+      if (sheetsContainer) {
+        sheetsContainer.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No sheets generated yet.</p>';
+      }
     }
   });
 });
@@ -106,6 +112,13 @@ if (sidebar) {
 
 // ================= GENERATED SHEETS API =================
 function fetchGeneratedSheets() {
+  // Only execute if generate-sheet tab is visible
+  const generateSheetTab = document.getElementById('generate-sheet');
+  if (!generateSheetTab || !generateSheetTab.classList.contains('active')) {
+    console.log('[dash_board.js] fetchGeneratedSheets called but generate-sheet tab not active - aborting');
+    return;
+  }
+  
   fetch('/get-generated-sheets/?t=' + Date.now())
     .then(r => r.json())
     .then(data => {
