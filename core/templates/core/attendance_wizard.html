@@ -28,6 +28,11 @@
           <div class="number">2</div>
           <span>Select Files</span>
         </div>
+        <div style="flex: 1; height: 2px; background: #e0e0e0;"></div>
+        <div class="step" id="stepIndicator3">
+          <div class="number">3</div>
+          <span>Preview</span>
+        </div>
       </div>
 
       <!-- Step 1: Exam Name -->
@@ -73,6 +78,16 @@
         <div class="button-group">
           <button class="btn-primary" id="generateBtn" disabled>Generate Attendance Sheet</button>
           <button class="btn-secondary" id="backBtn">← Back</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Preview & Save -->
+      <div class="step-content" id="step3Content" style="display: none;">
+        <h3>Step 3 — Preview Generated Sheets</h3>
+        <div id="sheetsPreview" style="margin-bottom: 20px;"></div>
+        <div class="button-group">
+          <button class="btn-primary" id="saveBtn">Save Attendance Sheets</button>
+          <button class="btn-secondary" id="backToStep2Btn">← Back</button>
         </div>
       </div>
     </div>

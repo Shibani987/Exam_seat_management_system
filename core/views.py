@@ -32,6 +32,7 @@ from .models import (
     Room,
     ExamStudent,
     SeatAllocation,
+    AttendanceSheet,
     AdminAccount,
     EligibleAdminEmail,
     BlockedAdminEmail,
@@ -820,8 +821,12 @@ def complete_exam_setup(request):
             
             logger.info(f'Exam {exam.id} marked as PERMANENT in database')
             
-            # Get dashboard URL from settings
+            # Get dashboard URL from settings (ensure user returns to generate-sheet tab)
             dashboard_url = settings.ADMIN_DASHBOARD_URL
+            if '?' in dashboard_url:
+                dashboard_url += '&tab=generate-sheet'
+            else:
+                dashboard_url += '?tab=generate-sheet'
             
             return JsonResponse({
                 "status": "success",
@@ -874,6 +879,127 @@ def add_room_single(request):
         return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
     except Exception as e:
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
+
+
+# =========================
+# Update Temporary Exam (name)
+# =========================
+@admin_required_json
+
+def update_temp_exam(request):
+    """Allows the wizard to update the name of a temporary exam (step1)."""
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            exam_id = data.get("exam_id")
+            name = (data.get("name") or "").strip()
+            exam = Exam.objects.get(id=exam_id, is_temporary=True, is_completed=False)
+            exam.name = name
+            exam.save()
+            return JsonResponse({"status": "success"})
+        except Exam.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Temporary exam not found"}, status=404)
+        except Exception as e:
+            logger.error(f"update_temp_exam error: {str(e)}")
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+
+# =========================
+# Generate Attendance Sheets
+# =========================
+@admin_required_json
+
+def generate_sheets(request):
+    """Given an exam_id and file_id, return paginated sheet data (20 students per sheet)."""
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            exam_id = data.get("exam_id")
+            file_id = data.get("file_id")
+            exam = Exam.objects.get(id=exam_id)
+            student_file = StudentDataFile.objects.get(id=file_id)
+            students = list(Student.objects.filter(student_file=student_file)
+                            .values('name', 'roll_number', 'registration_number'))
+            # sort by roll number for predictable order
+            students = sorted(students, key=lambda x: x.get('roll_number') or '')
+            sheets = []
+            for i in range(0, len(students), 20):
+                sheets.append(students[i:i+20])
+            return JsonResponse({
+                "status": "success",
+                "sheets": sheets,
+                "exam_name": exam.name or ''
+            })
+        except Exam.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
+        except StudentDataFile.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Student file not found"}, status=404)
+        except Exception as e:
+            logger.error(f"generate_sheets error: {str(e)}")
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+
+# =========================
+# Save Generated Sheets
+# =========================
+@admin_required_json
+
+def save_generated_sheets(request):
+    """Store generated sheet data so it can be shown on dashboard later."""
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            exam_id = data.get("exam_id")
+            file_id = data.get("file_id")
+            sheets = data.get("sheets")
+            exam = Exam.objects.get(id=exam_id)
+            student_file = StudentDataFile.objects.get(id=file_id)
+            # record in AttendanceSheet model
+            AttendanceSheet.objects.create(
+                exam=exam,
+                student_file=student_file,
+                sheet_data=sheets
+            )
+            return JsonResponse({"status": "success"})
+        except Exam.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
+        except StudentDataFile.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Student file not found"}, status=404)
+        except Exception as e:
+            logger.error(f"save_generated_sheets error: {str(e)}")
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+
+# =========================
+# List Generated Sheets (Dashboard)
+# =========================
+@admin_required_json
+
+def get_generated_sheets(request):
+    if request.method == "GET":
+        try:
+            rows = []
+            for sheet in AttendanceSheet.objects.select_related('exam', 'student_file').order_by('-generated_at'):
+                count = 0
+                if sheet.sheet_data:
+                    # calculate actual student count
+                    count = sum(len(page) for page in sheet.sheet_data)
+                rows.append({
+                    'id': sheet.id,
+                    'exam_name': sheet.exam.name,
+                    'file_name': sheet.student_file.file_name,
+                    'generated_at': sheet.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'student_count': count,
+                    'sheet_count': len(sheet.sheet_data) if sheet.sheet_data else 0,
+                })
+            return JsonResponse({'status': 'success', 'sheets': rows})
+        except Exception as e:
+            logger.error(f"get_generated_sheets error: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'GET required'}, status=400)
 
 
 # =========================

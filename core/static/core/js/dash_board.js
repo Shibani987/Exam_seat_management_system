@@ -68,6 +68,11 @@ tabLinks.forEach(link => {
     // Close sidebar in mobile
     sidebar.classList.remove('active');
     hamburgerBtn.classList.remove('active');
+
+    // If we just opened the generate-sheet tab, refresh its data
+    if (tabId === 'generate-sheet') {
+      fetchGeneratedSheets();
+    }
   });
 });
 
@@ -91,6 +96,44 @@ if (sidebar) {
       }
     }
   });
+}
+
+// ================= NEW EXAM MODAL BUTTONS =================
+
+// ================= GENERATED SHEETS API =================
+function fetchGeneratedSheets() {
+  fetch('/get-generated-sheets/?t=' + Date.now())
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success') {
+        const cont = document.getElementById('sheetsContainer');
+        const total = document.getElementById('totalSheetsCount');
+        const recent = document.getElementById('recentSessionsCount');
+        total.textContent = data.sheets.length;
+        // count unique exam names for recent sessions
+        const uniq = new Set(data.sheets.map(s => s.exam_name));
+        recent.textContent = uniq.size;
+        if (data.sheets.length === 0) {
+          cont.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No sheets generated yet.</p>';
+        } else {
+          cont.innerHTML = '';
+          data.sheets.forEach(s => {
+            const div = document.createElement('div');
+            div.className = 'sheet-entry';
+            div.innerHTML = `<strong>${s.exam_name}</strong> (${s.file_name})<br>
+                          <small>${s.generated_at}</small><br>
+                          <span>${s.student_count} students, ${s.sheet_count} sheets</span>`;
+            cont.appendChild(div);
+          });
+        }
+      }
+    })
+    .catch(err => console.error('Error fetching generated sheets', err));
+}
+
+// call once if the generate-sheet tab is already active on load
+if (document.getElementById('generate-sheet').classList.contains('active')) {
+  fetchGeneratedSheets();
 }
 
 // ================= NEW EXAM MODAL BUTTONS =================

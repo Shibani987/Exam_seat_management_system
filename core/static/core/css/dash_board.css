@@ -879,4 +879,18 @@
   .uploaded-files {
     padding: 20px;
   }
+
+  /* generated sheet entries */
+  .sheet-entry {
+    border-bottom: 1px solid #eee;
+    padding: 10px 0;
+    font-size: 0.9rem;
+  }
+  .sheet-entry strong {
+    display: block;
+    font-weight: bold;
+  }
+  .sheet-entry small {
+    color: #666;
+  }
 }

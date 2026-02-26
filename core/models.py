@@ -143,6 +143,19 @@ class SeatAllocation(models.Model):
 
 
 # =========================
+# Attendance Sheet Records
+# =========================
+class AttendanceSheet(models.Model):
+    exam = models.ForeignKey(Exam, on_delete=models.CASCADE, related_name='attendance_sheets')
+    student_file = models.ForeignKey(StudentDataFile, on_delete=models.CASCADE, related_name='attendance_sheets')
+    generated_at = models.DateTimeField(auto_now_add=True)
+    sheet_data = models.JSONField()
+
+    def __str__(self):
+        return f"AttendanceSheet exam={self.exam.name} file={self.student_file.file_name} at {self.generated_at}"
+
+
+# =========================
 # Admin / Security Models
 # =========================
 class AdminAccount(models.Model):
