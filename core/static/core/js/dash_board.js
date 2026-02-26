@@ -183,23 +183,30 @@ function checkStudentDataAndShowModal() {
   fetch('/get_uploaded_files/?t=' + Date.now())
     .then(r => r.json())
     .then(data => {
+      console.log('API Response:', data);  // Debug log
+      
       if (data.status === 'success' && Array.isArray(data.files) && data.files.length > 0) {
         // Files exist, show proceed button
         uploadCheckMessage.textContent = 'Student data is available. Click Continue to configure and generate the attendance sheet.';
         goToUploadBtn.style.display = 'none';
         proceedToWizardBtn.style.display = 'inline-block';
+        uploadCheckModal.classList.add('active');
       } else {
-        // No files, show upload button
-        uploadCheckMessage.textContent = 'No student data has been uploaded yet. Please upload student data first before generating an attendance sheet.';
-        goToUploadBtn.style.display = 'inline-block';
-        proceedToWizardBtn.style.display = 'none';
+        // No files uploaded - show alert first
+        alert('⚠️ Student Data Upload is Mandatory!\n\nTo generate an attendance sheet, you must first upload student data.\n\nPlease go to the "Upload Student Data" tab and upload the required student data file.');
+        
+        // Optional: auto-switch to upload tab
+        if (document.querySelector('[data-tab="upload-data"]')) {
+          document.querySelector('[data-tab="generate-sheet"]').classList.remove('active');
+          document.querySelector('[data-tab="upload-data"]').classList.add('active');
+          document.getElementById('generate-sheet').classList.remove('active');
+          document.getElementById('upload-data').classList.add('active');
+        }
       }
-      uploadCheckModal.classList.add('active');
     })
     .catch(err => {
       console.error('Error checking files:', err);
-      uploadCheckMessage.textContent = 'Error checking student data. Please try again.';
-      uploadCheckModal.classList.add('active');
+      alert('Error checking student data. Please try again.');
     });
 }
 
