@@ -19,12 +19,44 @@
   <script>
     const initialSheets = JSON.parse(document.getElementById('initialSheets').textContent);
     const initialExamName = JSON.parse(document.getElementById('initialExamName').textContent);
-    
+
+    function waitForRenderAndPrint(timeoutMs = 3000) {
+      const container = document.getElementById('sheetsPreview');
+      const start = Date.now();
+
+      function check() {
+        // If items rendered, wait for images to load, then print
+        if (container && container.children.length > 0) {
+          const imgs = container.querySelectorAll('img');
+          if (imgs.length === 0) {
+            window.print();
+            return;
+          }
+          let remaining = imgs.length;
+          imgs.forEach(img => {
+            if (img.complete) {
+              remaining -= 1;
+              if (remaining === 0) window.print();
+            } else {
+              img.addEventListener('load', () => { remaining -= 1; if (remaining === 0) window.print(); });
+              img.addEventListener('error', () => { remaining -= 1; if (remaining === 0) window.print(); });
+            }
+          });
+          // safety: if images don't finish in 2s, print anyway
+          setTimeout(() => { if (remaining > 0) window.print(); }, 2000);
+        } else if (Date.now() - start < timeoutMs) {
+          setTimeout(check, 100);
+        } else {
+          // fallback: nothing rendered, still open print
+          window.print();
+        }
+      }
+      check();
+    }
+
     function handlePrint() {
-      // small delay to ensure all DOM updates are complete
-      setTimeout(() => {
-        window.print();
-      }, 100);
+      // give rendering a small headstart then wait for complete render
+      setTimeout(() => waitForRenderAndPrint(), 50);
     }
   </script>
   <script src="{% static 'core/js/attendance_wizard.js' %}"></script>
