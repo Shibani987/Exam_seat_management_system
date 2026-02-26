@@ -884,8 +884,8 @@ def add_room_single(request):
 # =========================
 # Update Temporary Exam (name)
 # =========================
+@csrf_exempt
 @admin_required_json
-
 def update_temp_exam(request):
     """Allows the wizard to update the name of a temporary exam (step1)."""
     if request.method == "POST":
@@ -908,8 +908,8 @@ def update_temp_exam(request):
 # =========================
 # Generate Attendance Sheets
 # =========================
+@csrf_exempt
 @admin_required_json
-
 def generate_sheets(request):
     """Given an exam_id and file_id, return paginated sheet data (20 students per sheet)."""
     if request.method == "POST":
@@ -944,8 +944,8 @@ def generate_sheets(request):
 # =========================
 # Save Generated Sheets
 # =========================
+@csrf_exempt
 @admin_required_json
-
 def save_generated_sheets(request):
     """Store generated sheet data so it can be shown on dashboard later."""
     if request.method == "POST":
@@ -976,8 +976,8 @@ def save_generated_sheets(request):
 # =========================
 # List Generated Sheets (Dashboard)
 # =========================
+@csrf_exempt
 @admin_required_json
-
 def get_generated_sheets(request):
     if request.method == "GET":
         try:
@@ -1005,6 +1005,7 @@ def get_generated_sheets(request):
 # =========================
 # Delete Temporary Exam (On page unload/refresh)
 # =========================
+@csrf_exempt
 @admin_required_json
 def delete_temp_exam(request):
     """

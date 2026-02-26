@@ -131,9 +131,19 @@ function fetchGeneratedSheets() {
     .catch(err => console.error('Error fetching generated sheets', err));
 }
 
-// call once if the generate-sheet tab is already active on load
-if (document.getElementById('generate-sheet').classList.contains('active')) {
-  fetchGeneratedSheets();
+// Initialize fetchGeneratedSheets when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', () => {
+    const sheetTab = document.getElementById('generate-sheet');
+    if (sheetTab && sheetTab.classList.contains('active')) {
+      fetchGeneratedSheets();
+    }
+  });
+} else {
+  const sheetTab = document.getElementById('generate-sheet');
+  if (sheetTab && sheetTab.classList.contains('active')) {
+    fetchGeneratedSheets();
+  }
 }
 
 // ================= NEW EXAM MODAL BUTTONS =================

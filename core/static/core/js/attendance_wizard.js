@@ -1,4 +1,22 @@
 // Attendance Wizard Logic
+
+// Helper function to get CSRF token from cookies
+function getCsrfToken() {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 const examNameInput = document.getElementById('examName');
 const nextBtn = document.getElementById('nextBtn');
 const backBtn = document.getElementById('backBtn');
@@ -46,7 +64,10 @@ nextBtn.addEventListener('click', () => {
   // update temporary exam name
   fetch('/update-temp-exam/', {
     method: 'POST',
-    headers: {'Content-Type':'application/json'},
+    headers: {
+      'Content-Type': 'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
     body: JSON.stringify({exam_id: currentExamId, name})
   }).then(r=>r.json()).then(d=>{
     if (d.status !== 'success') {
@@ -134,7 +155,10 @@ generateBtn.addEventListener('click', () => {
   currentFileId = fileId;
   fetch('/generate-sheets/', {
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{
+      'Content-Type':'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
     body:JSON.stringify({exam_id: currentExamId, file_id: fileId})
   }).then(r=>r.json()).then(data=>{
     if (data.status==='success'){
@@ -184,14 +208,20 @@ saveBtn.addEventListener('click', ()=>{
   if (!currentExamId) return;
   fetch('/save-generated-sheets/',{
     method:'POST',
-    headers:{'Content-Type':'application/json'},
+    headers:{
+      'Content-Type':'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
     body:JSON.stringify({exam_id: currentExamId, file_id: currentFileId, sheets: generatedSheets})
   }).then(r=>r.json()).then(d=>{
     if(d.status==='success'){
       // mark exam complete
       fetch('/complete-exam-setup/',{
         method:'POST',
-        headers:{'Content-Type':'application/json'},
+        headers:{
+          'Content-Type':'application/json',
+          'X-CSRFToken': getCsrfToken()
+        },
         body:JSON.stringify({exam_id: currentExamId})
       }).then(rr=>rr.json()).then(dd=>{
         if(dd.status==='success'){
@@ -235,9 +265,17 @@ function updateGenerateBtn() {
 // When the page unloads (refresh/navigate away) delete any temporary exam
 window.addEventListener('beforeunload', () => {
   if (currentExamId) {
-    // use navigator.sendBeacon for reliable background request
+    // use fetch with keepalive flag (more reliable than sendBeacon and supports CSRF)
     const payload = JSON.stringify({exam_id: currentExamId});
-    navigator.sendBeacon('/delete-temp-exam/', payload);
+    fetch('/delete-temp-exam/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: payload,
+      keepalive: true
+    }).catch(() => {}); // silently ignore errors
   }
 });
 
