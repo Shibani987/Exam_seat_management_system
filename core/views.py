@@ -2907,6 +2907,11 @@ def get_all_exams(request):
             else:
                 duration_days = (exam.end_date - exam.start_date).days
             
+            # Ignore poorly configured exams that are essentially empty (temp artifacts)
+            if student_count == 0 and not departments and duration_days is None:
+                logger.info(f'Skipping empty exam {exam.id} ({exam.name}) from dashboard results')
+                continue
+            
             # Determine exam status
             status = get_exam_status(exam)
             

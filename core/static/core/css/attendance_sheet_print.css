@@ -239,7 +239,7 @@
   .sheet-table { page-break-inside: avoid; }
   .sheet-footer { page-break-inside: avoid; }
   
-  .print-btn-group, .print-btn {
+  .print-btn-group, .print-btn, .no-print {
     display: none !important;
   }
 }
