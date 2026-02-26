@@ -7,6 +7,7 @@ from datetime import datetime, timedelta, date, time
 from django.utils import timezone
 from django.core.mail import send_mail
 from django.conf import settings
+from django.db.models import Q
 import secrets
 import string
 import logging
@@ -523,78 +524,74 @@ def upload_student_data(request):
         # Save students with duplicate detection
         students = []
         duplicates = 0
-        seen = set()  # Track combinations in this upload
         row_count = 0
         skipped_empty = 0
         skipped_existing = 0
 
+        # First pass: collect valid combos
+        valid_rows = []
+        all_combos = set()
+        for _, row in df.iterrows():
+            row_count += 1
+            roll = get_value(row, col_map["roll_number"])
+            reg = get_value(row, col_map["registration_number"])
+            std_id = get_value(row, col_map["student_id"])
+
+            if not roll or not reg or not std_id:
+                skipped_empty += 1
+                continue
+
+            combo = (roll, reg, std_id)
+            if combo in all_combos:
+                duplicates += 1
+                continue
+
+            all_combos.add(combo)
+            valid_rows.append(row)
+
+        # Check existing in DB with one query
+        existing_combos = set()
+        if all_combos:
+            existing_combos = set(Student.objects.filter(
+                Q(roll_number__in=[c[0] for c in all_combos]) &
+                Q(registration_number__in=[c[1] for c in all_combos]) &
+                Q(student_id__in=[c[2] for c in all_combos])
+            ).values_list('roll_number', 'registration_number', 'student_id'))
+
+        # Second pass: build students list
+        for row in valid_rows:
+            roll = get_value(row, col_map["roll_number"])
+            reg = get_value(row, col_map["registration_number"])
+            std_id = get_value(row, col_map["student_id"])
+            combo = (roll, reg, std_id)
+
+            if combo in existing_combos:
+                skipped_existing += 1
+                duplicates += 1
+                continue
+
+            students.append(Student(
+                student_file=student_file_obj,
+                course=get_value(row, col_map["course"]),
+                semester=get_value(row, col_map["semester"]),
+                branch=get_value(row, col_map["branch"]),
+                name=get_value(row, col_map["name"]),
+                roll_number=roll,
+                registration_number=reg,
+                student_id=std_id,
+                academic_status=get_value(row, col_map["academic_status"])
+            ))
+
+        print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+
+        # Bulk create in batches
         try:
-            for _, row in df.iterrows():
-                row_count += 1
-                try:
-                    roll = get_value(row, col_map["roll_number"])
-                    reg = get_value(row, col_map["registration_number"])
-                    std_id = get_value(row, col_map["student_id"])
-                except Exception as e:
-                    print(f"[ERROR] Row {row_count} - get_value error: {e}")
-                    skipped_empty += 1
-                    continue
-
-                # Skip if required fields are empty
-                if not roll or not reg or not std_id:
-                    skipped_empty += 1
-                    if skipped_empty <= 3:  # Print first 3 skipped rows
-                        print(f"[DEBUG] Row {row_count} skipped - empty fields: roll={roll}, reg={reg}, std_id={std_id}")
-                    continue
-
-                combo = (roll, reg, std_id)
-
-                # Check if this combination already exists in DB or in current upload
-                if combo in seen:
-                    skipped_existing += 1
-                    print(f"[DEBUG] Row {row_count} skipped - duplicate in this file: {combo}")
-                    duplicates += 1
-                    continue
-
-                if Student.objects.filter(
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id
-                ).exists():
-                    skipped_existing += 1
-                    print(f"[DEBUG] Row {row_count} skipped - already exists in DB: {combo}")
-                    duplicates += 1
-                    continue
-
-                seen.add(combo)
-
-                students.append(Student(
-                    student_file=student_file_obj,
-                    course=get_value(row, col_map["course"]),
-                    semester=get_value(row, col_map["semester"]),
-                    branch=get_value(row, col_map["branch"]),
-                    name=get_value(row, col_map["name"]),
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id,
-                    academic_status=get_value(row, col_map["academic_status"])
-                ))
-
-            print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
-
-        except Exception as e:
-            err = traceback.format_exc()
-            print(f"[ERROR] Error processing rows: {e}\n{err}")
-            logger.error(f"Error processing rows: {e}\n{err}")
-            messages.error(request, f"Error processing data: {e}")
-            return redirect("dashboard")
-
-        try:
-            if len(students) > 0:
-                Student.objects.bulk_create(students)
-                print(f"[DEBUG] Successfully saved {len(students)} students to database")
-            else:
-                print(f"[DEBUG] No students to save. duplicates={duplicates}")
+            batch_size = 500
+            for i in range(0, len(students), batch_size):
+                batch = students[i:i + batch_size]
+                Student.objects.bulk_create(batch)
+                print(f"[DEBUG] Saved batch {i//batch_size + 1} with {len(batch)} students")
+            print(f"[DEBUG] Successfully saved {len(students)} students to database")
         except Exception as e:
             print(f"[ERROR] Error saving students: {str(e)}")
             messages.error(request, f"Error saving students to database: {e}")
