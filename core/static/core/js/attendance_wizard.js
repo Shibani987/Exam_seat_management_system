@@ -38,8 +38,15 @@ function fetchUploadedFiles() {
   filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 30px; color: #999;">Loading files...</td></tr>';
   
   fetch('/get_uploaded_files/?t=' + Date.now())
-    .then(r => r.json())
+    .then(r => {
+      if (!r.ok) {
+        filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #c62828;">Error fetching files (' + r.status + ')</td></tr>';
+        return r.json().catch(() => null);
+      }
+      return r.json();
+    })
     .then(data => {
+      if (!data) return;
       console.log('uploaded files response', data);
       if (data.status === 'success' && Array.isArray(data.files)) {
         allFiles = data.files;
@@ -49,7 +56,7 @@ function fetchUploadedFiles() {
       }
     })
     .catch(err => {
-      filesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #c62828;">Error loading files.</td></tr>';
+      filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #c62828;">Error loading files.</td></tr>';
       console.error('Error:', err);
     });
 }
@@ -57,7 +64,7 @@ function fetchUploadedFiles() {
 // Render files table
 function renderFilesTable(files) {
   if (!files || files.length === 0) {
-    filesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">No files uploaded yet.</td></tr>';
+    filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #999;">No files uploaded yet.</td></tr>';
     return;
   }
 

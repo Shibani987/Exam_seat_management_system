@@ -1461,9 +1461,6 @@ def get_uploaded_files(request):
             for file_obj in uploaded_files:
                 files_data.append({
                     'id': file_obj.id,
-                    'year': int(file_obj.year),
-                    'semester': int(file_obj.semester),
-                    'department': file_obj.department,
                     'file_name': file_obj.file_name,
                     # include timestamp string for UI if needed
                     'uploaded_at': file_obj.uploaded_at.strftime('%Y-%m-%d %H:%M') if file_obj.uploaded_at else None,
