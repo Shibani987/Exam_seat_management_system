@@ -1026,23 +1026,82 @@ def get_generated_sheets(request):
         try:
             rows = []
             for sheet in AttendanceSheet.objects.select_related('exam', 'student_file').order_by('-generated_at'):
-                count = 0
+                # sheet.sheet_data may be a list of page dicts (with 'students') or list-of-lists
+                student_count = 0
+                sheet_count = 0
                 if sheet.sheet_data:
-                    # calculate actual student count
-                    count = sum(len(page) for page in sheet.sheet_data)
+                    try:
+                        sheet_count = len(sheet.sheet_data)
+                        student_count = sum((len(p.get('students', [])) if isinstance(p, dict) else len(p)) for p in sheet.sheet_data)
+                    except Exception:
+                        # fallback
+                        student_count = sum(len(p) for p in sheet.sheet_data)
+                        sheet_count = len(sheet.sheet_data)
                 rows.append({
                     'id': sheet.id,
                     'exam_name': sheet.exam.name,
                     'file_name': sheet.student_file.file_name,
                     'generated_at': sheet.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    'student_count': count,
-                    'sheet_count': len(sheet.sheet_data) if sheet.sheet_data else 0,
+                    'student_count': student_count,
+                    'sheet_count': sheet_count,
                 })
             return JsonResponse({'status': 'success', 'sheets': rows})
         except Exception as e:
             logger.error(f"get_generated_sheets error: {str(e)}")
             return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
     return JsonResponse({'status': 'error', 'message': 'GET required'}, status=400)
+
+
+@csrf_exempt
+@admin_required_json
+def get_generated_sheet(request):
+    """Return a saved AttendanceSheet record by id (GET ?id=)
+
+    Response: { status: 'success', sheet: { id, exam_name, file_name, generated_at, sheets }}
+    """
+    if request.method == 'GET':
+        try:
+            sheet_id = request.GET.get('id')
+            if not sheet_id:
+                return JsonResponse({'status': 'error', 'message': 'id parameter required'}, status=400)
+            sheet = AttendanceSheet.objects.select_related('exam', 'student_file').get(id=sheet_id)
+            return JsonResponse({
+                'status': 'success',
+                'sheet': {
+                    'id': sheet.id,
+                    'exam_name': sheet.exam.name,
+                    'file_name': sheet.student_file.file_name,
+                    'generated_at': sheet.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'sheets': sheet.sheet_data or []
+                }
+            })
+        except AttendanceSheet.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Saved sheet not found'}, status=404)
+        except Exception as e:
+            logger.error(f"get_generated_sheet error: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'GET required'}, status=400)
+
+
+@csrf_exempt
+@admin_required_json
+def delete_generated_sheet(request):
+    """Delete a saved AttendanceSheet by id (POST JSON: {id})."""
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            sheet_id = data.get('id')
+            if not sheet_id:
+                return JsonResponse({'status': 'error', 'message': 'id required'}, status=400)
+            sheet = AttendanceSheet.objects.get(id=sheet_id)
+            sheet.delete()
+            return JsonResponse({'status': 'success'})
+        except AttendanceSheet.DoesNotExist:
+            return JsonResponse({'status': 'error', 'message': 'Saved sheet not found'}, status=404)
+        except Exception as e:
+            logger.error(f"delete_generated_sheet error: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'POST required'}, status=400)
 
 
 # =========================

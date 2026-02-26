@@ -9,6 +9,8 @@ from .views import (
     generate_sheets,
     save_generated_sheets,
     get_generated_sheets,
+    get_generated_sheet,
+    delete_generated_sheet,
     complete_exam_setup,
     delete_temp_exam,
     delete_exam,
@@ -46,6 +48,8 @@ from .views import (
     upload_admin_emails,
     delete_admin_email,
     block_admin_email,
+    get_generated_sheet,
+    delete_generated_sheet,
     
 )
 
@@ -59,6 +63,8 @@ urlpatterns = [
     path('generate-sheets/', generate_sheets, name='generate_sheets'),
     path('save-generated-sheets/', save_generated_sheets, name='save_generated_sheets'),
     path('get-generated-sheets/', get_generated_sheets, name='get_generated_sheets'),
+    path('get-generated-sheet/', get_generated_sheet, name='get_generated_sheet'),
+    path('delete-generated-sheet/', delete_generated_sheet, name='delete_generated_sheet'),
     path('complete-exam-setup/', complete_exam_setup, name='complete_exam_setup'),
     path('delete-temp-exam/', delete_temp_exam, name='delete_temp_exam'),
     path('create_exam/', create_exam, name='create_exam'),
