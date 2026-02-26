@@ -32,6 +32,56 @@ let currentExamId = null;
 let currentFileId = null;
 let generatedSheets = []; // array of arrays
 
+// Refresh the summary and list of saved sheets
+function refreshGeneratedSummary(){
+  fetch('/get-generated-sheets/?t=' + Date.now())
+    .then(r=>r.json()).then(d=>{
+      if(d.status==='success'){
+        const rows = d.sheets || [];
+        document.getElementById('totalSheets').textContent = rows.length;
+        const list = document.getElementById('generatedList');
+        if(rows.length === 0){
+          list.textContent = 'No sheets generated yet.';
+        } else {
+          let html = '<table style="width:100%;border-collapse:collapse;">';
+          html += '<thead><tr><th>Exam</th><th>File</th><th>Sheets</th><th>Students</th><th>Actions</th></tr></thead><tbody>';
+          rows.forEach(rw=>{
+            html += `<tr style="border-top:1px solid #ccc;">
+              <td>${rw.exam_name}</td>
+              <td>${rw.file_name}</td>
+              <td>${rw.sheet_count}</td>
+              <td>${rw.student_count}</td>
+              <td>
+                <button class="viewSaved" data-id="${rw.id}">View</button>
+                <button class="printSaved" data-id="${rw.id}">Print</button>
+                <button class="deleteSaved" data-id="${rw.id}">Delete</button>
+              </td>
+            </tr>`;
+          });
+          html += '</tbody></table>';
+          list.innerHTML = html;
+          // attach handlers
+          list.querySelectorAll('.viewSaved').forEach(btn=>{
+            btn.onclick = () => { location.href = '/generated-sheet-view/?id=' + btn.dataset.id; };
+          });
+          list.querySelectorAll('.printSaved').forEach(btn=>{
+            btn.onclick = () => { location.href = '/generated-sheet-view/?id=' + btn.dataset.id + '&print=1'; };
+          });
+          list.querySelectorAll('.deleteSaved').forEach(btn=>{
+            btn.onclick = () => {
+              if(!confirm('Delete all sheets for this exam?')) return;
+              fetch('/delete-generated-sheet/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},body:JSON.stringify({id:btn.dataset.id})})
+                .then(rr=>rr.json()).then(j=>{
+                  if(j.status==='success') refreshGeneratedSummary();
+                  else alert('Delete failed');
+                });
+            };
+          });
+        }
+      }
+    });
+}
+
 // Initialize a temporary exam when the page loads
 window.addEventListener('DOMContentLoaded', () => {
   fetch('/init-temp-exam/?t=' + Date.now())
@@ -48,6 +98,8 @@ window.addEventListener('DOMContentLoaded', () => {
       console.error('init_temp_exam fetch failed', err);
       alert('Error initializing temporary exam. Please reload.');
     });
+  // refresh list immediately
+  refreshGeneratedSummary();
 });
 
 // Step 1: Enable Next button when exam name is entered
@@ -356,7 +408,8 @@ saveBtn.addEventListener('click', ()=>{
       }).then(rr=>rr.json()).then(dd=>{
         if(dd.status==='success'){
           alert('Attendance sheets saved');
-          window.location.href=dd.dashboard_url;
+          // refresh header summary and stay on wizard
+          refreshGeneratedSummary();
         }
       });
     } else alert('Save failed: '+d.message);

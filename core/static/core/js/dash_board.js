@@ -108,23 +108,40 @@ function fetchGeneratedSheets() {
       if (data.status === 'success') {
         const cont = document.getElementById('sheetsContainer');
         const total = document.getElementById('totalSheetsCount');
-        const recent = document.getElementById('recentSessionsCount');
-        total.textContent = data.sheets.length;
-        // count unique exam names for recent sessions
-        const uniq = new Set(data.sheets.map(s => s.exam_name));
-        recent.textContent = uniq.size;
+        // display number of distinct exams for which sheets exist
+        const uniqueExams = new Set(data.sheets.map(s => s.exam_name));
+        total.textContent = uniqueExams.size;
         if (data.sheets.length === 0) {
           cont.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No sheets generated yet.</p>';
         } else {
           cont.innerHTML = '';
+          // create table with actions
+          const tbl = document.createElement('table');
+          tbl.style.width='100%';
+          tbl.style.borderCollapse='collapse';
+          tbl.innerHTML = '<thead><tr><th>Exam</th><th>File</th><th>Sheets</th><th>Students</th><th>Generated At</th><th>Actions</th></tr></thead>';
+          const body = document.createElement('tbody');
           data.sheets.forEach(s => {
-            const div = document.createElement('div');
-            div.className = 'sheet-entry';
-            div.innerHTML = `<strong>${s.exam_name}</strong> (${s.file_name})<br>
-                          <small>${s.generated_at}</small><br>
-                          <span>${s.student_count} students, ${s.sheet_count} sheets</span>`;
-            cont.appendChild(div);
+            const tr = document.createElement('tr');
+            tr.style.borderTop='1px solid #eee';
+            tr.innerHTML = `<td>${s.exam_name}</td><td>${s.file_name}</td><td>${s.sheet_count}</td><td>${s.student_count}</td><td>${s.generated_at}</td>`;
+            const actTd = document.createElement('td');
+            const viewBtn = document.createElement('button'); viewBtn.textContent='View'; viewBtn.style.marginRight='6px';
+            viewBtn.onclick = ()=>{ location.href='/generated-sheet-view/?id='+s.id; };
+            const printBtn = document.createElement('button'); printBtn.textContent='Print'; printBtn.style.marginRight='6px';
+            printBtn.onclick = ()=>{ location.href='/generated-sheet-view/?id='+s.id+'&print=1'; };
+            const delBtn = document.createElement('button'); delBtn.textContent='Delete';
+            delBtn.onclick = ()=>{
+              if(!confirm('Remove sheets for this exam?')) return;
+              fetch('/delete-generated-sheet/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},body:JSON.stringify({id:s.id})})
+                .then(rr=>rr.json()).then(j=>{ if(j.status==='success') fetchGeneratedSheets(); else alert('delete failed'); });
+            };
+            actTd.appendChild(viewBtn); actTd.appendChild(printBtn); actTd.appendChild(delBtn);
+            tr.appendChild(actTd);
+            body.appendChild(tr);
           });
+          tbl.appendChild(body);
+          cont.appendChild(tbl);
         }
       }
     })

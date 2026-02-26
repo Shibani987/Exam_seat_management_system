@@ -1045,6 +1045,77 @@ def get_generated_sheets(request):
     return JsonResponse({'status': 'error', 'message': 'GET required'}, status=400)
 
 
+# API: single sheet details
+@csrf_exempt
+@admin_required_json
+def get_generated_sheet(request):
+    if request.method == 'GET':
+        try:
+            sheet_id = request.GET.get('id')
+            if not sheet_id:
+                return JsonResponse({'status':'error','message':'id parameter required'}, status=400)
+            sheet = AttendanceSheet.objects.select_related('exam','student_file').get(id=sheet_id)
+            return JsonResponse({
+                'status':'success',
+                'sheet':{
+                    'id': sheet.id,
+                    'exam_name': sheet.exam.name,
+                    'file_name': sheet.student_file.file_name,
+                    'generated_at': sheet.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'sheets': sheet.sheet_data or []
+                }
+            })
+        except AttendanceSheet.DoesNotExist:
+            return JsonResponse({'status':'error','message':'Saved sheet not found'}, status=404)
+        except Exception as e:
+            logger.error(f"get_generated_sheet error: {str(e)}")
+            return JsonResponse({'status':'error','message':str(e)}, status=400)
+    return JsonResponse({'status':'error','message':'GET required'}, status=400)
+
+
+# API: delete saved sheet record
+@csrf_exempt
+@admin_required_json
+def delete_generated_sheet(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            sheet_id = data.get('id')
+            if not sheet_id:
+                return JsonResponse({'status':'error','message':'id required'}, status=400)
+            sheet = AttendanceSheet.objects.get(id=sheet_id)
+            sheet.delete()
+            return JsonResponse({'status':'success'})
+        except AttendanceSheet.DoesNotExist:
+            return JsonResponse({'status':'error','message':'Saved sheet not found'}, status=404)
+        except Exception as e:
+            logger.error(f"delete_generated_sheet error: {str(e)}")
+            return JsonResponse({'status':'error','message':str(e)}, status=400)
+    return JsonResponse({'status':'error','message':'POST required'}, status=400)
+
+
+# =========================
+# Delete Temporary Exam (On page unload/refresh)
+
+
+# =========================
+# HTML page for viewing generated sheets
+# =========================
+@admin_required
+def view_generated_sheet(request):
+    sheet_id = request.GET.get('id')
+    if not sheet_id:
+        return HttpResponse("Missing id", status=400)
+    try:
+        sheet = AttendanceSheet.objects.select_related('exam', 'student_file').get(id=sheet_id)
+    except AttendanceSheet.DoesNotExist:
+        return HttpResponse("Sheet not found", status=404)
+    context = {
+        'exam_name': sheet.exam.name,
+        'sheets': sheet.sheet_data or []
+    }
+    return render(request, 'core/generated_sheet_view.html', context)
+
 # =========================
 # Delete Temporary Exam (On page unload/refresh)
 # =========================
