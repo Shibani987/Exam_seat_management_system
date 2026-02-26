@@ -35,16 +35,17 @@ backBtn.addEventListener('click', () => {
 
 // Fetch uploaded files
 function fetchUploadedFiles() {
-  filesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px; color: #999;">Loading files...</td></tr>';
+  filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 30px; color: #999;">Loading files...</td></tr>';
   
   fetch('/get_uploaded_files/?t=' + Date.now())
     .then(r => r.json())
     .then(data => {
+      console.log('uploaded files response', data);
       if (data.status === 'success' && Array.isArray(data.files)) {
         allFiles = data.files;
         renderFilesTable(allFiles);
       } else {
-        filesTableBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 20px; color: #999;">No files found.</td></tr>';
+        filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #999;">No files found.</td></tr>';
       }
     })
     .catch(err => {
@@ -66,8 +67,6 @@ function renderFilesTable(files) {
     row.innerHTML = `
       <td><input type="checkbox" class="fileCheckbox" value="${file.id}" /></td>
       <td>${file.file_name}</td>
-      <td>${file.uploaded_at || 'N/A'}</td>
-      <td style="text-align: center;">${file.student_count || 0}</td>
     `;
     filesTableBody.appendChild(row);
 
