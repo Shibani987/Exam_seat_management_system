@@ -132,15 +132,13 @@ function fetchGeneratedSheets() {
             const viewBtn = document.createElement('button'); viewBtn.textContent='View'; viewBtn.className='btn-view';
             // open in new tab to preserve dashboard state
             viewBtn.onclick = ()=>{ window.open('/generated-sheet-view/?id='+s.id, '_blank'); };
-            const printBtn = document.createElement('button'); printBtn.textContent='Print'; printBtn.className='btn-print';
-            printBtn.onclick = ()=>{ window.open('/generated-sheet-view/?id='+s.id+'&print=1', '_blank'); };
             const delBtn = document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='btn-delete';
             delBtn.onclick = ()=>{
               if(!confirm('Remove sheets for this exam?')) return;
               fetch('/delete-generated-sheet/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},body:JSON.stringify({id:s.id})})
                 .then(rr=>rr.json()).then(j=>{ if(j.status==='success') fetchGeneratedSheets(); else alert('delete failed'); });
             };
-            actTd.appendChild(viewBtn); actTd.appendChild(printBtn); actTd.appendChild(delBtn);
+            actTd.appendChild(viewBtn); actTd.appendChild(delBtn);
             tr.appendChild(actTd);
             body.appendChild(tr);
           });

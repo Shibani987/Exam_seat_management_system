@@ -53,7 +53,6 @@ function refreshGeneratedSummary(){
               <td>${rw.student_count}</td>
               <td>
                 <button class="viewSaved" data-id="${rw.id}">View</button>
-                <button class="printSaved" data-id="${rw.id}">Print</button>
                 <button class="deleteSaved" data-id="${rw.id}">Delete</button>
               </td>
             </tr>`;
@@ -66,8 +65,7 @@ function refreshGeneratedSummary(){
             btn.onclick = () => { window.open('/generated-sheet-view/?id=' + btn.dataset.id, '_blank'); };
           });
           list.querySelectorAll('.printSaved').forEach(btn=>{
-            btn.className = 'btn-print';
-            btn.onclick = () => { window.open('/generated-sheet-view/?id=' + btn.dataset.id + '&print=1', '_blank'); };
+            btn.style.display = 'none';
           });
           list.querySelectorAll('.deleteSaved').forEach(btn=>{
             btn.onclick = () => {
