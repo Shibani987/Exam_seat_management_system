@@ -457,13 +457,16 @@ def upload_student_data(request):
         # Read file directly from memory (NOT disk)
         try:
             print(f"[DEBUG] Reading file: {uploaded_file.name}")
-            if uploaded_file.name.endswith(".csv"):
-                print(f"[DEBUG] Parsing as CSV")
-                df = pd.read_csv(uploaded_file)
-            else:
-                print(f"[DEBUG] Parsing as Excel (.xlsx/.xls)")
+            df = None
+            try:
+                print(f"[DEBUG] Trying to parse as Excel (.xlsx/.xls)")
                 df = pd.read_excel(uploaded_file)
-            print(f"[DEBUG] File read successfully, shape: {df.shape}")
+                print(f"[DEBUG] Parsed as Excel successfully, shape: {df.shape}")
+            except Exception as e_excel:
+                print(f"[DEBUG] Excel parsing failed: {e_excel}, trying as CSV")
+                uploaded_file.seek(0)  # Reset file pointer
+                df = pd.read_csv(uploaded_file)
+                print(f"[DEBUG] Parsed as CSV successfully, shape: {df.shape}")
         except Exception as e:
             err = traceback.format_exc()
             print(f"[ERROR] Error reading file: {e}\n{err}")
