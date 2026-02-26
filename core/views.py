@@ -911,7 +911,13 @@ def update_temp_exam(request):
 @csrf_exempt
 @admin_required_json
 def generate_sheets(request):
-    """Given an exam_id and file_id, return paginated sheet data (20 students per sheet)."""
+    """Given an exam_id and file_id, return paginated sheet data (20 students per sheet).
+
+    Preserves original file order (DB insertion order), filters by eligible academic_status,
+    groups students by (branch, semester) preserving encounter order, and paginates each group
+    into pages of 20. Each page returned as a dict with metadata so the frontend can render
+    branch/semester and page numbering.
+    """
     if request.method == "POST":
         try:
             data = json.loads(request.body)
@@ -919,16 +925,47 @@ def generate_sheets(request):
             file_id = data.get("file_id")
             exam = Exam.objects.get(id=exam_id)
             student_file = StudentDataFile.objects.get(id=file_id)
-            students = list(Student.objects.filter(student_file=student_file)
-                            .values('name', 'roll_number', 'registration_number'))
-            # sort by roll number for predictable order
-            students = sorted(students, key=lambda x: x.get('roll_number') or '')
-            sheets = []
-            for i in range(0, len(students), 20):
-                sheets.append(students[i:i+20])
+
+            # fetch students in DB insertion order (by PK)
+            qs = Student.objects.filter(student_file=student_file).values(
+                'id', 'name', 'roll_number', 'registration_number', 'semester', 'branch', 'academic_status'
+            ).order_by('id')
+
+            students = list(qs)
+
+            # Group by (branch, semester) while preserving encounter order
+            from collections import OrderedDict
+            groups = OrderedDict()
+
+            def is_eligible(status):
+                s = (status or '').strip().lower()
+                # Accept explicit 'eligible' values or statuses starting with 'reg' (e.g. 'regular')
+                return (s.startswith('reg') or 'elig' in s)
+
+            for s in students:
+                if not is_eligible(s.get('academic_status')):
+                    continue
+                branch = (s.get('branch') or '').strip()
+                semester = str(s.get('semester') or '')
+                key = (branch, semester)
+                groups.setdefault(key, []).append(s)
+
+            pages = []
+            for (branch, semester), group_students in groups.items():
+                total_pages = (len(group_students) + 19) // 20
+                for p in range(total_pages):
+                    chunk = group_students[p*20:(p+1)*20]
+                    pages.append({
+                        'students': chunk,
+                        'branch': branch,
+                        'semester': semester,
+                        'page_index': p + 1,
+                        'total_pages': total_pages,
+                    })
+
             return JsonResponse({
                 "status": "success",
-                "sheets": sheets,
+                "sheets": pages,
                 "exam_name": exam.name or ''
             })
         except Exam.DoesNotExist:

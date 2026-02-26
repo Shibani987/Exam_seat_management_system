@@ -170,7 +170,8 @@ generateBtn.addEventListener('click', () => {
   });
 });
 
-function showStep3(sheets, examName){
+function showStep3(pages, examName){
+  // pages: array of { students: [...], branch: '', semester: '', page_index: N, total_pages: M }
   document.getElementById('step2Content').style.display='none';
   document.getElementById('step3Content').style.display='block';
   document.getElementById('stepIndicator2').classList.remove('active');
@@ -178,6 +179,9 @@ function showStep3(sheets, examName){
   const container = document.getElementById('sheetsPreview');
   container.innerHTML='';
   
+  // save for later (save endpoint uses generatedSheets)
+  generatedSheets = pages;
+
   // Add print-friendly stylesheet if not already added
   if (!document.getElementById('attendance-sheet-css')) {
     const link = document.createElement('link');
@@ -187,21 +191,21 @@ function showStep3(sheets, examName){
     document.head.appendChild(link);
   }
   
-  sheets.forEach((sheet, sheetIdx) => {
+  pages.forEach((pageMeta, pageIdx) => {
     const sheetDiv = document.createElement('div');
     sheetDiv.className = 'attendance-sheet';
     
     // Header
     let html = `
       <div class="sheet-header">
-        <div class="header-logo">JIS</div>
+        <div class="header-logo"><img src="/static/core/img/logo.png" alt="logo" style="height:48px;"/></div>
         <h2>Controller of Examinations</h2>
         <p>JIS College of Engineering</p>
         <p>An Autonomous Institute under MAKAUT, W.B.</p>
       </div>
       
       <div class="sheet-title">
-        Attendance Sheet for B.TECH. SECOND Semester Examination MAY - 2022
+        Attendance Sheet
       </div>
       
       <div class="sheet-meta">
@@ -242,7 +246,7 @@ function showStep3(sheets, examName){
     
     // Add rows (20 per sheet as per image)
     for (let i = 0; i < 20; i++) {
-      const student = sheet[i];
+      const student = (pageMeta.students || [])[i];
       if (student) {
         html += `
           <tr>
@@ -272,32 +276,11 @@ function showStep3(sheets, examName){
         </tbody>
       </table>
       
-      <div class="sheet-footer">
-        <div class="footer-section">
-          <div class="footer-label">No of Student Present</div>
-          <div class="footer-field"></div>
+      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center;">
+        <div style="font-size:12px;">
+          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem' + (pageMeta.semester || '')) : ''}
         </div>
-        <div class="footer-section">
-          <div class="footer-label">No of Student Absent</div>
-          <div class="footer-field"></div>
-        </div>
-        <div class="footer-section" style="flex: 1.5;">
-          <div class="footer-label">Signature of Examiner (Internal)</div>
-          <div class="signature-box"></div>
-          <div style="font-size: 10px; margin-top: 5px;">Name (in CAPITAL):</div>
-        </div>
-      </div>
-      
-      <div style="display: flex; justify-content: space-between; gap: 30px; font-size: 11px;">
-        <div>
-          <div style="border-top: 1px solid #333; width: 120px; text-align: center; margin-bottom: 5px;"></div>
-          <div>Signature of HoD</div>
-        </div>
-        <div style="flex: 1;">
-          <div class="footer-label">Signature of Examiner (External)</div>
-          <div style="border-top: 1px solid #333; width: 150px; margin: 20px 0;"></div>
-          <div style="font-size: 10px;">Name (in CAPITAL):</div>
-        </div>
+        <div style="font-size:12px;">Page ${pageMeta.page_index} of ${pageMeta.total_pages}</div>
       </div>
     `;
     
