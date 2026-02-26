@@ -919,42 +919,17 @@ def generate_sheets(request):
             file_id = data.get("file_id")
             exam = Exam.objects.get(id=exam_id)
             student_file = StudentDataFile.objects.get(id=file_id)
-            # Only include students with eligible academic status (e.g., 'Regular')
-            qs = Student.objects.filter(student_file=student_file)
-            # Prefer explicitly regular students; fallback to all if none found
-            eligible_qs = qs.filter(academic_status__icontains='reg')
-            if eligible_qs.exists():
-                qs = eligible_qs
-
-            # Build groups by (branch, semester)
-            groups = {}
-            for s in qs.values('name', 'roll_number', 'registration_number', 'branch', 'semester'):
-                key = (s.get('branch') or '', s.get('semester') or '')
-                groups.setdefault(key, []).append(s)
-
-            # For each group, sort by roll_number and paginate into pages of 20
-            pages = []
-            for (branch, semester), students in groups.items():
-                students_sorted = sorted(students, key=lambda x: x.get('roll_number') or '')
-                for i in range(0, len(students_sorted), 20):
-                    page_students = students_sorted[i:i+20]
-                    pages.append({
-                        'students': page_students,
-                        'branch': branch,
-                        'semester': semester,
-                        'file_name': student_file.file_name,
-                    })
-
-            # Add page indices and total_pages
-            total_pages = len(pages)
-            for idx, p in enumerate(pages, start=1):
-                p['page_index'] = idx
-                p['total_pages'] = total_pages
-
+            students = list(Student.objects.filter(student_file=student_file)
+                            .values('name', 'roll_number', 'registration_number'))
+            # sort by roll number for predictable order
+            students = sorted(students, key=lambda x: x.get('roll_number') or '')
+            sheets = []
+            for i in range(0, len(students), 20):
+                sheets.append(students[i:i+20])
             return JsonResponse({
-                'status': 'success',
-                'sheets': pages,
-                'exam_name': exam.name or ''
+                "status": "success",
+                "sheets": sheets,
+                "exam_name": exam.name or ''
             })
         except Exam.DoesNotExist:
             return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
