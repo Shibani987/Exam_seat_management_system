@@ -8,11 +8,10 @@
   <title>Generated Attendance Sheets - {{ exam_name }}</title>
   <link rel="stylesheet" href="{% static 'core/css/attendance_sheet_print.css' %}">
   <style>body{margin:0;}.print-btn{padding:8px 12px;margin:10px;}</style>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 </head>
 <body>
   <p style="margin:10px 0;"><a href="{% url 'dashboard' %}?tab=generate-sheet" class="no-print" style="color:#1976d2;text-decoration:none;">← Back to Dashboard</a></p>
-  <button class="print-btn no-print" onclick="downloadPDF()">Download PDF</button>
+  <button class="print-btn no-print" onclick="window.print()">Print All</button>
   <div id="sheetsPreview"></div>
   {% comment %} embed data safely for javascript {% endcomment %}
   {{ sheets|json_script:"initialSheets" }}
@@ -20,21 +19,6 @@
   <script>
     const initialSheets = JSON.parse(document.getElementById('initialSheets').textContent);
     const initialExamName = JSON.parse(document.getElementById('initialExamName').textContent);
-    
-    function downloadPDF() {
-      const sheetsDiv = document.getElementById('sheetsPreview');
-      const fileName = initialExamName.replace(/[^a-z0-9]/gi, '_').toLowerCase() + '_attendance_sheets.pdf';
-      
-      const options = {
-        margin: 0.5,
-        filename: fileName,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { orientation: 'landscape', unit: 'cm', format: 'a4' }
-      };
-      
-      html2pdf().set(options).from(sheetsDiv).save();
-    }
   </script>
   <script src="{% static 'core/js/attendance_wizard.js' %}"></script>
   <script>
