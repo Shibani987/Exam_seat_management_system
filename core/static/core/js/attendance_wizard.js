@@ -2,7 +2,6 @@
 const examNameInput = document.getElementById('examName');
 const nextBtn = document.getElementById('nextBtn');
 const backBtn = document.getElementById('backBtn');
-const cancelBtn = document.getElementById('cancelBtn');
 const generateBtn = document.getElementById('generateBtn');
 const fileFilter = document.getElementById('fileFilter');
 const showAllBtn = document.getElementById('showAllBtn');
@@ -33,11 +32,6 @@ backBtn.addEventListener('click', () => {
   generateBtn.disabled = true;
 });
 
-cancelBtn.addEventListener('click', () => {
-  if (confirm('Are you sure you want to cancel? Any unsaved changes will be lost.')) {
-    window.location.href = '{% url 'dashboard' %}?tab=generate-sheet';
-  }
-});
 
 // Fetch uploaded files
 function fetchUploadedFiles() {
@@ -122,19 +116,3 @@ generateBtn.addEventListener('click', () => {
   window.location.href = '{% url 'dashboard' %}?tab=generate-sheet';
 });
 
-// Sidebar toggle
-const hamburgerBtn = document.getElementById('hamburgerBtn');
-const closeBtn = document.getElementById('closeBtn');
-const sidebar = document.getElementById('sidebar');
-
-if (hamburgerBtn && sidebar && closeBtn) {
-  hamburgerBtn.addEventListener('click', () => {
-    hamburgerBtn.classList.toggle('active');
-    sidebar.classList.toggle('active');
-  });
-
-  closeBtn.addEventListener('click', () => {
-    hamburgerBtn.classList.remove('active');
-    sidebar.classList.remove('active');
-  });
-}

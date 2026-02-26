@@ -9,22 +9,7 @@
   <link rel="stylesheet" href="{% static 'core/css/attendance_wizard.css' %}">
 </head>
 <body>
-  <!-- Sidebar -->
-  <button class="hamburger-btn" id="hamburgerBtn"><span></span><span></span><span></span></button>
-  <div class="sidebar" id="sidebar">
-    <button class="close-btn" id="closeBtn">✕</button>
-    <div>
-      <h2>admin panel</h2>
-      <a href="{% url 'dashboard' %}" class="tab-link">create exam</a>
-      <a href="{% url 'dashboard' %}?tab=generate-sheet" class="tab-link active">generate sheet attendance</a>
-      <a href="{% url 'dashboard' %}?tab=upload-data" class="tab-link">upload student data</a>
-      <a href="{% url 'dashboard' %}?tab=admin-emails" class="tab-link">admin emails</a>
-      <a href="{% url 'dashboard' %}?tab=qr-tab" class="tab-link">universal qr</a>
-    </div>
-    <div class="logout">
-      <a href="{% url 'admin_logout' %}">logout →</a>
-    </div>
-  </div>
+
 
   <!-- Main Content -->
   <div class="main">
@@ -54,7 +39,6 @@
         </div>
         <div class="button-group">
           <button class="btn-primary" id="nextBtn" disabled>Next →</button>
-          <button class="btn-secondary" id="cancelBtn">Cancel</button>
         </div>
       </div>
 
