@@ -205,7 +205,7 @@ function showStep3(pages, examName){
       </div>
       
       <div class="sheet-title">
-        Attendance Sheet
+        Attendance Sheet for ${examName || ''}
       </div>
       
       <div class="sheet-meta">
@@ -276,11 +276,40 @@ function showStep3(pages, examName){
         </tbody>
       </table>
       
-      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center;">
+      <!-- preserved footer details -->
+      <div class="sheet-footer">
+        <div class="footer-section">
+          <div class="footer-label">No of Student Present</div>
+          <div class="footer-field"></div>
+        </div>
+        <div class="footer-section">
+          <div class="footer-label">No of Student Absent</div>
+          <div class="footer-field"></div>
+        </div>
+        <div class="footer-section" style="flex: 1.5;">
+          <div class="footer-label">Signature of Examiner (Internal)</div>
+          <div class="signature-box"></div>
+          <div style="font-size: 10px; margin-top: 5px;">Name (in CAPITAL):</div>
+        </div>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; gap: 30px; font-size: 11px;">
+        <div>
+          <div style="border-top: 1px solid #333; width: 120px; text-align: center; margin-bottom: 5px;"></div>
+          <div>Signature of HoD</div>
+        </div>
+        <div style="flex: 1;">
+          <div class="footer-label">Signature of Examiner (External)</div>
+          <div style="border-top: 1px solid #333; width: 150px; margin: 20px 0;"></div>
+          <div style="font-size: 10px;">Name (in CAPITAL):</div>
+        </div>
+      </div>
+      
+      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
         <div style="font-size:12px;">
           ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem' + (pageMeta.semester || '')) : ''}
         </div>
-        <div style="font-size:12px;">Page ${pageMeta.page_index} of ${pageMeta.total_pages}</div>
+        <div style="font-size:12px;">Page ${pageMeta.global_index} of ${pageMeta.total_sheets}</div>
       </div>
     `;
     
@@ -288,13 +317,7 @@ function showStep3(pages, examName){
     container.appendChild(sheetDiv);
   });
   
-  // Add print controls
-  const controls = document.createElement('div');
-  controls.className = 'print-btn-group';
-  controls.innerHTML = `
-    <button class="print-btn" onclick="window.print()">🖨️ Print Sheets</button>
-  `;
-  container.appendChild(controls);
+  // no print button (handled by browser or user can press Ctrl+P)
 }
 
 // Save button
