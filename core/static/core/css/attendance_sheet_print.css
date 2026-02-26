@@ -2,108 +2,98 @@
 .attendance-sheet {
   width: 100%;
   max-width: 900px;
-  margin: 0;
-  padding: 10px;
+  margin: 20px auto;
+  padding: 20px;
   background: white;
   font-family: Arial, sans-serif;
   page-break-after: always;
-  page-break-inside: avoid;
-  orphans: 0;
-  widows: 0;
-  height: auto;
-  box-sizing: border-box;
 }
 
 .sheet-header {
   text-align: center;
-  margin-bottom: 10px;
-  page-break-inside: avoid;
+  margin-bottom: 20px;
 }
 
 .header-logo {
-  width: 45px;
-  height: 45px;
-  margin: 0 auto 5px;
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 10px;
   background: #f0f0f0;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 8px;
+  font-size: 10px;
   color: #666;
   border: 2px solid #333;
 }
 
 .sheet-header h2 {
   margin: 0;
-  font-size: 16px;
+  font-size: 18px;
   font-weight: bold;
   color: #333;
 }
 
 .sheet-header p {
-  margin: 1px 0;
-  font-size: 10px;
+  margin: 2px 0;
+  font-size: 12px;
   color: #555;
 }
 
 .sheet-title {
   text-align: center;
-  font-size: 12px;
+  font-size: 14px;
   font-weight: bold;
-  margin: 8px 0;
+  margin: 15px 0;
   border-top: 2px solid #333;
   border-bottom: 2px solid #333;
-  padding: 3px 0;
-  page-break-inside: avoid;
+  padding: 8px 0;
 }
 
 .sheet-meta {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 8px;
-  gap: 10px;
-  page-break-inside: avoid;
+  margin-bottom: 15px;
+  gap: 20px;
 }
 
 .meta-field {
   flex: 1;
   border: 2px solid #333;
-  padding: 5px 4px;
-  min-height: 20px;
+  padding: 8px;
+  min-height: 30px;
   display: flex;
   align-items: center;
 }
 
 .meta-label {
   font-weight: bold;
-  font-size: 9px;
-  margin-bottom: 2px;
+  font-size: 12px;
+  margin-bottom: 4px;
 }
 
 .sheet-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 15px;
-  page-break-inside: avoid;
+  margin-bottom: 20px;
 }
 
 .sheet-table th {
   border: 2px solid #333;
-  padding: 6px 3px;
+  padding: 10px 5px;
   text-align: left;
   font-weight: bold;
-  font-size: 9px;
+  font-size: 11px;
   background: #f5f5f5;
 }
 
 .sheet-table td {
   border: 2px solid #333;
-  padding: 6px 2px;
-  font-size: 9px;
-  min-height: 18px;
+  padding: 15px 5px;
+  font-size: 11px;
+  min-height: 30px;
   vertical-align: top;
-  page-break-inside: avoid;
 }
 
 .sheet-table tr:nth-child(even) {
@@ -139,31 +129,29 @@
 
 .sheet-footer {
   display: flex;
-  gap: 30px;
-  margin-bottom: 10px;
-  font-size: 10px;
-  page-break-inside: avoid;
+  gap: 40px;
+  margin-bottom: 20px;
+  font-size: 11px;
 }
 
 .footer-section {
   flex: 1;
-  page-break-inside: avoid;
 }
 
 .footer-field {
   border: 2px solid #333;
-  padding: 6px;
-  margin-bottom: 8px;
-  min-height: 20px;
+  padding: 8px;
+  margin-bottom: 10px;
+  min-height: 25px;
 }
 
 .signature-box {
-  margin-top: 5px;
-  min-height: 30px;
+  margin-top: 10px;
+  min-height: 50px;
   border: 1px solid #999;
   text-align: center;
-  padding-top: 15px;
-  font-size: 8px;
+  padding-top: 30px;
+  font-size: 10px;
 }
 
 .footer-label {
@@ -197,6 +185,30 @@
 .print-btn:hover {
   background: #1565c0;
 }
+
+@media print {
+  body { margin:0; padding:0; }
+  .attendance-sheet { margin:0; padding:0; max-width:100%; page-break-after:always; }
+  .print-btn-group { display:none; }
+}
+
+/* hide non-sheet elements when printing */
+.no-print { display: none !important; }
+
+@media print {
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html, body { margin:0; padding:0; width:100%; height:100%; }
+  .attendance-sheet {
+    width:100%; max-width:100%; margin:0; padding:20px;
+    page-break-after:always; page-break-inside:avoid;
+    orphans:0; widows:0; height:auto;
+  }
+  .sheet-header, .sheet-title, .sheet-meta, .sheet-table, .sheet-footer {
+    page-break-inside:avoid;
+  }
+  .print-btn, .print-btn-group, .no-print { display:none !important; }
+}
+
 
 .export-btn {
   background: #388e3c;

@@ -10,8 +10,8 @@
   <style>body{margin:0;}.print-btn{padding:8px 12px;margin:10px;}</style>
 </head>
 <body>
-  <p style="margin:10px 0;"><a href="{% url 'dashboard' %}?tab=generate-sheet" class="no-print" style="color:#1976d2;text-decoration:none;">← Back to Dashboard</a></p>
-  <button class="print-btn no-print" onclick="window.print()">Print All</button>
+  <p style="margin:10px 0;"><a href="{% url 'dashboard' %}?tab=generate-sheet" style="color:#1976d2;text-decoration:none;">← Back to Dashboard</a></p>
+  <button class="print-btn" onclick="window.print()">Print All</button>
   <div id="sheetsPreview"></div>
   {% comment %} embed data safely for javascript {% endcomment %}
   {{ sheets|json_script:"initialSheets" }}
