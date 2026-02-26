@@ -133,5 +133,85 @@ if (uploadDataBtn && fileInput) {
 }
 
 
+// ================= GENERATE SHEET ATTENDANCE =================
+const generateSheetBtn = document.getElementById('generateSheetBtn');
+const uploadCheckModal = document.getElementById('uploadCheckModal');
+const uploadCheckCloseBtn = document.getElementById('uploadCheckCloseBtn');
+const uploadCheckCancelBtn = document.getElementById('uploadCheckCancelBtn');
+const goToUploadBtn = document.getElementById('goToUploadBtn');
+const proceedToWizardBtn = document.getElementById('proceedToWizardBtn');
+const uploadCheckMessage = document.getElementById('uploadCheckMessage');
+
+if (generateSheetBtn) {
+  generateSheetBtn.addEventListener('click', () => {
+    // Check if student data has been uploaded
+    checkStudentDataAndShowModal();
+  });
+}
+
+if (uploadCheckCloseBtn) {
+  uploadCheckCloseBtn.addEventListener('click', () => {
+    uploadCheckModal.classList.remove('active');
+  });
+}
+
+if (uploadCheckCancelBtn) {
+  uploadCheckCancelBtn.addEventListener('click', () => {
+    uploadCheckModal.classList.remove('active');
+  });
+}
+
+if (goToUploadBtn) {
+  goToUploadBtn.addEventListener('click', () => {
+    uploadCheckModal.classList.remove('active');
+    // Switch to upload-data tab
+    document.querySelector('[data-tab="generate-sheet"]').classList.remove('active');
+    document.querySelector('[data-tab="upload-data"]').classList.add('active');
+    document.getElementById('generate-sheet').classList.remove('active');
+    document.getElementById('upload-data').classList.add('active');
+  });
+}
+
+if (proceedToWizardBtn) {
+  proceedToWizardBtn.addEventListener('click', () => {
+    window.location.href = '/attendance-wizard/';
+  });
+}
+
+function checkStudentDataAndShowModal() {
+  // Fetch uploaded files to check if any exist
+  fetch('/get_uploaded_files/?t=' + Date.now())
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success' && Array.isArray(data.files) && data.files.length > 0) {
+        // Files exist, show proceed button
+        uploadCheckMessage.textContent = 'Student data is available. Click Continue to configure and generate the attendance sheet.';
+        goToUploadBtn.style.display = 'none';
+        proceedToWizardBtn.style.display = 'inline-block';
+      } else {
+        // No files, show upload button
+        uploadCheckMessage.textContent = 'No student data has been uploaded yet. Please upload student data first before generating an attendance sheet.';
+        goToUploadBtn.style.display = 'inline-block';
+        proceedToWizardBtn.style.display = 'none';
+      }
+      uploadCheckModal.classList.add('active');
+    })
+    .catch(err => {
+      console.error('Error checking files:', err);
+      uploadCheckMessage.textContent = 'Error checking student data. Please try again.';
+      uploadCheckModal.classList.add('active');
+    });
+}
+
+// Close modal when clicking outside
+if (uploadCheckModal) {
+  uploadCheckModal.addEventListener('click', (event) => {
+    if (event.target === uploadCheckModal) {
+      uploadCheckModal.classList.remove('active');
+    }
+  });
+}
+
+
 
 

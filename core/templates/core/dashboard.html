@@ -22,6 +22,7 @@
     <div>
       <h2>admin panel</h2>
       <a href="#" class="tab-link active" data-tab="create-exam">create exam</a>
+      <a href="#" class="tab-link" data-tab="generate-sheet">generate sheet attendance</a>
       <a href="#" class="tab-link" data-tab="upload-data">upload student data</a>
       <a href="#" class="tab-link" data-tab="admin-emails">admin emails</a>
       <a href="#" class="tab-link" data-tab="qr-tab">universal qr</a>
@@ -60,6 +61,32 @@
         <h2>Scheduled Exams</h2>
         <div id="examsContainer">
           <p style="text-align: center; color: #999; padding: 20px;">Loading exams...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== GENERATE SHEET ATTENDANCE TAB ================== -->
+    <div class="tab-content" id="generate-sheet">
+      <div class="header">
+        <h1>Attendance Sheet Generator</h1>
+        <button class="new-exam-btn" id="generateSheetBtn">+ Generate Sheet</button>
+      </div>
+
+      <div class="stats">
+        <div class="card">
+          <h3>Total Sheets Generated</h3>
+          <p id="totalSheetsCount">0</p>
+        </div>
+        <div class="card">
+          <h3>Recent Sessions</h3>
+          <p id="recentSessionsCount">0</p>
+        </div>
+      </div>
+
+      <div class="exam-list">
+        <h2>Generated Sheets</h2>
+        <div id="sheetsContainer">
+          <p style="text-align: center; color: #999; padding: 20px;">No sheets generated yet.</p>
         </div>
       </div>
     </div>
@@ -203,6 +230,22 @@
        
       </div>
     </div>
+
+  <!-- ================== MODAL FOR UPLOAD CHECK ================== -->
+  <div class="modal" id="uploadCheckModal">
+    <div class="modal-content">
+      <button class="modal-close" id="uploadCheckCloseBtn">×</button>
+      <h1 style="margin-top: 0;">Attendance Sheet Generation</h1>
+      <div id="uploadCheckContent">
+        <p id="uploadCheckMessage" style="margin: 20px 0;"></p>
+        <div style="display: flex; gap: 8px; justify-content: center; margin-top: 20px;">
+          <button id="goToUploadBtn" class="upload-btn" style="display: none;">Go to Student Upload</button>
+          <button id="proceedToWizardBtn" class="upload-btn" style="display: none;">Continue →</button>
+          <button id="uploadCheckCancelBtn" class="upload-btn" style="background: #f44336;">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <!-- ================== MODAL FOR NEW EXAM ================== -->
   <div class="modal" id="newExamModal">

@@ -747,6 +747,15 @@ def exam_setup(request):
 
 
 # =========================
+# Attendance Wizard Page
+# =========================
+@admin_required
+def attendance_wizard(request):
+    """Two-step wizard for generating attendance sheets."""
+    return render(request, "core/attendance_wizard.html")
+
+
+# =========================
 # Initialize Temporary Exam (When exam_setup loads)
 # =========================
 @admin_required_json
