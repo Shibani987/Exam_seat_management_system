@@ -11,7 +11,7 @@
 </head>
 <body>
   <p style="margin:10px 0;"><a href="{% url 'dashboard' %}?tab=generate-sheet" class="no-print" style="color:#1976d2;text-decoration:none;">← Back to Dashboard</a></p>
-  <button class="print-btn no-print" onclick="window.print()">Print All</button>
+  <button class="print-btn no-print" onclick="handlePrint()">Print All</button>
   <div id="sheetsPreview"></div>
   {% comment %} embed data safely for javascript {% endcomment %}
   {{ sheets|json_script:"initialSheets" }}
@@ -19,6 +19,13 @@
   <script>
     const initialSheets = JSON.parse(document.getElementById('initialSheets').textContent);
     const initialExamName = JSON.parse(document.getElementById('initialExamName').textContent);
+    
+    function handlePrint() {
+      // small delay to ensure all DOM updates are complete
+      setTimeout(() => {
+        window.print();
+      }, 100);
+    }
   </script>
   <script src="{% static 'core/js/attendance_wizard.js' %}"></script>
   <script>

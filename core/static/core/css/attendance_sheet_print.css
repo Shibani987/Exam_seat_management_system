@@ -207,6 +207,11 @@
   background: #2e7d32;
 }
 
+/* Hide non-printable elements */
+.no-print {
+  display: none !important;
+}
+
 @media print {
   * {
     margin: 0;
@@ -239,7 +244,7 @@
   .sheet-table { page-break-inside: avoid; }
   .sheet-footer { page-break-inside: avoid; }
   
-  .print-btn-group, .print-btn {
+  .print-btn-group, .print-btn, .no-print {
     display: none !important;
   }
 }
