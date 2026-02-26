@@ -183,30 +183,25 @@ function checkStudentDataAndShowModal() {
   fetch('/get_uploaded_files/?t=' + Date.now())
     .then(r => r.json())
     .then(data => {
-      console.log('API Response:', data);  // Debug log
-      
+      // always show both buttons; disable continue if no files
+      goToUploadBtn.style.display = 'inline-block';
+      proceedToWizardBtn.style.display = 'inline-block';
+
       if (data.status === 'success' && Array.isArray(data.files) && data.files.length > 0) {
-        // Files exist, show proceed button
-        uploadCheckMessage.textContent = 'Student data is available. Click Continue to configure and generate the attendance sheet.';
-        goToUploadBtn.style.display = 'none';
-        proceedToWizardBtn.style.display = 'inline-block';
-        uploadCheckModal.classList.add('active');
+        uploadCheckMessage.textContent = 'Student data has been uploaded. Click Continue to proceed or Upload Student Data to replace the file.';
+        proceedToWizardBtn.disabled = false;
       } else {
-        // No files uploaded - show alert first
-        alert('⚠️ Student Data Upload is Mandatory!\n\nTo generate an attendance sheet, you must first upload student data.\n\nPlease go to the "Upload Student Data" tab and upload the required student data file.');
-        
-        // Optional: auto-switch to upload tab
-        if (document.querySelector('[data-tab="upload-data"]')) {
-          document.querySelector('[data-tab="generate-sheet"]').classList.remove('active');
-          document.querySelector('[data-tab="upload-data"]').classList.add('active');
-          document.getElementById('generate-sheet').classList.remove('active');
-          document.getElementById('upload-data').classList.add('active');
-        }
+        uploadCheckMessage.textContent = 'To generate an attendance sheet, uploading student data is mandatory.';
+        proceedToWizardBtn.disabled = true;
       }
+
+      uploadCheckModal.classList.add('active');
     })
     .catch(err => {
       console.error('Error checking files:', err);
-      alert('Error checking student data. Please try again.');
+      uploadCheckMessage.textContent = 'Error checking student data. Please try again.';
+      proceedToWizardBtn.disabled = true;
+      uploadCheckModal.classList.add('active');
     });
 }
 
