@@ -7,6 +7,7 @@
   background: white;
   font-family: Arial, sans-serif;
   page-break-after: always;
+  page-break-inside: avoid; /* try to keep the sheet on a single page */
 }
 
 .sheet-header {
@@ -90,9 +91,9 @@
 
 .sheet-table td {
   border: 2px solid #333;
-  padding: 15px 5px;
-  font-size: 11px;
-  min-height: 30px;
+  padding: 8px 5px; /* reduced padding for print fit */
+  font-size: 10px; /* slightly smaller font to help fit */
+  min-height: 25px;
   vertical-align: top;
 }
 
@@ -187,27 +188,27 @@
 }
 
 @media print {
+  /* force a larger page orientation and minimal margins */
+  @page { size: A4 landscape; margin: 0.5cm; }
   body { margin:0; padding:0; }
-  .attendance-sheet { margin:0; padding:0; max-width:100%; page-break-after:always; }
+  .attendance-sheet {
+    margin:0;
+    padding:0;
+    max-width:100%;
+    page-break-after:always;
+    page-break-inside:avoid;
+    /* scale down slightly if needed to fit on one page */
+    transform: scale(0.95);
+    transform-origin: top left;
+  }
   .print-btn-group { display:none; }
 }
 
 /* hide non-sheet elements when printing */
 .no-print { display: none !important; }
 
-@media print {
-  * { margin:0; padding:0; box-sizing:border-box; }
-  html, body { margin:0; padding:0; width:100%; height:100%; }
-  .attendance-sheet {
-    width:100%; max-width:100%; margin:0; padding:20px;
-    page-break-after:always; page-break-inside:avoid;
-    orphans:0; widows:0; height:auto;
-  }
-  .sheet-header, .sheet-title, .sheet-meta, .sheet-table, .sheet-footer {
-    page-break-inside:avoid;
-  }
-  .print-btn, .print-btn-group, .no-print { display:none !important; }
-}
+/* the primary print rules defined earlier already include orientation,
+   scaling and hiding of controls; duplicates removed to avoid overrides */
 
 
 .export-btn {
@@ -217,41 +218,4 @@
 
 .export-btn:hover {
   background: #2e7d32;
-}
-
-@media print {
-  * {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-  }
-  
-  html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
-  }
-  
-  .attendance-sheet {
-    width: 100%;
-    max-width: 100%;
-    margin: 0;
-    padding: 20px;
-    page-break-after: always;
-    page-break-inside: avoid;
-    orphans: 0;
-    widows: 0;
-    height: auto;
-  }
-  
-  .sheet-header { page-break-inside: avoid; }
-  .sheet-title { page-break-inside: avoid; }
-  .sheet-meta { page-break-inside: avoid; }
-  .sheet-table { page-break-inside: avoid; }
-  .sheet-footer { page-break-inside: avoid; }
-  
-  .print-btn-group, .print-btn {
-    display: none !important;
-  }
 }
