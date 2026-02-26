@@ -30,7 +30,7 @@ let allFiles = [];
 let selectedFiles = [];
 let currentExamId = null;
 let currentFileId = null;
-let generatedSheets = []; // array of arrays
+let generatedSheets = []; // array of sheet objects
 
 // Initialize a temporary exam when the page loads
 window.addEventListener('DOMContentLoaded', () => {
@@ -126,6 +126,191 @@ function renderFilesTable(files) {
     return;
   }
 
+  filesTableBody.innerHTML = '';
+  files.forEach(file => {
+    const row = document.createElement('tr');
+    row.innerHTML = `
+      <td><input type="checkbox" class="fileCheckbox" value="${file.id}" /></td>
+      <td>${file.file_name}</td>
+    `;
+    filesTableBody.appendChild(row);
+
+    row.querySelector('.fileCheckbox').addEventListener('change', updateGenerateBtn);
+  });
+}
+
+// Generate sheets when file selected
+generateBtn.addEventListener('click', () => {
+  const selected = Array.from(document.querySelectorAll('.fileCheckbox:checked')).map(cb => cb.value);
+  if (selected.length === 0) return;
+  if (selected.length > 1) {
+    alert('Please select only one file at a time');
+    return;
+  }
+  if (!currentExamId) {
+    alert('Temporary exam missing');
+    return;
+  }
+  const fileId = selected[0];
+  currentFileId = fileId;
+  fetch('/generate-sheets/', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'X-CSRFToken': getCsrfToken()
+    },
+    body:JSON.stringify({exam_id: currentExamId, file_id: fileId})
+  }).then(r=>r.json()).then(data=>{
+    if (data.status==='success'){
+      generatedSheets = data.sheets;
+      showStep3(data.sheets, data.exam_name);
+    } else {
+      alert('Error generating sheets: '+data.message);
+    }
+  });
+});
+
+function showStep3(sheets, examName){
+  document.getElementById('step2Content').style.display='none';
+  document.getElementById('step3Content').style.display='block';
+  document.getElementById('stepIndicator2').classList.remove('active');
+  document.getElementById('stepIndicator3').classList.add('active');
+  const container = document.getElementById('sheetsPreview');
+  container.innerHTML='';
+  
+  // Add print-friendly stylesheet if not already added
+  if (!document.getElementById('attendance-sheet-css')) {
+    const link = document.createElement('link');
+    link.id = 'attendance-sheet-css';
+    link.rel = 'stylesheet';
+    link.href = '/static/core/css/attendance_sheet_print.css';
+    document.head.appendChild(link);
+  }
+  
+  sheets.forEach((sheet) => {
+    const sheetDiv = document.createElement('div');
+    sheetDiv.className = 'attendance-sheet';
+    
+    // Header with logo image (use provided logo if placed at static path)
+    let logoHtml = `<div style="text-align:center;margin-bottom:6px;"><img src='/static/core/img/jis_logo.png' alt='logo' style='width:70px;height:70px;object-fit:contain;border:2px solid #333;border-radius:50%;'></div>`;
+
+    let html = `
+      <div class="sheet-header">
+        ${logoHtml}
+        <h2>Controller of Examinations</h2>
+        <p>JIS College of Engineering</p>
+        <p>An Autonomous Institute under MAKAUT, W.B.</p>
+      </div>
+
+      <div class="sheet-title">
+        Attendance Sheet for B.TECH. SECOND Semester Examination MAY - 2022
+      </div>
+
+      <div class="sheet-meta">
+        <div style="flex: 1;">
+          <div class="meta-label">Date of Examination</div>
+          <div class="meta-field"></div>
+        </div>
+        <div style="flex: 1;">
+          <div class="meta-label">Time</div>
+          <div class="meta-field"></div>
+        </div>
+      </div>
+
+      <div class="sheet-meta">
+        <div style="flex: 1;">
+          <div class="meta-label">Paper Name</div>
+          <div class="meta-field"></div>
+        </div>
+        <div style="flex: 1;">
+          <div class="meta-label">Paper Code</div>
+          <div class="meta-field"></div>
+        </div>
+      </div>
+
+      <table class="sheet-table">
+        <thead>
+          <tr>
+            <th class="sl-col">Sl</th>
+            <th class="name-col">Name</th>
+            <th class="reg-col">Registration No</th>
+            <th class="roll-col">Roll No</th>
+            <th class="booklet-col">Answer<br>Booklet No</th>
+            <th class="signature-col">Candidate<br>Signature</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    // Add rows (20 per sheet)
+    for (let i = 0; i < 20; i++) {
+      const student = (sheet.students && sheet.students[i]) ? sheet.students[i] : null;
+      if (student) {
+        html += `
+          <tr>
+            <td class="sl-col">${i + 1}</td>
+            <td class="name-col">${(student.name || '').toUpperCase()}</td>
+            <td class="reg-col">${student.registration_number || ''}</td>
+            <td class="roll-col">${student.roll_number || ''}</td>
+            <td class="booklet-col"></td>
+            <td class="signature-col"></td>
+          </tr>
+        `;
+      } else {
+        html += `
+          <tr>
+            <td class="sl-col">${i + 1}</td>
+            <td class="name-col"></td>
+            <td class="reg-col"></td>
+            <td class="roll-col"></td>
+            <td class="booklet-col"></td>
+            <td class="signature-col"></td>
+          </tr>
+        `;
+      }
+    }
+
+    html += `
+        </tbody>
+      </table>
+
+      <div class="sheet-footer">
+        <div class="footer-section">
+          <div class="footer-label">No of Student Present</div>
+          <div class="footer-field"></div>
+        </div>
+        <div class="footer-section">
+          <div class="footer-label">No of Student Absent</div>
+          <div class="footer-field"></div>
+        </div>
+        <div class="footer-section" style="flex: 1.5;">
+          <div class="footer-label">Signature of Examiner (Internal)</div>
+          <div class="signature-box"></div>
+          <div style="font-size: 10px; margin-top: 5px;">Name (in CAPITAL):</div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; gap: 30px; font-size: 11px; margin-top:8px;">
+        <div>
+          <div style="border-top: 1px solid #333; width: 120px; text-align: center; margin-bottom: 5px;"></div>
+          <div>Signature of HoD</div>
+        </div>
+        <div style="flex: 1;">
+          <div class="footer-label">Signature of Examiner (External)</div>
+          <div style="border-top: 1px solid #333; width: 150px; margin: 20px 0;"></div>
+          <div style="font-size: 10px;">Name (in CAPITAL):</div>
+        </div>
+      </div>
+
+      <div style="display:flex; justify-content:space-between; margin-top:6px; font-size:11px;">
+        <div style="font-weight:600;">${(sheet.branch || '').toUpperCase()}_${(sheet.semester || '')}</div>
+        <div>Page ${sheet.page_index} of ${sheet.total_pages}</div>
+      </div>
+    `;
+
+    sheetDiv.innerHTML = html;
+    container.appendChild(sheetDiv);
+  });
   filesTableBody.innerHTML = '';
   files.forEach(file => {
     const row = document.createElement('tr');
