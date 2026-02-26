@@ -137,7 +137,6 @@ if (uploadDataBtn && fileInput) {
 const generateSheetBtn = document.getElementById('generateSheetBtn');
 const uploadCheckModal = document.getElementById('uploadCheckModal');
 const uploadCheckCloseBtn = document.getElementById('uploadCheckCloseBtn');
-const uploadCheckCancelBtn = document.getElementById('uploadCheckCancelBtn');
 const goToUploadBtn = document.getElementById('goToUploadBtn');
 const proceedToWizardBtn = document.getElementById('proceedToWizardBtn');
 const uploadCheckMessage = document.getElementById('uploadCheckMessage');
@@ -155,11 +154,6 @@ if (uploadCheckCloseBtn) {
   });
 }
 
-if (uploadCheckCancelBtn) {
-  uploadCheckCancelBtn.addEventListener('click', () => {
-    uploadCheckModal.classList.remove('active');
-  });
-}
 
 if (goToUploadBtn) {
   goToUploadBtn.addEventListener('click', () => {
@@ -188,11 +182,9 @@ function checkStudentDataAndShowModal() {
       proceedToWizardBtn.style.display = 'inline-block';
 
       if (data.status === 'success' && Array.isArray(data.files) && data.files.length > 0) {
-        uploadCheckMessage.textContent = 'Student data has been uploaded. Click Continue to proceed or Upload Student Data to replace the file.';
-        proceedToWizardBtn.disabled = false;
+        uploadCheckMessage.textContent = 'Student data has been uploaded. If you\'ve already uploaded, you can proceed by clicking Continue below.';
       } else {
-        uploadCheckMessage.textContent = 'To generate an attendance sheet, uploading student data is mandatory.';
-        proceedToWizardBtn.disabled = true;
+        uploadCheckMessage.textContent = 'To generate an attendance sheet, uploading student data is mandatory. If you\'ve already uploaded, you can proceed by clicking Continue below.';
       }
 
       uploadCheckModal.classList.add('active');
@@ -200,7 +192,6 @@ function checkStudentDataAndShowModal() {
     .catch(err => {
       console.error('Error checking files:', err);
       uploadCheckMessage.textContent = 'Error checking student data. Please try again.';
-      proceedToWizardBtn.disabled = true;
       uploadCheckModal.classList.add('active');
     });
 }
