@@ -1,0 +1,214 @@
+/* Attendance Sheet Print Styling */
+.attendance-sheet {
+  width: 100%;
+  max-width: 900px;
+  margin: 20px auto;
+  padding: 20px;
+  background: white;
+  font-family: Arial, sans-serif;
+  page-break-after: always;
+}
+
+.sheet-header {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.header-logo {
+  width: 60px;
+  height: 60px;
+  margin: 0 auto 10px;
+  background: #f0f0f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #666;
+  border: 2px solid #333;
+}
+
+.sheet-header h2 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+}
+
+.sheet-header p {
+  margin: 2px 0;
+  font-size: 12px;
+  color: #555;
+}
+
+.sheet-title {
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+  margin: 15px 0;
+  border-top: 2px solid #333;
+  border-bottom: 2px solid #333;
+  padding: 8px 0;
+}
+
+.sheet-meta {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  gap: 20px;
+}
+
+.meta-field {
+  flex: 1;
+  border: 2px solid #333;
+  padding: 8px;
+  min-height: 30px;
+  display: flex;
+  align-items: center;
+}
+
+.meta-label {
+  font-weight: bold;
+  font-size: 12px;
+  margin-bottom: 4px;
+}
+
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 20px;
+}
+
+.sheet-table th {
+  border: 2px solid #333;
+  padding: 10px 5px;
+  text-align: left;
+  font-weight: bold;
+  font-size: 11px;
+  background: #f5f5f5;
+}
+
+.sheet-table td {
+  border: 2px solid #333;
+  padding: 15px 5px;
+  font-size: 11px;
+  min-height: 30px;
+  vertical-align: top;
+}
+
+.sheet-table tr:nth-child(even) {
+  background: #fafafa;
+}
+
+.sl-col {
+  width: 4%;
+  text-align: center;
+}
+
+.name-col {
+  width: 25%;
+}
+
+.reg-col {
+  width: 20%;
+}
+
+.roll-col {
+  width: 15%;
+}
+
+.booklet-col {
+  width: 18%;
+  text-align: center;
+}
+
+.signature-col {
+  width: 18%;
+  text-align: center;
+}
+
+.sheet-footer {
+  display: flex;
+  gap: 40px;
+  margin-bottom: 20px;
+  font-size: 11px;
+}
+
+.footer-section {
+  flex: 1;
+}
+
+.footer-field {
+  border: 2px solid #333;
+  padding: 8px;
+  margin-bottom: 10px;
+  min-height: 25px;
+}
+
+.signature-box {
+  margin-top: 10px;
+  min-height: 50px;
+  border: 1px solid #999;
+  text-align: center;
+  padding-top: 30px;
+  font-size: 10px;
+}
+
+.footer-label {
+  font-weight: bold;
+  margin-bottom: 5px;
+}
+
+.print-btn-group {
+  text-align: center;
+  margin: 20px 0;
+  gap: 10px;
+  display: flex;
+  justify-content: center;
+}
+
+.print-btn-group button {
+  padding: 10px 20px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: 0.3s;
+}
+
+.print-btn {
+  background: #1976d2;
+  color: white;
+}
+
+.print-btn:hover {
+  background: #1565c0;
+}
+
+.export-btn {
+  background: #388e3c;
+  color: white;
+}
+
+.export-btn:hover {
+  background: #2e7d32;
+}
+
+@media print {
+  body {
+    margin: 0;
+    padding: 0;
+  }
+  
+  .attendance-sheet {
+    margin: 0;
+    padding: 0;
+    max-width: 100%;
+    page-break-after: always;
+  }
+  
+  .print-btn-group {
+    display: none;
+  }
+}

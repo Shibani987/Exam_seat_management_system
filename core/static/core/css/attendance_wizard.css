@@ -226,3 +226,25 @@
 .button-group .btn-secondary:active {
   background: #e5e5e5;
 }
+
+/* Step 3 Preview Area */
+#sheetsPreview {
+  max-height: 75vh;
+  overflow-y: auto;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 10px;
+  background: #f9f9f9;
+  margin-bottom: 20px;
+}
+
+#sheetsPreview::before {
+  content: 'Sheet Preview — Scroll to view all pages';
+  display: block;
+  text-align: center;
+  color: #999;
+  font-size: 12px;
+  margin-bottom: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+}

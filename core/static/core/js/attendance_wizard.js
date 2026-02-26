@@ -177,17 +177,141 @@ function showStep3(sheets, examName){
   document.getElementById('stepIndicator3').classList.add('active');
   const container = document.getElementById('sheetsPreview');
   container.innerHTML='';
-  sheets.forEach((sheet, idx)=>{
-    const div=document.createElement('div');
-    div.style.marginBottom='24px';
-    let html=`<h4>Sheet ${idx+1} - ${examName}</h4><table class="files-table"><thead><tr><th>Sl</th><th>Name</th><th>Roll No</th><th>Reg No</th></tr></thead><tbody>`;
-    sheet.forEach((stu,i)=>{
-      html+=`<tr><td>${i+1}</td><td>${stu.name}</td><td>${stu.roll_number}</td><td>${stu.registration_number}</td></tr>`;
-    });
-    html+='</tbody></table>'; 
-    div.innerHTML=html;
-    container.appendChild(div);
+  
+  // Add print-friendly stylesheet if not already added
+  if (!document.getElementById('attendance-sheet-css')) {
+    const link = document.createElement('link');
+    link.id = 'attendance-sheet-css';
+    link.rel = 'stylesheet';
+    link.href = '/static/core/css/attendance_sheet_print.css';
+    document.head.appendChild(link);
+  }
+  
+  sheets.forEach((sheet, sheetIdx) => {
+    const sheetDiv = document.createElement('div');
+    sheetDiv.className = 'attendance-sheet';
+    
+    // Header
+    let html = `
+      <div class="sheet-header">
+        <div class="header-logo">JIS</div>
+        <h2>Controller of Examinations</h2>
+        <p>JIS College of Engineering</p>
+        <p>An Autonomous Institute under MAKAUT, W.B.</p>
+      </div>
+      
+      <div class="sheet-title">
+        Attendance Sheet for B.TECH. SECOND Semester Examination MAY - 2022
+      </div>
+      
+      <div class="sheet-meta">
+        <div style="flex: 1;">
+          <div class="meta-label">Date of Examination</div>
+          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+        </div>
+        <div style="flex: 1;">
+          <div class="meta-label">Time</div>
+          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+        </div>
+      </div>
+      
+      <div class="sheet-meta">
+        <div style="flex: 1;">
+          <div class="meta-label">Paper Name</div>
+          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+        </div>
+        <div style="flex: 1;">
+          <div class="meta-label">Paper Code</div>
+          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+        </div>
+      </div>
+      
+      <table class="sheet-table">
+        <thead>
+          <tr>
+            <th class="sl-col">Sl</th>
+            <th class="name-col">Name</th>
+            <th class="reg-col">Registration No</th>
+            <th class="roll-col">Roll No</th>
+            <th class="booklet-col">Answer<br>Booklet No</th>
+            <th class="signature-col">Candidate<br>Signature</th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+    
+    // Add rows (20 per sheet as per image)
+    for (let i = 0; i < 20; i++) {
+      const student = sheet[i];
+      if (student) {
+        html += `
+          <tr>
+            <td class="sl-col">${i + 1}</td>
+            <td class="name-col">${student.name || ''}</td>
+            <td class="reg-col">${student.registration_number || ''}</td>
+            <td class="roll-col">${student.roll_number || ''}</td>
+            <td class="booklet-col"></td>
+            <td class="signature-col"></td>
+          </tr>
+        `;
+      } else {
+        html += `
+          <tr>
+            <td class="sl-col">${i + 1}</td>
+            <td class="name-col"></td>
+            <td class="reg-col"></td>
+            <td class="roll-col"></td>
+            <td class="booklet-col"></td>
+            <td class="signature-col"></td>
+          </tr>
+        `;
+      }
+    }
+    
+    html += `
+        </tbody>
+      </table>
+      
+      <div class="sheet-footer">
+        <div class="footer-section">
+          <div class="footer-label">No of Student Present</div>
+          <div class="footer-field"></div>
+        </div>
+        <div class="footer-section">
+          <div class="footer-label">No of Student Absent</div>
+          <div class="footer-field"></div>
+        </div>
+        <div class="footer-section" style="flex: 1.5;">
+          <div class="footer-label">Signature of Examiner (Internal)</div>
+          <div class="signature-box"></div>
+          <div style="font-size: 10px; margin-top: 5px;">Name (in CAPITAL):</div>
+        </div>
+      </div>
+      
+      <div style="display: flex; justify-content: space-between; gap: 30px; font-size: 11px;">
+        <div>
+          <div style="border-top: 1px solid #333; width: 120px; text-align: center; margin-bottom: 5px;"></div>
+          <div>Signature of HoD</div>
+        </div>
+        <div style="flex: 1;">
+          <div class="footer-label">Signature of Examiner (External)</div>
+          <div style="border-top: 1px solid #333; width: 150px; margin: 20px 0;"></div>
+          <div style="font-size: 10px;">Name (in CAPITAL):</div>
+        </div>
+      </div>
+    `;
+    
+    sheetDiv.innerHTML = html;
+    container.appendChild(sheetDiv);
   });
+  
+  // Add print controls
+  const controls = document.createElement('div');
+  controls.className = 'print-btn-group';
+  controls.innerHTML = `
+    <button class="print-btn" onclick="window.print()">🖨️ Print Sheets</button>
+  `;
+  container.appendChild(controls);
 }
 
 // Save button
