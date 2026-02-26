@@ -72,24 +72,26 @@ tabLinks.forEach(link => {
 });
 
 // ================= LOGOUT CLOSE SIDEBAR =================
-const logoutLink = sidebar.querySelector('.logout a');
-if (logoutLink) {
-  logoutLink.addEventListener('click', () => {
-    sidebar.classList.remove('active');
-    hamburgerBtn.classList.remove('active');
-  });
-}
-
-// ================= CLOSE SIDEBAR ON OUTSIDE CLICK (MOBILE) =================
-document.addEventListener('click', (event) => {
-  const isMobile = window.innerWidth <= 768;
-  if (isMobile && sidebar.classList.contains('active')) {
-    if (!sidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+if (sidebar) {
+  const logoutLink = sidebar.querySelector('.logout a');
+  if (logoutLink) {
+    logoutLink.addEventListener('click', () => {
       sidebar.classList.remove('active');
       hamburgerBtn.classList.remove('active');
-    }
+    });
   }
-});
+
+  // ================= CLOSE SIDEBAR ON OUTSIDE CLICK (MOBILE) =================
+  document.addEventListener('click', (event) => {
+    const isMobile = window.innerWidth <= 768;
+    if (isMobile && sidebar.classList.contains('active')) {
+      if (!sidebar.contains(event.target) && !hamburgerBtn.contains(event.target)) {
+        sidebar.classList.remove('active');
+        hamburgerBtn.classList.remove('active');
+      }
+    }
+  });
+}
 
 // ================= NEW EXAM MODAL BUTTONS =================
 const uploadBtn = document.querySelector('.btn-upload');

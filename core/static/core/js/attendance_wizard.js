@@ -113,6 +113,6 @@ generateBtn.addEventListener('click', () => {
   alert(`Exam: ${examNameInput.value}\nSelected Files: ${selected.length}\n\nAttendance sheet generation will be processed.`);
   
   // Redirect back to dashboard
-  window.location.href = '{% url 'dashboard' %}?tab=generate-sheet';
+  window.location.href = '/?tab=generate-sheet';
 });
 
