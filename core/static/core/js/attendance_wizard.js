@@ -62,10 +62,12 @@ function refreshGeneratedSummary(){
           list.innerHTML = html;
           // attach handlers
           list.querySelectorAll('.viewSaved').forEach(btn=>{
-            btn.onclick = () => { location.href = '/generated-sheet-view/?id=' + btn.dataset.id; };
+            btn.className = 'btn-view';
+            btn.onclick = () => { window.open('/generated-sheet-view/?id=' + btn.dataset.id, '_blank'); };
           });
           list.querySelectorAll('.printSaved').forEach(btn=>{
-            btn.onclick = () => { location.href = '/generated-sheet-view/?id=' + btn.dataset.id + '&print=1'; };
+            btn.className = 'btn-print';
+            btn.onclick = () => { window.open('/generated-sheet-view/?id=' + btn.dataset.id + '&print=1', '_blank'); };
           });
           list.querySelectorAll('.deleteSaved').forEach(btn=>{
             btn.onclick = () => {
@@ -224,12 +226,18 @@ generateBtn.addEventListener('click', () => {
 
 function showStep3(pages, examName){
   // pages: array of { students: [...], branch: '', semester: '', page_index: N, total_pages: M }
-  document.getElementById('step2Content').style.display='none';
-  document.getElementById('step3Content').style.display='block';
-  document.getElementById('stepIndicator2').classList.remove('active');
-  document.getElementById('stepIndicator3').classList.add('active');
+  // if wizard DOM elements exist, toggle them; view page doesn't have these
+  const step2Elem = document.getElementById('step2Content');
+  const step3Elem = document.getElementById('step3Content');
+  if (step2Elem && step3Elem) {
+    step2Elem.style.display = 'none';
+    step3Elem.style.display = 'block';
+    document.getElementById('stepIndicator2').classList.remove('active');
+    document.getElementById('stepIndicator3').classList.add('active');
+  }
   const container = document.getElementById('sheetsPreview');
-  container.innerHTML='';
+  if (!container) return;  // nothing to render on this page
+  container.innerHTML = '';
   
   // save for later (save endpoint uses generatedSheets)
   generatedSheets = pages;
@@ -408,8 +416,12 @@ saveBtn.addEventListener('click', ()=>{
       }).then(rr=>rr.json()).then(dd=>{
         if(dd.status==='success'){
           alert('Attendance sheets saved');
-          // refresh header summary and stay on wizard
-          refreshGeneratedSummary();
+          // if dashboard_url returned, navigate there; else refresh summary
+          if (dd.dashboard_url) {
+            window.location.href = dd.dashboard_url;
+          } else {
+            refreshGeneratedSummary();
+          }
         }
       });
     } else alert('Save failed: '+d.message);

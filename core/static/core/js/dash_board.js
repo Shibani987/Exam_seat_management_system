@@ -69,9 +69,13 @@ tabLinks.forEach(link => {
     sidebar.classList.remove('active');
     hamburgerBtn.classList.remove('active');
 
-    // If we just opened the generate-sheet tab, refresh its data
+    // If we just opened the generate-sheet tab, refresh its data and update URL
     if (tabId === 'generate-sheet') {
       fetchGeneratedSheets();
+      // push state so back button returns here
+      const u = new URL(window.location);
+      u.searchParams.set('tab','generate-sheet');
+      window.history.replaceState({},'',u);
     }
   });
 });
@@ -115,22 +119,22 @@ function fetchGeneratedSheets() {
           cont.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No sheets generated yet.</p>';
         } else {
           cont.innerHTML = '';
-          // create table with actions
+          // create styled table with actions
           const tbl = document.createElement('table');
-          tbl.style.width='100%';
-          tbl.style.borderCollapse='collapse';
+          tbl.className = 'sheets-table';
           tbl.innerHTML = '<thead><tr><th>Exam</th><th>File</th><th>Sheets</th><th>Students</th><th>Generated At</th><th>Actions</th></tr></thead>';
           const body = document.createElement('tbody');
           data.sheets.forEach(s => {
             const tr = document.createElement('tr');
-            tr.style.borderTop='1px solid #eee';
             tr.innerHTML = `<td>${s.exam_name}</td><td>${s.file_name}</td><td>${s.sheet_count}</td><td>${s.student_count}</td><td>${s.generated_at}</td>`;
             const actTd = document.createElement('td');
-            const viewBtn = document.createElement('button'); viewBtn.textContent='View'; viewBtn.style.marginRight='6px';
-            viewBtn.onclick = ()=>{ location.href='/generated-sheet-view/?id='+s.id; };
-            const printBtn = document.createElement('button'); printBtn.textContent='Print'; printBtn.style.marginRight='6px';
-            printBtn.onclick = ()=>{ location.href='/generated-sheet-view/?id='+s.id+'&print=1'; };
-            const delBtn = document.createElement('button'); delBtn.textContent='Delete';
+            // action buttons with classes
+            const viewBtn = document.createElement('button'); viewBtn.textContent='View'; viewBtn.className='btn-view';
+            // open in new tab to preserve dashboard state
+            viewBtn.onclick = ()=>{ window.open('/generated-sheet-view/?id='+s.id, '_blank'); };
+            const printBtn = document.createElement('button'); printBtn.textContent='Print'; printBtn.className='btn-print';
+            printBtn.onclick = ()=>{ window.open('/generated-sheet-view/?id='+s.id+'&print=1', '_blank'); };
+            const delBtn = document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='btn-delete';
             delBtn.onclick = ()=>{
               if(!confirm('Remove sheets for this exam?')) return;
               fetch('/delete-generated-sheet/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},body:JSON.stringify({id:s.id})})
@@ -154,6 +158,9 @@ if (document.readyState === 'loading') {
     const sheetTab = document.getElementById('generate-sheet');
     if (sheetTab && sheetTab.classList.contains('active')) {
       fetchGeneratedSheets();
+      const u = new URL(window.location);
+      u.searchParams.set('tab','generate-sheet');
+      window.history.replaceState({},'',u);
     }
   });
 } else {
