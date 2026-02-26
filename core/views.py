@@ -459,22 +459,28 @@ def upload_student_data(request):
             print(f"[DEBUG] Reading file: {uploaded_file.name}")
             df = None
             try:
-                print(f"[DEBUG] Trying to parse as Excel (.xlsx/.xls)")
-                df = pd.read_excel(uploaded_file)
-                print(f"[DEBUG] Parsed as Excel successfully, shape: {df.shape}")
-            except Exception as e_excel:
-                print(f"[DEBUG] Excel parsing failed: {e_excel}, trying as CSV")
-                uploaded_file.seek(0)  # Reset file pointer
+                print(f"[DEBUG] Trying to parse as CSV")
                 df = pd.read_csv(uploaded_file)
                 print(f"[DEBUG] Parsed as CSV successfully, shape: {df.shape}")
+            except Exception as e_csv:
+                print(f"[DEBUG] CSV parsing failed: {e_csv}, trying as Excel")
+                df = pd.read_excel(uploaded_file)
+                print(f"[DEBUG] Parsed as Excel successfully, shape: {df.shape}")
         except Exception as e:
             err = traceback.format_exc()
             print(f"[ERROR] Error reading file: {e}\n{err}")
             messages.error(request, f"Error reading file: {e}")
             return redirect("dashboard")
 
+        # Clean the dataframe
+        df = df.dropna(how='all').reset_index(drop=True)
+        if df.empty:
+            print(f"[ERROR] File is empty after cleaning")
+            messages.error(request, "File is empty. Please check your file.")
+            return redirect("dashboard")
+
         # Normalize column names
-        df.columns = [c.strip().lower() for c in df.columns]
+        df.columns = df.columns.str.strip().str.lower()
         print(f"[DEBUG] File columns: {list(df.columns)}")
         print(f"[DEBUG] File shape: {df.shape}")
         print(f"[DEBUG] Total rows to process: {len(df)}")
