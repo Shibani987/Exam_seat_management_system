@@ -133,5 +133,132 @@ if (uploadDataBtn && fileInput) {
 }
 
 
+// ================= GENERATE ATTENDANCE FLOW =================
+const gaExamName = document.getElementById('ga_exam_name');
+const gaNextBtn = document.getElementById('ga_next_btn');
+const gaCancelBtn = document.getElementById('ga_cancel_btn');
+const gaStep1 = document.getElementById('ga-step1');
+const gaStep2 = document.getElementById('ga-step2');
+const gaFileFilter = document.getElementById('ga_file_filter');
+const gaShowAll = document.getElementById('ga_show_all');
+const gaFilesList = document.getElementById('ga_files_list');
+const gaLoading = document.getElementById('ga_loading');
+const gaGenerateBtn = document.getElementById('ga_generate_btn');
+const gaBackBtn = document.getElementById('ga_back_btn');
+
+let gaFiles = [];
+
+if (gaExamName && gaNextBtn) {
+  gaExamName.addEventListener('input', () => {
+    gaNextBtn.disabled = gaExamName.value.trim().length === 0;
+  });
+
+  gaCancelBtn && gaCancelBtn.addEventListener('click', () => {
+    gaExamName.value = '';
+    gaNextBtn.disabled = true;
+  });
+
+  gaNextBtn.addEventListener('click', () => {
+    // proceed to step 2
+    gaStep1.style.display = 'none';
+    gaStep2.style.display = 'block';
+    fetchUploadedFiles();
+  });
+}
+
+if (gaBackBtn) {
+  gaBackBtn.addEventListener('click', () => {
+    gaStep2.style.display = 'none';
+    gaStep1.style.display = 'block';
+    gaGenerateBtn.disabled = true;
+  });
+}
+
+function fetchUploadedFiles() {
+  if (!gaFilesList || !gaLoading) return;
+  gaFilesList.style.display = 'none';
+  gaLoading.style.display = 'block';
+  gaFilesList.innerHTML = '';
+  gaFiles = [];
+
+  fetch('/get_uploaded_files/?t=' + Date.now())
+    .then(r => r.json())
+    .then(data => {
+      gaLoading.style.display = 'none';
+      if (data.status === 'success' && Array.isArray(data.files)) {
+        gaFiles = data.files;
+        renderGaFiles(gaFiles);
+      } else {
+        gaFilesList.innerHTML = '<li style="padding:12px;color:#666;">No files found.</li>';
+        gaFilesList.style.display = 'block';
+      }
+    })
+    .catch(err => {
+      gaLoading.style.display = 'none';
+      gaFilesList.innerHTML = '<li style="padding:12px;color:#c62828;">Error loading files.</li>';
+      gaFilesList.style.display = 'block';
+      console.error('Error fetching files:', err);
+    });
+}
+
+function renderGaFiles(files) {
+  gaFilesList.innerHTML = '';
+  if (!files || files.length === 0) {
+    gaFilesList.innerHTML = '<li style="padding:12px;color:#666;">No files uploaded yet.</li>';
+    gaFilesList.style.display = 'block';
+    return;
+  }
+
+  files.forEach(f => {
+    const li = document.createElement('li');
+    li.style.padding = '8px';
+    li.style.borderBottom = '1px solid #f0f0f0';
+    const checkbox = document.createElement('input');
+    checkbox.type = 'checkbox';
+    checkbox.value = f.id;
+    checkbox.style.marginRight = '10px';
+    checkbox.addEventListener('change', onGaSelectionChange);
+    const label = document.createElement('span');
+    label.textContent = `${f.file_name} (${f.year || ''})`;
+    li.appendChild(checkbox);
+    li.appendChild(label);
+    gaFilesList.appendChild(li);
+  });
+
+  gaFilesList.style.display = 'block';
+}
+
+function onGaSelectionChange() {
+  const checked = Array.from(gaFilesList.querySelectorAll('input[type=checkbox]:checked'));
+  gaGenerateBtn.disabled = checked.length === 0;
+}
+
+if (gaFileFilter) {
+  gaFileFilter.addEventListener('input', () => {
+    const q = gaFileFilter.value.trim().toLowerCase();
+    const filtered = gaFiles.filter(f => f.file_name.toLowerCase().includes(q));
+    renderGaFiles(filtered);
+  });
+}
+
+if (gaShowAll) {
+  gaShowAll.addEventListener('click', () => {
+    gaFileFilter.value = '';
+    renderGaFiles(gaFiles);
+  });
+}
+
+if (gaGenerateBtn) {
+  gaGenerateBtn.addEventListener('click', () => {
+    const checked = Array.from(gaFilesList.querySelectorAll('input[type=checkbox]:checked')).map(i => i.value);
+    const exam = encodeURIComponent(gaExamName.value.trim());
+    if (checked.length === 0) return;
+    // Open new window to backend endpoint (backend implementation may be required)
+    const url = `/generate_attendance/?exam_name=${exam}&file_ids=${checked.join(',')}`;
+    window.open(url, '_blank');
+  });
+}
+
+
 
 

@@ -22,6 +22,7 @@
     <div>
       <h2>admin panel</h2>
       <a href="#" class="tab-link active" data-tab="create-exam">create exam</a>
+      <a href="#" class="tab-link" data-tab="generate-attendance">generate attendance</a>
       <a href="#" class="tab-link" data-tab="upload-data">upload student data</a>
       <a href="#" class="tab-link" data-tab="admin-emails">admin emails</a>
       <a href="#" class="tab-link" data-tab="qr-tab">universal qr</a>
@@ -60,6 +61,41 @@
         <h2>Scheduled Exams</h2>
         <div id="examsContainer">
           <p style="text-align: center; color: #999; padding: 20px;">Loading exams...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== GENERATE ATTENDANCE TAB ================== -->
+    <div class="tab-content" id="generate-attendance">
+      <h1>Generate Attendance Sheet</h1>
+      <p class="upload-description">Create attendance sheets for exams in two quick steps.</p>
+
+      <div id="ga-step1">
+        <h3>Step 1 — Enter Exam Name</h3>
+        <div style="max-width:600px;">
+          <input type="text" id="ga_exam_name" placeholder="Enter exam name" style="width:100%; padding:10px; margin-bottom:10px;" />
+          <div style="display:flex; gap:8px;">
+            <button id="ga_next_btn" class="upload-btn" disabled>Next →</button>
+            <button id="ga_cancel_btn" class="upload-btn" style="background:#f44336;">Cancel</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="ga-step2" style="display:none; margin-top:18px;">
+        <h3>Step 2 — Select Uploaded Files</h3>
+        <div style="margin-bottom:8px; display:flex; gap:8px; align-items:center; max-width:900px;">
+          <input type="text" id="ga_file_filter" placeholder="Filter by file name" style="flex:1; padding:8px;" />
+          <button id="ga_show_all" class="upload-btn">All</button>
+        </div>
+
+        <div id="ga_files_container" style="max-width:900px; border:1px solid #eee; padding:8px; border-radius:6px; max-height:320px; overflow:auto; background:#fff;">
+          <p id="ga_loading" style="color:#666; padding:12px;">Loading files...</p>
+          <ul id="ga_files_list" style="list-style:none; padding:0; margin:0; display:none;"></ul>
+        </div>
+
+        <div style="margin-top:10px; display:flex; gap:8px;">
+          <button id="ga_generate_btn" class="upload-btn" disabled>Generate Attendance Sheet</button>
+          <button id="ga_back_btn" class="upload-btn" style="background:#9e9e9e;">Back</button>
         </div>
       </div>
     </div>
