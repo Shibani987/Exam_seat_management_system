@@ -459,34 +459,12 @@ def upload_student_data(request):
 
             print(f"[DEBUG] Reading file: {uploaded_file.name}")
             try:
-                # use default engine and avoid on_bad_lines in case of pandas version issues
-                df = pd.read_csv(uploaded_file, dtype=str)
-                print(f"[DEBUG] Parsed as CSV (default engine), shape: {df.shape}")
+                df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
+                print(f"[DEBUG] Parsed as CSV, shape: {df.shape}")
             except Exception as csv_err:
                 print(f"[DEBUG] CSV parse error {csv_err}, falling back to Excel")
-                # try reading CSV again with python engine and skip bad lines
-                try:
-                    df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
-                    print(f"[DEBUG] Parsed as CSV with python engine, shape: {df.shape}")
-                except Exception as csv_err2:
-                    print(f"[DEBUG] second CSV attempt failed: {csv_err2}, switching to Excel reading")
-                    # handle multi-sheet excel files by concatenating all sheets
-                    try:
-                        xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
-                        sheets = xls.sheet_names
-                        print(f"[DEBUG] Excel contains sheets: {sheets}")
-                        df_list = []
-                        for sn in sheets:
-                            part = pd.read_excel(xls, sheet_name=sn, dtype=str)
-                            print(f"[DEBUG] sheet {sn} shape {part.shape}")
-                            df_list.append(part)
-                        df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
-                        print(f"[DEBUG] Combined Excel shape: {df.shape}")
-                    except Exception as excel_err:
-                        # fallback simple read
-                        print(f"[DEBUG] multi-sheet Excel failed {excel_err}, trying single-sheet read")
-                        df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
-                        print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
+                df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
+                print(f"[DEBUG] Parsed as Excel, shape: {df.shape}")
 
             df = df.dropna(how='all').reset_index(drop=True)
             if df.empty:
@@ -535,12 +513,10 @@ def upload_student_data(request):
                 reg=get_value(row,col_map["registration_number"])
                 std_id=get_value(row,col_map["student_id"])
                 if not roll or not reg or not std_id:
-                    skipped+=1
-                    continue
+                    skipped+=1; continue
                 combo=(roll,reg,std_id)
                 if combo in seen:
-                    duplicates+=1
-                    continue
+                    duplicates+=1; continue
                 seen.add(combo)
                 try:
                     obj,created=Student.objects.get_or_create(
@@ -556,35 +532,29 @@ def upload_student_data(request):
                             'academic_status':get_value(row,col_map["academic_status"]),
                         }
                     )
-                    if created:
-                        added+=1
-                    else:
-                        duplicates+=1
+                    if created: added+=1
+                    else: duplicates+=1
                 except Exception as e:
                     errors+=1
                     print(f"[ERROR] row {total} failed: {e}")
                     continue
 
-            print(f"[DEBUG] processed {total} rows; added={added}, duplicates={duplicates}, skipped={skipped}, errors={errors}")
-            if added == 0 and (duplicates or skipped or errors):
-                messages.warning(request, f"No new students added. Processed {total} rows ({duplicates} duplicates, {skipped} blank/invalid, {errors} errors).")
-            elif added == 0:
-                messages.warning(request, f"No students found in file (processed {total} rows). Please check your file format and data.")
+            print(f"[DEBUG] total {total}, added {added}, dup {duplicates}, skipped {skipped}, errors {errors}")
+            if added==0 and (duplicates or skipped or errors):
+                messages.warning(request,f"No new students added. {duplicates} duplicates, {skipped} skipped, {errors} errors.")
+            elif added==0:
+                messages.warning(request,"No students found in file. Please check your file format and data.")
             else:
-                msg = f"Student data uploaded successfully! ({added}/{total} rows added)"
+                msg=f"Student data uploaded successfully! ({added} students added)"
                 if duplicates or skipped or errors:
-                    msg += f" ({duplicates} duplicates, {skipped} skipped, {errors} errors)"
-                messages.success(request, msg)
+                    msg+=f" ({duplicates} duplicates, {skipped} skipped, {errors} errors)"
+                messages.success(request,msg)
 
             return redirect(reverse('dashboard') + '?tab=upload-data')
 
         except Exception as exc:
-            # log and print so it's visible during development
-            err_text = traceback.format_exc()
-            logger.error(f"upload_student_data unexpected: {exc}\n{err_text}")
-            print("[ERROR] upload_student_data unexpected:\n", err_text)
-            # show some of the error to the user for debugging
-            messages.error(request, f"Internal server error during upload: {exc}. Check server logs.")
+            logger.error(f"upload_student_data unexpected: {exc}\n{traceback.format_exc()}")
+            messages.error(request,"Internal server error during upload. Please try again.")
             return redirect(reverse('dashboard') + '?tab=upload-data')
 
     # Handle GET request - show dashboard with uploaded files
