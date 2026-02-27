@@ -440,177 +440,141 @@ def block_admin_email(request):
 @admin_required
 def upload_student_data(request):
     if request.method == "POST":
-        form = StudentDataUploadForm(request.POST, request.FILES)
-        if not form.is_valid():
-            messages.error(request, "Invalid form submission")
-            return redirect("dashboard")
-
-        uploaded_file = request.FILES.get("file")
-        if not uploaded_file:
-            messages.error(request, "No file uploaded")
-            return redirect("dashboard")
-
-        # Validate file size (max 10MB)
-        max_size = 10 * 1024 * 1024  # 10MB
-        if uploaded_file.size > max_size:
-            messages.error(request, "File size too large. Maximum allowed is 10MB.")
-            return redirect("dashboard")
-
-        # Read file directly from memory (NOT disk)
+        from django.urls import reverse
         try:
+            form = StudentDataUploadForm(request.POST, request.FILES)
+            if not form.is_valid():
+                messages.error(request, "Invalid form submission")
+                return redirect(reverse('dashboard') + '?tab=upload-data')
+
+            uploaded_file = request.FILES.get("file")
+            if not uploaded_file:
+                messages.error(request, "No file uploaded")
+                return redirect(reverse('dashboard') + '?tab=upload-data')
+
+            max_size = 10 * 1024 * 1024
+            if uploaded_file.size > max_size:
+                messages.error(request, "File size too large. Maximum allowed is 10MB.")
+                return redirect(reverse('dashboard') + '?tab=upload-data')
+
             print(f"[DEBUG] Reading file: {uploaded_file.name}")
-            df = None
             try:
-                print(f"[DEBUG] Trying to parse as CSV")
-                df = pd.read_csv(uploaded_file)
-                print(f"[DEBUG] Parsed as CSV successfully, shape: {df.shape}")
-            except Exception as e_csv:
-                print(f"[DEBUG] CSV parsing failed: {e_csv}, trying as Excel")
-                df = pd.read_excel(uploaded_file)
-                print(f"[DEBUG] Parsed as Excel successfully, shape: {df.shape}")
-        except Exception as e:
-            err = traceback.format_exc()
-            print(f"[ERROR] Error reading file: {e}\n{err}")
-            messages.error(request, f"Error reading file: {e}")
-            return redirect("dashboard")
+                df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
+                print(f"[DEBUG] Parsed as CSV, shape: {df.shape}")
+            except Exception as csv_err:
+                print(f"[DEBUG] CSV parse error {csv_err}, falling back to Excel")
+                # handle multi-sheet excel files by concatenating all sheets
+                try:
+                    xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
+                    sheets = xls.sheet_names
+                    print(f"[DEBUG] Excel contains sheets: {sheets}")
+                    df_list = []
+                    for sn in sheets:
+                        part = pd.read_excel(xls, sheet_name=sn, dtype=str)
+                        print(f"[DEBUG] sheet {sn} shape {part.shape}")
+                        df_list.append(part)
+                    df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
+                    print(f"[DEBUG] Combined Excel shape: {df.shape}")
+                except Exception as excel_err:
+                    # fallback simple read
+                    print(f"[DEBUG] multi-sheet Excel failed {excel_err}, trying single-sheet read")
+                    df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
+                    print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
 
-        # Clean the dataframe
-        df = df.dropna(how='all').reset_index(drop=True)
-        if df.empty:
-            print(f"[ERROR] File is empty after cleaning")
-            messages.error(request, "File is empty. Please check your file.")
-            return redirect("dashboard")
+            df = df.dropna(how='all').reset_index(drop=True)
+            if df.empty:
+                print("[ERROR] File empty after cleaning")
+                messages.error(request, "File is empty. Please check your file.")
+                return redirect(reverse('dashboard') + '?tab=upload-data')
 
-        # Normalize column names
-        df.columns = df.columns.str.strip().str.lower()
-        print(f"[DEBUG] File columns: {list(df.columns)}")
-        print(f"[DEBUG] File shape: {df.shape}")
-        print(f"[DEBUG] Total rows to process: {len(df)}")
-        if df.empty:
-            print(f"[ERROR] File is empty after parsing")
-            messages.error(request, "File is empty. Please check your file.")
-            return redirect("dashboard")
+            df.columns = df.columns.str.strip().str.lower()
+            print(f"[DEBUG] Columns: {list(df.columns)}")
+            print(f"[DEBUG] Total rows: {len(df)}")
+            if df.empty:
+                messages.error(request, "File is empty. Please check your file.")
+                return redirect(reverse('dashboard') + '?tab=upload-data')
 
-        # Check if required columns exist
-        available_cols = set(df.columns)
-        print(f"[DEBUG] Checking for required columns. Available: {available_cols}")
-        has_roll = any(col in available_cols for col in ['rollno', 'roll_no', 'roll number', 'roll no'])
-        has_reg = any(col in available_cols for col in ['reg no', 'registration number', 'reg_no'])
-        has_std_id = any(col in available_cols for col in ['std id', 'student id', 'student_id'])
-        if not (has_roll and has_reg and has_std_id):
-            print(f"[ERROR] Missing required columns. has_roll={has_roll}, has_reg={has_reg}, has_std_id={has_std_id}")
-            messages.error(request, "File missing required columns: ROLL NO, REG NO, STD ID")
-            return redirect("dashboard")
+            avail = set(df.columns)
+            has_roll = any(c in avail for c in ['rollno','roll_no','roll number','roll no'])
+            has_reg = any(c in avail for c in ['reg no','registration number','reg_no'])
+            has_std_id = any(c in avail for c in ['std id','student id','student_id'])
+            if not (has_roll and has_reg and has_std_id):
+                messages.error(request, "File missing required columns: ROLL NO, REG NO, STD ID")
+                return redirect(reverse('dashboard') + '?tab=upload-data')
 
-        # Save metadata + filename ONLY (after basic validation)
-        student_file_obj = StudentDataFile.objects.create(file_name=uploaded_file.name)
-        print(f"[DEBUG] Created StudentDataFile record with ID: {student_file_obj.id}")
+            student_file_obj = StudentDataFile.objects.create(file_name=uploaded_file.name)
+            print(f"[DEBUG] StudentDataFile created id={student_file_obj.id}")
 
-        col_map = {
-            "course": ["course"],
-            "semester": ["sem", "semester"],
-            "branch": ["branch"],
-            "name": ["student name", "name"],
-            "roll_number": ["rollno", "roll_no", "roll number", "roll no"],
-            "registration_number": ["reg no", "registration number", "reg_no"],
-            "student_id": ["std id", "student id", "student_id"],
-            "academic_status": ["academic_status", "academic status", "status"],
-        }
-        def get_value(row, keys, default=""):
-            for key in keys:
-                if key in row and pd.notna(row[key]):
-                    return str(row[key]).strip()
-            return default
+            col_map = {
+                "course":["course"],
+                "semester":["sem","semester"],
+                "branch":["branch"],
+                "name":["student name","name"],
+                "roll_number":["rollno","roll_no","roll number","roll no"],
+                "registration_number":["reg no","registration number","reg_no"],
+                "student_id":["std id","student id","student_id"],
+                "academic_status":["academic_status","academic status","status"],
+            }
+            def get_value(row, keys, default=""):
+                for key in keys:
+                    if key in row and pd.notna(row[key]):
+                        return str(row[key]).strip()
+                return default
 
-        # Save students with duplicate detection
-        students = []
-        duplicates = 0
-        row_count = 0
-        skipped_empty = 0
-        skipped_existing = 0
+            seen=set(); added=duplicates=skipped=errors=0; total=0
+            for _,row in df.iterrows():
+                total+=1
+                roll=get_value(row,col_map["roll_number"])
+                reg=get_value(row,col_map["registration_number"])
+                std_id=get_value(row,col_map["student_id"])
+                if not roll or not reg or not std_id:
+                    skipped+=1
+                    continue
+                combo=(roll,reg,std_id)
+                if combo in seen:
+                    duplicates+=1
+                    continue
+                seen.add(combo)
+                try:
+                    obj,created=Student.objects.get_or_create(
+                        student_file=student_file_obj,
+                        roll_number=roll,
+                        registration_number=reg,
+                        student_id=std_id,
+                        defaults={
+                            'course':get_value(row,col_map["course"]),
+                            'semester':get_value(row,col_map["semester"]),
+                            'branch':get_value(row,col_map["branch"]),
+                            'name':get_value(row,col_map["name"]),
+                            'academic_status':get_value(row,col_map["academic_status"]),
+                        }
+                    )
+                    if created:
+                        added+=1
+                    else:
+                        duplicates+=1
+                except Exception as e:
+                    errors+=1
+                    print(f"[ERROR] row {total} failed: {e}")
+                    continue
 
-        # First pass: collect valid combos
-        valid_rows = []
-        all_combos = set()
-        for _, row in df.iterrows():
-            row_count += 1
-            roll = get_value(row, col_map["roll_number"])
-            reg = get_value(row, col_map["registration_number"])
-            std_id = get_value(row, col_map["student_id"])
+            print(f"[DEBUG] processed {total} rows; added={added}, duplicates={duplicates}, skipped={skipped}, errors={errors}")
+            if added == 0 and (duplicates or skipped or errors):
+                messages.warning(request, f"No new students added. Processed {total} rows ({duplicates} duplicates, {skipped} blank/invalid, {errors} errors).")
+            elif added == 0:
+                messages.warning(request, f"No students found in file (processed {total} rows). Please check your file format and data.")
+            else:
+                msg = f"Student data uploaded successfully! ({added}/{total} rows added)"
+                if duplicates or skipped or errors:
+                    msg += f" ({duplicates} duplicates, {skipped} skipped, {errors} errors)"
+                messages.success(request, msg)
 
-            if not roll or not reg or not std_id:
-                skipped_empty += 1
-                continue
+            return redirect(reverse('dashboard') + '?tab=upload-data')
 
-            combo = (roll, reg, std_id)
-            if combo in all_combos:
-                duplicates += 1
-                continue
-
-            all_combos.add(combo)
-            valid_rows.append(row)
-
-        # Check existing in DB with one query
-        existing_combos = set()
-        if all_combos:
-            existing_combos = set(Student.objects.filter(
-                Q(roll_number__in=[c[0] for c in all_combos]) &
-                Q(registration_number__in=[c[1] for c in all_combos]) &
-                Q(student_id__in=[c[2] for c in all_combos])
-            ).values_list('roll_number', 'registration_number', 'student_id'))
-
-        # Second pass: build students list
-        for row in valid_rows:
-            roll = get_value(row, col_map["roll_number"])
-            reg = get_value(row, col_map["registration_number"])
-            std_id = get_value(row, col_map["student_id"])
-            combo = (roll, reg, std_id)
-
-            if combo in existing_combos:
-                skipped_existing += 1
-                duplicates += 1
-                continue
-
-            students.append(Student(
-                student_file=student_file_obj,
-                course=get_value(row, col_map["course"]),
-                semester=get_value(row, col_map["semester"]),
-                branch=get_value(row, col_map["branch"]),
-                name=get_value(row, col_map["name"]),
-                roll_number=roll,
-                registration_number=reg,
-                student_id=std_id,
-                academic_status=get_value(row, col_map["academic_status"])
-            ))
-
-        print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
-
-        # Bulk create in batches
-        try:
-            batch_size = 500
-            for i in range(0, len(students), batch_size):
-                batch = students[i:i + batch_size]
-                Student.objects.bulk_create(batch)
-                print(f"[DEBUG] Saved batch {i//batch_size + 1} with {len(batch)} students")
-            print(f"[DEBUG] Successfully saved {len(students)} students to database")
-        except Exception as e:
-            print(f"[ERROR] Error saving students: {str(e)}")
-            messages.error(request, f"Error saving students to database: {e}")
-            return redirect("dashboard")
-
-        # Show appropriate message
-        if len(students) == 0 and duplicates > 0:
-            messages.warning(request, f"No new students added. All {row_count} rows were duplicates or invalid.")
-        elif len(students) == 0:
-            messages.warning(request, f"No students found in file. Please check your file format and data.")
-        elif duplicates > 0:
-            messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates/invalid skipped)")
-        else:
-            messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
-
-        print(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
-
-        return redirect("dashboard")
+        except Exception as exc:
+            logger.error(f"upload_student_data unexpected: {exc}\n{traceback.format_exc()}")
+            messages.error(request,"Internal server error during upload. Please try again.")
+            return redirect(reverse('dashboard') + '?tab=upload-data')
 
     # Handle GET request - show dashboard with uploaded files
     uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")

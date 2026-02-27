@@ -90,6 +90,13 @@
     <!-- ================== UPLOAD STUDENT DATA TAB ================== -->
     <div class="tab-content" id="upload-data">
       <h1>Upload Student Data</h1>
+      {% if messages %}
+        <div style="margin-bottom:12px;">
+          {% for message in messages %}
+            <p style="color: {% if message.tags == 'error' or message.tags == 'warning' %}#c62828{% else %}#2e7d32{% endif %};">{{ message }}</p>
+          {% endfor %}
+        </div>
+      {% endif %}
       <p class="upload-description">
         Upload Excel/CSV files containing student data. Files must include columns: COURSE, SEM, BRANCH, STUDENT NAME, ROLLNO, REG NO, STD ID, ACADEMIC_STATUS.
       </p>
@@ -303,7 +310,7 @@
   </div>
 
   <!-- Scripts -->
-  <script src="{% static 'core/js/dash_board.js' %}?v=<?php echo time(); ?>"></script>
+  <script src="{% static 'core/js/dash_board.js' %}?v=3"></script>
 <script>
     const examSetupUrl = "{% url 'exam_setup' %}";
     
