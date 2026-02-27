@@ -458,13 +458,32 @@ def upload_student_data(request):
                 return redirect(reverse('dashboard') + '?tab=upload-data')
 
             print(f"[DEBUG] Reading file: {uploaded_file.name}")
+            # try csv, then excel with sheets
             try:
-                df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
-                print(f"[DEBUG] Parsed as CSV, shape: {df.shape}")
+                df = pd.read_csv(uploaded_file, dtype=str)
+                print(f"[DEBUG] Parsed as CSV (default engine), shape: {df.shape}")
             except Exception as csv_err:
-                print(f"[DEBUG] CSV parse error {csv_err}, falling back to Excel")
-                df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
-                print(f"[DEBUG] Parsed as Excel, shape: {df.shape}")
+                print(f"[DEBUG] CSV parse error {csv_err}, trying python engine")
+                try:
+                    df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
+                    print(f"[DEBUG] Parsed as CSV (python engine), shape: {df.shape}")
+                except Exception as csv_err2:
+                    print(f"[DEBUG] second CSV attempt failed {csv_err2}, falling back to Excel")
+                    try:
+                        xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
+                        sheets = xls.sheet_names
+                        print(f"[DEBUG] Excel contains sheets: {sheets}")
+                        df_list = []
+                        for sn in sheets:
+                            part = pd.read_excel(xls, sheet_name=sn, dtype=str)
+                            print(f"[DEBUG] sheet {sn} shape {part.shape}")
+                            df_list.append(part)
+                        df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
+                        print(f"[DEBUG] Combined Excel shape: {df.shape}")
+                    except Exception as excel_err:
+                        print(f"[DEBUG] multi-sheet Excel failed {excel_err}, single-sheet read")
+                        df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
+                        print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
 
             df = df.dropna(how='all').reset_index(drop=True)
             if df.empty:
@@ -554,6 +573,7 @@ def upload_student_data(request):
 
         except Exception as exc:
             logger.error(f"upload_student_data unexpected: {exc}\n{traceback.format_exc()}")
+            print("[ERROR] upload_student_data unexpected:\n", traceback.format_exc())
             messages.error(request,"Internal server error during upload. Please try again.")
             return redirect(reverse('dashboard') + '?tab=upload-data')
 
