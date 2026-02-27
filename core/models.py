@@ -34,7 +34,9 @@ class Student(models.Model):
         return f"{self.name} ({self.roll_number})"
 
     class Meta:
-        unique_together = ('roll_number', 'registration_number', 'student_id')
+        # Ensure uniqueness only within the scope of a single upload file.
+        # This prevents errors when the same student appears in different files.
+        unique_together = ('student_file', 'roll_number', 'registration_number', 'student_id')
 
 
 # =========================
