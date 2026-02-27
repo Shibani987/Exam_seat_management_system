@@ -486,11 +486,14 @@ def upload_student_data(request):
                         print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
 
             df = df.dropna(how='all').reset_index(drop=True)
+            # ensure every cell is a trimmed string (so NaN, spaces, numbers are uniform)
+            df = df.applymap(lambda x: str(x).strip() if pd.notna(x) else '')
             if df.empty:
                 print("[ERROR] File empty after cleaning")
                 messages.error(request, "File is empty. Please check your file.")
                 return redirect(reverse('dashboard') + '?tab=upload-data')
 
+            # make header names consistent
             df.columns = df.columns.str.strip().str.lower()
             print(f"[DEBUG] Columns: {list(df.columns)}")
             print(f"[DEBUG] Total rows: {len(df)}")
@@ -513,10 +516,12 @@ def upload_student_data(request):
                 "course":["course"],
                 "semester":["sem","semester"],
                 "branch":["branch"],
-                "name":["student name","name"],
-                "roll_number":["rollno","roll_no","roll number","roll no"],
-                "registration_number":["reg no","registration number","reg_no"],
-                "student_id":["std id","student id","student_id"],
+                "name":["student name","name","full name"],
+                "roll_number":["rollno","roll_no","roll number","roll no","rno","roll"],
+                # registration may appear with dot or underscore
+                "registration_number":["reg no","registration number","reg_no","reg. no","reg","regno"],
+                # student id variants including simple "id"
+                "student_id":["std id","student id","student_id","s.id","id"],
                 "academic_status":["academic_status","academic status","status"],
             }
             def get_value(row, keys, default=""):
@@ -533,18 +538,23 @@ def upload_student_data(request):
             duplicates_within = 0
             objects_to_create = []
 
-            for row in records:
-                roll = get_value(row, col_map["roll_number"])
-                reg = get_value(row, col_map["registration_number"])
-                std_id = get_value(row, col_map["student_id"])
+            for idx, row in enumerate(records, start=1):
+                roll = str(get_value(row, col_map["roll_number"]))
+                reg = str(get_value(row, col_map["registration_number"]))
+                std_id = str(get_value(row, col_map["student_id"]))
+
+                # treat all values as strings; numeric scientific notation already
+                # converted by applymap earlier
 
                 if not roll or not reg or not std_id:
                     skipped += 1
+                    print(f"[DEBUG] skipping row {idx} because missing field(s) (roll='{roll}', reg='{reg}', id='{std_id}')")
                     continue
 
                 combo = (roll, reg, std_id)
                 if combo in seen:
                     duplicates_within += 1
+                    print(f"[DEBUG] duplicate within file at row {idx} roll={roll}")
                     continue
 
                 seen.add(combo)
