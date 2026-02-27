@@ -356,8 +356,8 @@ saveBtn.addEventListener('click', ()=>{
       alert('Attendance sheets saved');
       // clear currentExamId so unload handler won't delete it
       currentExamId = null;
-      // redirect back to dashboard generate-sheet tab
-      window.location.href = '/admin-dashboard/?tab=generate-sheet';
+      // redirect to homepage
+      window.location.href = '/';
     } else {
       alert('Save failed: '+d.message);
     }
