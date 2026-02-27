@@ -1,5 +1,22 @@
 console.log('[DASHBOARD JS] Script loaded!');
 
+// helper to read CSRF token from cookie (required for POST APIs)
+function getCsrfToken() {
+  const name = 'csrftoken';
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === (name + '=')) {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 // ================= SIDEBAR & MODAL HANDLERS =================
 const hamburgerBtn = document.getElementById('hamburgerBtn');
 const closeBtn = document.getElementById('closeBtn');
@@ -135,11 +152,13 @@ function fetchGeneratedSheets() {
           // create styled table with actions
           const tbl = document.createElement('table');
           tbl.className = 'sheets-table';
-          tbl.innerHTML = '<thead><tr><th>Exam</th><th>File</th><th>Sheets</th><th>Students</th><th>Generated At</th><th>Actions</th></tr></thead>';
+          // removed student column per request
+          tbl.innerHTML = '<thead><tr><th>Exam</th><th>File</th><th>Sheets</th><th>Generated At</th><th>Actions</th></tr></thead>';
           const body = document.createElement('tbody');
           data.sheets.forEach(s => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td>${s.exam_name}</td><td>${s.file_name}</td><td>${s.sheet_count}</td><td>${s.student_count}</td><td>${s.generated_at}</td>`;
+            // omit student_count cell
+            tr.innerHTML = `<td>${s.exam_name}</td><td>${s.file_name}</td><td>${s.sheet_count}</td><td>${s.generated_at}</td>`;
             const actTd = document.createElement('td');
             // action buttons with classes
             const viewBtn = document.createElement('button'); viewBtn.textContent='View'; viewBtn.className='btn-view';
