@@ -525,49 +525,71 @@ def upload_student_data(request):
                         return str(row[key]).strip()
                 return default
 
-            seen=set(); added=duplicates=skipped=errors=0; total=0
-            for _,row in df.iterrows():
-                total+=1
-                roll=get_value(row,col_map["roll_number"])
-                reg=get_value(row,col_map["registration_number"])
-                std_id=get_value(row,col_map["student_id"])
+            # convert dataframe into list of plain dicts for faster iteration
+            records = df.to_dict(orient='records')
+
+            seen = set()
+            skipped = 0
+            duplicates_within = 0
+            objects_to_create = []
+
+            for row in records:
+                roll = get_value(row, col_map["roll_number"])
+                reg = get_value(row, col_map["registration_number"])
+                std_id = get_value(row, col_map["student_id"])
+
                 if not roll or not reg or not std_id:
-                    skipped+=1; continue
-                combo=(roll,reg,std_id)
-                if combo in seen:
-                    duplicates+=1; continue
-                seen.add(combo)
-                try:
-                    obj,created=Student.objects.get_or_create(
-                        student_file=student_file_obj,
-                        roll_number=roll,
-                        registration_number=reg,
-                        student_id=std_id,
-                        defaults={
-                            'course':get_value(row,col_map["course"]),
-                            'semester':get_value(row,col_map["semester"]),
-                            'branch':get_value(row,col_map["branch"]),
-                            'name':get_value(row,col_map["name"]),
-                            'academic_status':get_value(row,col_map["academic_status"]),
-                        }
-                    )
-                    if created: added+=1
-                    else: duplicates+=1
-                except Exception as e:
-                    errors+=1
-                    print(f"[ERROR] row {total} failed: {e}")
+                    skipped += 1
                     continue
 
-            print(f"[DEBUG] total {total}, added {added}, dup {duplicates}, skipped {skipped}, errors {errors}")
-            if added==0 and (duplicates or skipped or errors):
-                messages.warning(request,f"No new students added. {duplicates} duplicates, {skipped} skipped, {errors} errors.")
-            elif added==0:
-                messages.warning(request,"No students found in file. Please check your file format and data.")
+                combo = (roll, reg, std_id)
+                if combo in seen:
+                    duplicates_within += 1
+                    continue
+
+                seen.add(combo)
+
+                # build Student instance but don't hit the DB yet
+                objects_to_create.append(Student(
+                    student_file=student_file_obj,
+                    roll_number=roll,
+                    registration_number=reg,
+                    student_id=std_id,
+                    course=get_value(row, col_map["course"]),
+                    semester=get_value(row, col_map["semester"]),
+                    branch=get_value(row, col_map["branch"]),
+                    name=get_value(row, col_map["name"]),
+                    academic_status=get_value(row, col_map["academic_status"]),
+                ))
+
+            # attempt bulk insert; ignore conflicts to let the database drop exact duplicates
+            added = 0
+            duplicates_global = 0
+            try:
+                before = Student.objects.filter(student_file=student_file_obj).count()
+                if objects_to_create:
+                    Student.objects.bulk_create(objects_to_create, batch_size=500, ignore_conflicts=True)
+                after = Student.objects.filter(student_file=student_file_obj).count()
+                added = after - before
+                duplicates_global = max(0, len(objects_to_create) - added)
+            except Exception as e:
+                # log but allow execution to continue
+                print(f"[ERROR] bulk_create failed: {e}")
+
+            total = len(records)
+            duplicates = duplicates_within + duplicates_global
+
+            print(f"[DEBUG] total rows {total}, added {added}, duplicates {duplicates}, skipped {skipped}")
+
+            if added == 0 and (duplicates or skipped):
+                messages.warning(request, f"No new students added. {duplicates} duplicates, {skipped} skipped.")
+            elif added == 0:
+                messages.warning(request, "No students found in file. Please check your file format and data.")
             else:
-                msg=f"Student data uploaded successfully! ({added} students added)"
-                if duplicates or skipped or errors:
-                    msg+=f" ({duplicates} duplicates, {skipped} skipped, {errors} errors)"
-                messages.success(request,msg)
+                msg = f"Student data uploaded successfully! ({added} students added)"
+                if duplicates or skipped:
+                    msg += f" ({duplicates} duplicates, {skipped} skipped)"
+                messages.success(request, msg)
 
             return redirect(reverse('dashboard') + '?tab=upload-data')
 
