@@ -456,17 +456,17 @@ def upload_student_data(request):
             messages.error(request, "File size too large. Maximum allowed is 10MB.")
             return redirect("dashboard")
 
-        # Read file directly from memory (NOT disk) and force all columns to strings
+        # Read file directly from memory (NOT disk)
         try:
             print(f"[DEBUG] Reading file: {uploaded_file.name}")
             df = None
             try:
-                print(f"[DEBUG] Trying to parse as CSV with string dtype")
-                df = pd.read_csv(uploaded_file, dtype=str)
+                print(f"[DEBUG] Trying to parse as CSV")
+                df = pd.read_csv(uploaded_file)
                 print(f"[DEBUG] Parsed as CSV successfully, shape: {df.shape}")
             except Exception as e_csv:
-                print(f"[DEBUG] CSV parsing failed: {e_csv}, trying as Excel with string dtype")
-                df = pd.read_excel(uploaded_file, dtype=str)
+                print(f"[DEBUG] CSV parsing failed: {e_csv}, trying as Excel")
+                df = pd.read_excel(uploaded_file)
                 print(f"[DEBUG] Parsed as Excel successfully, shape: {df.shape}")
         except Exception as e:
             err = traceback.format_exc()
@@ -474,7 +474,7 @@ def upload_student_data(request):
             messages.error(request, f"Error reading file: {e}")
             return redirect("dashboard")
 
-        # Clean the dataframe (drop completely empty rows)
+        # Clean the dataframe
         df = df.dropna(how='all').reset_index(drop=True)
         if df.empty:
             print(f"[ERROR] File is empty after cleaning")
@@ -522,71 +522,93 @@ def upload_student_data(request):
                     return str(row[key]).strip()
             return default
 
-        # Iterate rows sequentially to avoid skipping due to one failure/bulk issues
-        seen_combos = set()
-        added = 0
+        # Save students with duplicate detection
+        students = []
         duplicates = 0
+        row_count = 0
         skipped_empty = 0
-        errors = 0
-        total_rows = 0
+        skipped_existing = 0
 
-        for idx, row in df.iterrows():
-            total_rows += 1
+        # First pass: collect valid combos
+        valid_rows = []
+        all_combos = set()
+        for _, row in df.iterrows():
+            row_count += 1
             roll = get_value(row, col_map["roll_number"])
             reg = get_value(row, col_map["registration_number"])
             std_id = get_value(row, col_map["student_id"])
 
             if not roll or not reg or not std_id:
                 skipped_empty += 1
-                print(f"[DEBUG] Row {total_rows} skipped - missing required field(s)")
                 continue
 
             combo = (roll, reg, std_id)
-            if combo in seen_combos:
+            if combo in all_combos:
                 duplicates += 1
-                print(f"[DEBUG] Row {total_rows} duplicate within file")
-                continue
-            seen_combos.add(combo)
-
-            # attempt to create or skip if exists in DB
-            try:
-                obj, created = Student.objects.get_or_create(
-                    student_file=student_file_obj,
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id,
-                    defaults={
-                        'course': get_value(row, col_map["course"]),
-                        'semester': get_value(row, col_map["semester"]),
-                        'branch': get_value(row, col_map["branch"]),
-                        'name': get_value(row, col_map["name"]),
-                        'academic_status': get_value(row, col_map["academic_status"]),
-                    }
-                )
-                if created:
-                    added += 1
-                else:
-                    duplicates += 1
-            except Exception as e:
-                errors += 1
-                print(f"[ERROR] Row {total_rows} caused exception: {e}")
-                # continue to next row without aborting entire process
                 continue
 
-        print(f"[DEBUG] Processing complete. Total rows: {total_rows}, Added: {added}, Duplicates: {duplicates}, Empty: {skipped_empty}, Errors: {errors}")
+            all_combos.add(combo)
+            valid_rows.append(row)
+
+        # Check existing in DB with one query
+        existing_combos = set()
+        if all_combos:
+            existing_combos = set(Student.objects.filter(
+                Q(roll_number__in=[c[0] for c in all_combos]) &
+                Q(registration_number__in=[c[1] for c in all_combos]) &
+                Q(student_id__in=[c[2] for c in all_combos])
+            ).values_list('roll_number', 'registration_number', 'student_id'))
+
+        # Second pass: build students list
+        for row in valid_rows:
+            roll = get_value(row, col_map["roll_number"])
+            reg = get_value(row, col_map["registration_number"])
+            std_id = get_value(row, col_map["student_id"])
+            combo = (roll, reg, std_id)
+
+            if combo in existing_combos:
+                skipped_existing += 1
+                duplicates += 1
+                continue
+
+            students.append(Student(
+                student_file=student_file_obj,
+                course=get_value(row, col_map["course"]),
+                semester=get_value(row, col_map["semester"]),
+                branch=get_value(row, col_map["branch"]),
+                name=get_value(row, col_map["name"]),
+                roll_number=roll,
+                registration_number=reg,
+                student_id=std_id,
+                academic_status=get_value(row, col_map["academic_status"])
+            ))
+
+        print(f"[DEBUG] Processing complete. Total rows: {row_count}, Students to save: {len(students)}, Duplicates: {duplicates}, Empty fields: {skipped_empty}, Existing in DB: {skipped_existing}")
+
+        # Bulk create in batches
+        try:
+            batch_size = 500
+            for i in range(0, len(students), batch_size):
+                batch = students[i:i + batch_size]
+                Student.objects.bulk_create(batch)
+                print(f"[DEBUG] Saved batch {i//batch_size + 1} with {len(batch)} students")
+            print(f"[DEBUG] Successfully saved {len(students)} students to database")
+        except Exception as e:
+            print(f"[ERROR] Error saving students: {str(e)}")
+            messages.error(request, f"Error saving students to database: {e}")
+            return redirect("dashboard")
 
         # Show appropriate message
-        if added == 0 and (duplicates > 0 or skipped_empty > 0 or errors > 0):
-            messages.warning(request, f"No new students added. {duplicates} duplicates, {skipped_empty} invalid/empty, {errors} errors.")
-        elif added == 0:
+        if len(students) == 0 and duplicates > 0:
+            messages.warning(request, f"No new students added. All {row_count} rows were duplicates or invalid.")
+        elif len(students) == 0:
             messages.warning(request, f"No students found in file. Please check your file format and data.")
+        elif duplicates > 0:
+            messages.warning(request, f"Student data uploaded! ({len(students)} added, {duplicates} duplicates/invalid skipped)")
         else:
-            msg = f"Student data uploaded successfully! ({added} students added)"
-            if duplicates or skipped_empty or errors:
-                msg += f" ({duplicates} duplicates, {skipped_empty} skipped, {errors} errors)"
-            messages.success(request, msg)
+            messages.success(request, f"Student data uploaded successfully! ({len(students)} students added)")
 
-        print(f"[DEBUG] Final upload summary - Added: {added}, Duplicates: {duplicates}, Skipped empty: {skipped_empty}, Errors: {errors}")
+        print(f"[DEBUG] Final upload summary - Added: {len(students)}, Duplicates: {duplicates}")
 
         return redirect("dashboard")
 
