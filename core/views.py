@@ -530,9 +530,7 @@ def upload_student_data(request):
             # convert dataframe into list of plain dicts for faster iteration
             records = df.to_dict(orient='records')
 
-            seen = set()
             skipped = 0
-            duplicates_within = 0
             objects_to_create = []
 
             for row in records:
@@ -543,13 +541,6 @@ def upload_student_data(request):
                 if not roll or not reg or not std_id:
                     skipped += 1
                     continue
-
-                combo = (roll, reg, std_id)
-                if combo in seen:
-                    duplicates_within += 1
-                    continue
-
-                seen.add(combo)
 
                 # build Student instance but don't hit the DB yet
                 objects_to_create.append(Student(
@@ -566,7 +557,7 @@ def upload_student_data(request):
 
             total = len(records)
             inserted = 0
-            # insert within transaction; conflicts should not occur because we've deduped within file
+            # insert within transaction
             try:
                 with transaction.atomic():
                     if objects_to_create:
@@ -576,17 +567,17 @@ def upload_student_data(request):
                 print(f"[ERROR] bulk_create/transaction failed: {db_exc}")
                 raise
 
-            print(f"[DEBUG] total rows {total}, inserted {inserted}, duplicates {duplicates_within}, skipped {skipped}")
+            print(f"[DEBUG] total rows {total}, inserted {inserted}, skipped {skipped}")
 
             # prepare user feedback
-            if inserted == 0 and (duplicates_within or skipped):
-                messages.warning(request, f"No students added. {duplicates_within} duplicates, {skipped} skipped.")
+            if inserted == 0 and skipped:
+                messages.warning(request, f"No students added. {skipped} skipped.")
             elif inserted == 0:
                 messages.warning(request, "No students found in file. Please check your file format and data.")
             else:
                 msg = f"Student data uploaded successfully! (total: {total}, inserted: {inserted})"
-                if duplicates_within or skipped:
-                    msg += f" ({duplicates_within} duplicates, {skipped} skipped)"
+                if skipped:
+                    msg += f" ({skipped} skipped)"
                 messages.success(request, msg)
 
             return redirect(reverse('dashboard') + '?tab=upload-data')
