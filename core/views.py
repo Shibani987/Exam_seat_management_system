@@ -441,6 +441,8 @@ def block_admin_email(request):
 def upload_student_data(request):
     if request.method == "POST":
         from django.urls import reverse
+        from django.db import transaction, IntegrityError
+
         try:
             form = StudentDataUploadForm(request.POST, request.FILES)
             if not form.is_valid():
@@ -562,43 +564,42 @@ def upload_student_data(request):
                     academic_status=get_value(row, col_map["academic_status"]),
                 ))
 
-            # attempt bulk insert; ignore conflicts to let the database drop exact duplicates
-            added = 0
-            duplicates_global = 0
-            try:
-                before = Student.objects.filter(student_file=student_file_obj).count()
-                if objects_to_create:
-                    Student.objects.bulk_create(objects_to_create, batch_size=500, ignore_conflicts=True)
-                after = Student.objects.filter(student_file=student_file_obj).count()
-                added = after - before
-                duplicates_global = max(0, len(objects_to_create) - added)
-            except Exception as e:
-                # log but allow execution to continue
-                print(f"[ERROR] bulk_create failed: {e}")
-
             total = len(records)
-            duplicates = duplicates_within + duplicates_global
+            inserted = 0
+            # insert within transaction; conflicts should not occur because we've deduped within file
+            try:
+                with transaction.atomic():
+                    if objects_to_create:
+                        Student.objects.bulk_create(objects_to_create, batch_size=500)
+                    inserted = len(objects_to_create)
+            except Exception as db_exc:
+                print(f"[ERROR] bulk_create/transaction failed: {db_exc}")
+                raise
 
-            print(f"[DEBUG] total rows {total}, added {added}, duplicates {duplicates}, skipped {skipped}")
+            print(f"[DEBUG] total rows {total}, inserted {inserted}, duplicates {duplicates_within}, skipped {skipped}")
 
-            if added == 0 and (duplicates or skipped):
-                messages.warning(request, f"No new students added. {duplicates} duplicates, {skipped} skipped.")
-            elif added == 0:
+            # prepare user feedback
+            if inserted == 0 and (duplicates_within or skipped):
+                messages.warning(request, f"No students added. {duplicates_within} duplicates, {skipped} skipped.")
+            elif inserted == 0:
                 messages.warning(request, "No students found in file. Please check your file format and data.")
             else:
-                msg = f"Student data uploaded successfully! ({added} students added)"
-                if duplicates or skipped:
-                    msg += f" ({duplicates} duplicates, {skipped} skipped)"
+                msg = f"Student data uploaded successfully! (total: {total}, inserted: {inserted})"
+                if duplicates_within or skipped:
+                    msg += f" ({duplicates_within} duplicates, {skipped} skipped)"
                 messages.success(request, msg)
 
             return redirect(reverse('dashboard') + '?tab=upload-data')
 
+        except IntegrityError as ie:
+            logger.error(f"upload_student_data integrity error: {ie}")
+            messages.error(request, "Database integrity error during upload. Please ensure the file has no duplicate rows.")
+            return redirect(reverse('dashboard') + '?tab=upload-data')
         except Exception as exc:
             logger.error(f"upload_student_data unexpected: {exc}\n{traceback.format_exc()}")
             print("[ERROR] upload_student_data unexpected:\n", traceback.format_exc())
             messages.error(request,"Internal server error during upload. Please try again.")
             return redirect(reverse('dashboard') + '?tab=upload-data')
-
     # Handle GET request - show dashboard with uploaded files
     uploaded_files = StudentDataFile.objects.all().order_by("-uploaded_at")
     years = range(2020, 2036)
