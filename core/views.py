@@ -459,27 +459,34 @@ def upload_student_data(request):
 
             print(f"[DEBUG] Reading file: {uploaded_file.name}")
             try:
-                df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
-                print(f"[DEBUG] Parsed as CSV, shape: {df.shape}")
+                # use default engine and avoid on_bad_lines in case of pandas version issues
+                df = pd.read_csv(uploaded_file, dtype=str)
+                print(f"[DEBUG] Parsed as CSV (default engine), shape: {df.shape}")
             except Exception as csv_err:
                 print(f"[DEBUG] CSV parse error {csv_err}, falling back to Excel")
-                # handle multi-sheet excel files by concatenating all sheets
+                # try reading CSV again with python engine and skip bad lines
                 try:
-                    xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
-                    sheets = xls.sheet_names
-                    print(f"[DEBUG] Excel contains sheets: {sheets}")
-                    df_list = []
-                    for sn in sheets:
-                        part = pd.read_excel(xls, sheet_name=sn, dtype=str)
-                        print(f"[DEBUG] sheet {sn} shape {part.shape}")
-                        df_list.append(part)
-                    df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
-                    print(f"[DEBUG] Combined Excel shape: {df.shape}")
-                except Exception as excel_err:
-                    # fallback simple read
-                    print(f"[DEBUG] multi-sheet Excel failed {excel_err}, trying single-sheet read")
-                    df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
-                    print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
+                    df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
+                    print(f"[DEBUG] Parsed as CSV with python engine, shape: {df.shape}")
+                except Exception as csv_err2:
+                    print(f"[DEBUG] second CSV attempt failed: {csv_err2}, switching to Excel reading")
+                    # handle multi-sheet excel files by concatenating all sheets
+                    try:
+                        xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
+                        sheets = xls.sheet_names
+                        print(f"[DEBUG] Excel contains sheets: {sheets}")
+                        df_list = []
+                        for sn in sheets:
+                            part = pd.read_excel(xls, sheet_name=sn, dtype=str)
+                            print(f"[DEBUG] sheet {sn} shape {part.shape}")
+                            df_list.append(part)
+                        df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
+                        print(f"[DEBUG] Combined Excel shape: {df.shape}")
+                    except Exception as excel_err:
+                        # fallback simple read
+                        print(f"[DEBUG] multi-sheet Excel failed {excel_err}, trying single-sheet read")
+                        df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
+                        print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
 
             df = df.dropna(how='all').reset_index(drop=True)
             if df.empty:
@@ -572,8 +579,12 @@ def upload_student_data(request):
             return redirect(reverse('dashboard') + '?tab=upload-data')
 
         except Exception as exc:
-            logger.error(f"upload_student_data unexpected: {exc}\n{traceback.format_exc()}")
-            messages.error(request,"Internal server error during upload. Please try again.")
+            # log and print so it's visible during development
+            err_text = traceback.format_exc()
+            logger.error(f"upload_student_data unexpected: {exc}\n{err_text}")
+            print("[ERROR] upload_student_data unexpected:\n", err_text)
+            # show some of the error to the user for debugging
+            messages.error(request, f"Internal server error during upload: {exc}. Check server logs.")
             return redirect(reverse('dashboard') + '?tab=upload-data')
 
     # Handle GET request - show dashboard with uploaded files
