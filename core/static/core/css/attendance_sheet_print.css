@@ -3,7 +3,7 @@
   width: 100%;
   max-width: 900px;
   margin: 0;
-  padding: 5px 10px; /* less top padding to push content closer to border */
+  padding: 8px 10px; /* slightly more top padding so header clears border */
   orphans: 0;
   widows: 0;
   height: auto;
@@ -16,7 +16,11 @@
   text-align: center;
   margin-bottom: 5px; /* tighter spacing below header */
   page-break-inside: avoid;
-  padding-top: 2px; /* reduce gap from top border */
+  padding-top: 5px; /* restore a bit of gap from top border */
+}
+
+/* logo container remains absolute inside header */
+.header-logo {
   position: absolute;
   left: 0;
   top: 0;
@@ -65,6 +69,8 @@
   justify-content: space-between;
   margin: 4px 0; /* shrink meta spacing */
   gap: 8px;
+}
+
 .meta-field {
   flex: 1;
   border: 1px solid #000;
@@ -156,6 +162,7 @@
   gap: 20px; /* narrower gap to save space */
   margin-bottom: 5px; /* reduce footer height */
   font-size: 9px; /* slightly smaller text */
+}
 
 .footer-section {
   flex: 1;
@@ -173,6 +180,8 @@
   padding: 4px; /* smaller box padding */
   margin-bottom: 4px;
   min-height: 16px;
+}
+
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
