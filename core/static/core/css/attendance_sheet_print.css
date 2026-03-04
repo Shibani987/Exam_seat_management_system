@@ -160,6 +160,12 @@
   page-break-inside: avoid;
 }
 
+/* first two sections small fixed width so they don't stretch */
+.sheet-footer > .footer-section:nth-child(1),
+.sheet-footer > .footer-section:nth-child(2) {
+  flex: 0 0 120px;
+}
+
 .footer-field {
   border: 1px solid #000;
   padding: 6px;
@@ -168,12 +174,10 @@
 }
 
 .signature-box {
-  margin-top: 5px;
-  min-height: 30px;
-  border: 1px solid #999;
-  text-align: center;
-  padding-top: 15px;
-  font-size: 8px;
+  margin: 8px 0;
+  border-top: 1px solid #000;
+  width: 100%;
+  height: 0;
 }
 
 .footer-label {

@@ -190,6 +190,9 @@ function showStep3(pages, examName){
   // save for later (save endpoint uses generatedSheets)
   generatedSheets = pages;
 
+  // prepare serial counters for continuous SL numbers per branch/semester
+  const serialCounters = {};
+
   // Add print-friendly stylesheet if not already added
   if (!document.getElementById('attendance-sheet-css')) {
     const link = document.createElement('link');
@@ -200,6 +203,12 @@ function showStep3(pages, examName){
   }
   
   pages.forEach((pageMeta, pageIdx) => {
+    // establish a unique key for branch+semester so serials continue properly
+    const key = `${pageMeta.branch||''}_${pageMeta.semester||''}`;
+    if (!(key in serialCounters)) {
+      serialCounters[key] = 0;
+    }
+
     const sheetDiv = document.createElement('div');
     sheetDiv.className = 'attendance-sheet';
     
@@ -254,26 +263,25 @@ function showStep3(pages, examName){
         <tbody>
     `;
     
-    // Add rows (20 per sheet as per image)
+    // Add rows (20 per sheet as per image) with continuous serial numbers per branch/semester
+    // serialCounters will be initialised outside this loop
     for (let i = 0; i < 20; i++) {
       const student = (pageMeta.students || [])[i];
-      if (student) {
-        html += `
+      let slText = '';
+      if (student && (student.name || student.registration_number || student.roll_number)) {
+        serialCounters[key] += 1;
+        slText = serialCounters[key];
+      }
+      html += `
           <tr>
-            <td class="sl-col">${i + 1}</td>
-            <td class="name-col">${(student.name||'').toUpperCase()}</td>
-            <td class="reg-col">${(student.registration_number||'').toUpperCase()}</td>
-            <td class="roll-col">${(student.roll_number||'').toUpperCase()}</td>
-          <tr>
-            <td class="sl-col">${i + 1}</td>
-            <td class="name-col"></td>
-            <td class="reg-col"></td>
-            <td class="roll-col"></td>
+            <td class="sl-col">${slText}</td>
+            <td class="name-col">${student ? (student.name||'').toUpperCase() : ''}</td>
+            <td class="reg-col">${student ? (student.registration_number||'').toUpperCase() : ''}</td>
+            <td class="roll-col">${student ? (student.roll_number||'').toUpperCase() : ''}</td>
             <td class="booklet-col"></td>
             <td class="signature-col"></td>
           </tr>
         `;
-      }
     }
     
     html += `
