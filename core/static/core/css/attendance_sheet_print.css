@@ -3,14 +3,12 @@
   width: 100%;
   max-width: 900px;
   margin: 0;
-  padding: 8px 10px; /* slightly more top padding so header clears border */
+  padding: 3px 5px; /* minimal padding around edges */
   orphans: 0;
   widows: 0;
   height: auto;
   box-sizing: border-box;
-}
-
-/* header uses absolute-positioned logo at left, text centered */
+}/* header uses absolute-positioned logo at left, text centered */
 .sheet-header {
   position: relative;
   text-align: center;
@@ -44,38 +42,38 @@
 
 .sheet-header h2 {
   margin: 0;
-  font-size: 20px;
+  font-size: 14px; /* even smaller header text */
   font-weight: bold;
   color: #333;
 }
 
 .sheet-header p {
-  margin: 1px 0;
-  font-size: 10px;
+  margin: 0px 0;
+  font-size: 6px; /* compress the secondary lines */
   color: #555;
 }
 
 .sheet-title {
   text-align: center;
-  font-size: 14px;
+  font-size: 10px; /* squeeze title more */
   font-weight: bold;
-  margin: 4px 0; /* reduced vertical margins */
-  border: 2px solid #000;
-  padding: 4px 0; /* slimmed padding */
+  margin: 1px 0; /* minimal margins */
+  border: 1px solid #000;
+  padding: 1px 0; /* minimal padding */
 }
 
 .sheet-meta {
   display: flex;
   justify-content: space-between;
-  margin: 4px 0; /* shrink meta spacing */
-  gap: 8px;
+  margin: 2px 0; /* minimal spacing */
+  gap: 4px;
 }
 
 .meta-field {
   flex: 1;
   border: 1px solid #000;
-  padding: 10px 8px;
-  min-height: 45px;
+  padding: 4px 2px; /* tighter */
+  min-height: 25px; /* shrink boxes further */
   position: relative;
 }
 
@@ -97,11 +95,13 @@
 .sheet-table {
   width: 100%;
   border-collapse: collapse;
-  margin-bottom: 15px;
-  page-break-inside: avoid;
+  margin-bottom: 10px; /* slightly less space below table */
+  /* allow breaks if needed rather than forcing whole table */
 }
 
-.sheet-table tbody { page-break-inside: avoid; }
+/* allow row breaking if page too short */
+.sheet-table tbody { }
+
 
 .sheet-table th {
   border: 1px solid #000;
@@ -111,18 +111,17 @@
 }
 
 .sheet-table td {
-  border: 0.8px solid #000;
-  padding: 8px 6px; /* added padding for clarity */
+  border: 1px solid #000;
+  padding: 2px 1px; /* very small padding */
   vertical-align: middle;
-  page-break-inside: avoid;
 }
 
 .sheet-table th {
-  border: 0.8px solid #000;
-  padding: 6px 4px;
+  border: 1px solid #000; /* standard thin border */
+  padding: 2px 1px; /* very tight padding */
   text-align: left;
   font-weight: bold;
-  font-size: 10px;
+  font-size: 8px;
   background: white;
   vertical-align: middle;
 }
