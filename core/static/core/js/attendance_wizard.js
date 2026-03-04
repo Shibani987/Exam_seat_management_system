@@ -229,23 +229,19 @@ function showStep3(pages, examName){
       
       <div class="sheet-meta">
         <div style="flex: 1;">
-          <div class="meta-label">Date of Examination</div>
-          <div class="meta-field"></div>
+          <div class="meta-field"><span class="meta-label">Date of Examination</span></div>
         </div>
         <div style="flex: 1;">
-          <div class="meta-label">Time</div>
-          <div class="meta-field"></div>
+          <div class="meta-field"><span class="meta-label">Time</span></div>
         </div>
       </div>
       
       <div class="sheet-meta">
         <div style="flex: 1;">
-          <div class="meta-label">Paper Name</div>
-          <div class="meta-field"></div>
+          <div class="meta-field"><span class="meta-label">Paper Name</span></div>
         </div>
         <div style="flex: 1;">
-          <div class="meta-label">Paper Code</div>
-          <div class="meta-field"></div>
+          <div class="meta-field"><span class="meta-label">Paper Code</span></div>
         </div>
       </div>
       
