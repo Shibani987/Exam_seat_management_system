@@ -96,7 +96,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 10px; /* slightly less space below table */
-  table-layout: fixed; /* equal column widths */
+  table-layout: auto; /* allow auto-sizing, we'll control sl column separately */
 }
 
 /* allow row breaking if page too short */
@@ -127,6 +127,8 @@
 /* column width rules removed so empty cells shrink and table auto-fits */
 .sl-col {
   text-align: center;
+  width: 4%; /* narrow sl column */
+  white-space: nowrap;
 }
 
 .name-col {
@@ -194,7 +196,7 @@
 .footer-left {
   display: flex;
   flex-direction: column;
-  gap: 1px; /* bring present/absent boxes closer */
+  gap: 0; /* remove gap between present/absent */
 }
 
 .footer-section.small {
