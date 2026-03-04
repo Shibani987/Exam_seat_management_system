@@ -27,8 +27,8 @@
   position: absolute;
   left: 0;
   top: 0;
-  width: 50px;
-  height: 50px;
+  width: 45px;
+  height: 45px;
   border: none;
   border-radius: 50%;
   display: flex;
@@ -38,7 +38,7 @@
 
 .header-logo img {
   display: block;
-  height: 40px;
+  height: 35px;
 }
 
 .header-text {
@@ -63,23 +63,25 @@
   font-size: 14px;
   font-weight: bold;
   margin: 6px 0;
-  border: 1px solid #000;
+  border: 2px solid #000;
   padding: 6px 0;
   text-transform: uppercase;
+  width: 100%;
+  box-sizing: border-box;
   page-break-inside: avoid;
 }
 
 .sheet-meta {
   display: flex;
   justify-content: space-between;
-  margin-bottom: 4px;
+  margin-bottom: 10px;
   gap: 8px;
   page-break-inside: avoid;
 }
 
 .meta-field {
   flex: 1;
-  border: 1px solid #000;
+  border: 2px solid #000;
   padding: 5px 4px;
   min-height: 25px;
   display: flex;
@@ -110,11 +112,21 @@
 
 .sheet-table td {
   border: 1px solid #000;
-  padding: 4px 2px;
-  font-size: 9px;
+  padding: 6px 4px;
+  font-size: 10px;
   min-height: 18px;
   vertical-align: top;
   page-break-inside: avoid;
+}
+
+.sheet-table th {
+  border: 1px solid #000;
+  padding: 6px 4px;
+  text-align: left;
+  font-weight: bold;
+  font-size: 10px;
+  background: white;
+  vertical-align: middle;
 }
 
 /* remove zebra stripe to match image */
@@ -183,6 +195,48 @@
 .footer-label {
   font-weight: bold;
   margin-bottom: 5px;
+}
+
+/* new layout helpers */
+.sheet-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.footer-left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.footer-section.small {
+  flex: 0 0 120px;
+}
+
+.footer-right-internal {
+  flex: 1;
+  text-align: right;
+}
+
+.footer-left-hod {
+  flex: 1;
+}
+
+.hod-line, .external-line {
+  border-top: 1px solid #000;
+  width: 150px;
+  margin-bottom: 5px;
+}
+
+.footer-right-external {
+  flex: 1;
+  text-align: right;
+}
+
+.name-caption {
+  font-size: 10px;
+  margin-top: 5px;
 }
 
 .print-btn-group {

@@ -288,32 +288,35 @@ function showStep3(pages, examName){
         </tbody>
       </table>
       
-      <!-- preserved footer details -->
-      <div class="sheet-footer">
-        <div class="footer-section">
-          <div class="footer-label">No of Student Present</div>
-          <div class="footer-field"></div>
+      <!-- first footer row: present/absent on left, internal signature on right -->
+      <div class="sheet-footer-row">
+        <div class="footer-left">
+          <div class="footer-section small">
+            <div class="footer-label">No of Student Present</div>
+            <div class="footer-field"></div>
+          </div>
+          <div class="footer-section small">
+            <div class="footer-label">No of Student Absent</div>
+            <div class="footer-field"></div>
+          </div>
         </div>
-        <div class="footer-section">
-          <div class="footer-label">No of Student Absent</div>
-          <div class="footer-field"></div>
-        </div>
-        <div class="footer-section" style="flex: 1.5;">
+        <div class="footer-right-internal">
           <div class="footer-label">Signature of Examiner (Internal)</div>
           <div class="signature-box"></div>
-          <div style="font-size: 10px; margin-top: 5px;">Name (in CAPITAL):</div>
+          <div class="name-caption">Name (in CAPITAL):</div>
         </div>
       </div>
       
-      <div style="display: flex; justify-content: space-between; gap: 30px; font-size: 11px;">
-        <div>
-          <div style="border-top: 1px solid #333; width: 120px; text-align: center; margin-bottom: 5px;"></div>
+      <!-- second footer row: HOD left, external right -->
+      <div class="sheet-footer-row" style="margin-top:20px;">
+        <div class="footer-left-hod">
+          <div class="hod-line"></div>
           <div>Signature of HoD</div>
         </div>
-        <div style="flex: 1;">
+        <div class="footer-right-external">
           <div class="footer-label">Signature of Examiner (External)</div>
-          <div style="border-top: 1px solid #333; width: 150px; margin: 20px 0;"></div>
-          <div style="font-size: 10px;">Name (in CAPITAL):</div>
+          <div class="external-line"></div>
+          <div class="name-caption">Name (in CAPITAL):</div>
         </div>
       </div>
       
