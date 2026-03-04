@@ -203,50 +203,52 @@ function showStep3(pages, examName){
     const sheetDiv = document.createElement('div');
     sheetDiv.className = 'attendance-sheet';
     
-    // Header
+    // Header (logo left, text centered)
     let html = `
       <div class="sheet-header">
-        <div class="header-logo"><img src="/static/core/img/logo.png" alt="logo" style="height:48px;"/></div>
-        <h2>Controller of Examinations</h2>
-        <p>JIS College of Engineering</p>
-        <p>An Autonomous Institute under MAKAUT, W.B.</p>
+        <div class="header-logo"><img src="/static/core/img/logo.png" alt="logo" /></div>
+        <div class="header-text">
+          <h2>CONTROLLER OF EXAMINATIONS</h2>
+          <p>JIS COLLEGE OF ENGINEERING</p>
+          <p>AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.</p>
+        </div>
       </div>
       
       <div class="sheet-title">
-        Attendance Sheet for ${examName || ''}
+        Attendance Sheet for ${(examName||'').toUpperCase()}
       </div>
       
       <div class="sheet-meta">
         <div style="flex: 1;">
           <div class="meta-label">Date of Examination</div>
-          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+          <div class="meta-field"></div>
         </div>
         <div style="flex: 1;">
           <div class="meta-label">Time</div>
-          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+          <div class="meta-field"></div>
         </div>
       </div>
       
       <div class="sheet-meta">
         <div style="flex: 1;">
           <div class="meta-label">Paper Name</div>
-          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+          <div class="meta-field"></div>
         </div>
         <div style="flex: 1;">
           <div class="meta-label">Paper Code</div>
-          <div class="meta-field" style="border: 2px solid #333; min-height: 25px;"></div>
+          <div class="meta-field"></div>
         </div>
       </div>
       
       <table class="sheet-table">
         <thead>
           <tr>
-            <th class="sl-col">Sl</th>
-            <th class="name-col">Name</th>
-            <th class="reg-col">Registration No</th>
-            <th class="roll-col">Roll No</th>
-            <th class="booklet-col">Answer<br>Booklet No</th>
-            <th class="signature-col">Candidate<br>Signature</th>
+            <th class="sl-col">SL</th>
+            <th class="name-col">NAME</th>
+            <th class="reg-col">REGISTRATION NO</th>
+            <th class="roll-col">ROLL NO</th>
+            <th class="booklet-col">ANSWER<br>BOOKLET NO</th>
+            <th class="signature-col">CANDIDATE<br>SIGNATURE</th>
           </tr>
         </thead>
         <tbody>
@@ -259,15 +261,9 @@ function showStep3(pages, examName){
         html += `
           <tr>
             <td class="sl-col">${i + 1}</td>
-            <td class="name-col">${student.name || ''}</td>
-            <td class="reg-col">${student.registration_number || ''}</td>
-            <td class="roll-col">${student.roll_number || ''}</td>
-            <td class="booklet-col"></td>
-            <td class="signature-col"></td>
-          </tr>
-        `;
-      } else {
-        html += `
+            <td class="name-col">${(student.name||'').toUpperCase()}</td>
+            <td class="reg-col">${(student.registration_number||'').toUpperCase()}</td>
+            <td class="roll-col">${(student.roll_number||'').toUpperCase()}</td>
           <tr>
             <td class="sl-col">${i + 1}</td>
             <td class="name-col"></td>
@@ -315,7 +311,7 @@ function showStep3(pages, examName){
       
       <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
         <div style="font-size:12px;">
-          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem' + (pageMeta.semester || '')) : ''}
+          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
         </div>
         <div style="font-size:12px;">Page ${pageMeta.page_index} of ${pageMeta.total_pages}</div>
       </div>
