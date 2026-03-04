@@ -246,6 +246,14 @@ function showStep3(pages, examName){
       </div>
       
       <table class="sheet-table">
+        <colgroup>
+          <col style="width:3%" />
+          <col />
+          <col />
+          <col />
+          <col />
+          <col />
+        </colgroup>
         <thead>
           <tr>
             <th class="sl-col">SL</th>
