@@ -112,16 +112,16 @@
 
 .sheet-table td {
   border: 1px solid #000;
-  padding: 6px 4px;
+  padding: 8px 6px;
   font-size: 10px;
   min-height: 18px;
-  vertical-align: top;
+  vertical-align: middle;
   page-break-inside: avoid;
 }
 
 .sheet-table th {
   border: 1px solid #000;
-  padding: 6px 4px;
+  padding: 8px 6px;
   text-align: left;
   font-weight: bold;
   font-size: 10px;
