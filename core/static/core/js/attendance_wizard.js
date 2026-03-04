@@ -305,8 +305,8 @@ function showStep3(pages, examName){
           </div>
         </div>
         <div class="footer-right-internal">
-          <div class="footer-label">Signature of Examiner (Internal)</div>
           <div class="signature-box"></div>
+          <div class="footer-label">Signature of Examiner (Internal)</div>
           <div class="name-caption">Name (in CAPITAL):</div>
         </div>
       </div>
@@ -318,17 +318,17 @@ function showStep3(pages, examName){
           <div>Signature of HoD</div>
         </div>
         <div class="footer-right-external">
-          <div class="footer-label">Signature of Examiner (External)</div>
           <div class="external-line"></div>
+          <div class="footer-label">Signature of Examiner (External)</div>
           <div class="name-caption">Name (in CAPITAL):</div>
         </div>
       </div>
       
-      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-        <div style="font-size:12px;">
-          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
+      <div class="sheet-footer" style="display:flex; justify-content:flex-end; align-items:center; margin-top:5px;">
+        <div style="font-size:12px; text-align:right; line-height:1.2;">
+          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}<br>
+          Page ${pageMeta.page_index} of ${pageMeta.total_pages}
         </div>
-        <div style="font-size:12px;">Page ${pageMeta.page_index} of ${pageMeta.total_pages}</div>
       </div>
     `;
     

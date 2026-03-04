@@ -185,7 +185,7 @@
 
 .footer-label {
   font-weight: normal; /* remove boldness */
-  margin-bottom: 3px;
+  margin-bottom: 0; /* no extra space below label */
 }
 
 /* new layout helpers */
@@ -201,6 +201,7 @@
   flex-direction: column;
   gap: 0; /* remove gap between present/absent */
   padding-bottom: 0;
+  line-height: 1; /* tighten vertical layout */
 }
 
 .footer-section.small {
