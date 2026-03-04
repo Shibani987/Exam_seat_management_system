@@ -71,7 +71,7 @@
 
 .meta-field {
   flex: 1;
-  border: 1px solid #000;
+  border: 0.5px solid #444; /* lighter border */
   padding: 4px 2px; /* tighter */
   min-height: 25px; /* shrink boxes further */
   position: relative;
@@ -96,32 +96,25 @@
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 10px; /* slightly less space below table */
-  /* allow breaks if needed rather than forcing whole table */
+  table-layout: auto; /* let columns size based on content */
 }
 
 /* allow row breaking if page too short */
 .sheet-table tbody { }
 
 
-.sheet-table th {
-  border: 1px solid #000;
-  padding: 8px 5px; /* more breathing room */
-  font-size: 9px;
-  background: white;
-}
-
 .sheet-table td {
-  border: 1px solid #000;
-  padding: 2px 1px; /* very small padding */
+  border: 0.3px solid #444;
+  padding: 4px 2px; /* comfortable padding */
   vertical-align: middle;
 }
 
 .sheet-table th {
-  border: 1px solid #000; /* standard thin border */
-  padding: 2px 1px; /* very tight padding */
+  border: 0.3px solid #444; /* very light grid lines */
+  padding: 4px 2px; /* more breathing room again */
   text-align: left;
   font-weight: bold;
-  font-size: 8px;
+  font-size: 9px;
   background: white;
   vertical-align: middle;
 }
@@ -129,30 +122,25 @@
 /* remove zebra stripe to match image */
 
 
+/* column width rules removed so empty cells shrink and table auto-fits */
 .sl-col {
-  width: 3%;
   text-align: center;
 }
 
 .name-col {
-  width: 25%;
 }
 
 .reg-col {
-  width: 20%;
 }
 
 .roll-col {
-  width: 15%;
 }
 
 .booklet-col {
-  width: 18%;
   text-align: center;
 }
 
 .signature-col {
-  width: 18%;
   text-align: center;
 }
 
@@ -175,7 +163,7 @@
 }
 
 .footer-field {
-  border: 1px solid #000;
+  border: 0.5px solid #444;
   padding: 4px; /* smaller box padding */
   margin-bottom: 4px;
   min-height: 16px;
