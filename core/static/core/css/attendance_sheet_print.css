@@ -3,11 +3,7 @@
   width: 100%;
   max-width: 900px;
   margin: 0;
-  padding: 10px;
-  background: white;
-  font-family: "Times New Roman", serif;
-  page-break-after: always;
-  page-break-inside: avoid;
+  padding: 5px 10px; /* less top padding to push content closer to border */
   orphans: 0;
   widows: 0;
   height: auto;
@@ -18,12 +14,9 @@
 .sheet-header {
   position: relative;
   text-align: center;
-  margin-bottom: 10px;
+  margin-bottom: 5px; /* tighter spacing below header */
   page-break-inside: avoid;
-  padding-top: 5px;
-}
-
-.header-logo {
+  padding-top: 2px; /* reduce gap from top border */
   position: absolute;
   left: 0;
   top: 0;
@@ -62,23 +55,16 @@
   text-align: center;
   font-size: 14px;
   font-weight: bold;
-  margin: 6px 0;
+  margin: 4px 0; /* reduced vertical margins */
   border: 2px solid #000;
-  padding: 6px 0;
-  text-transform: uppercase;
-  width: 100%;
-  box-sizing: border-box;
-  page-break-inside: avoid;
+  padding: 4px 0; /* slimmed padding */
 }
 
 .sheet-meta {
   display: flex;
   justify-content: space-between;
-  margin: 8px 0;
-  gap: 12px;
-  page-break-inside: avoid;
-}
-
+  margin: 4px 0; /* shrink meta spacing */
+  gap: 8px;
 .meta-field {
   flex: 1;
   border: 1px solid #000;
@@ -113,18 +99,14 @@
 
 .sheet-table th {
   border: 1px solid #000;
-  padding: 6px 3px;
-  text-align: left;
-  font-weight: bold;
+  padding: 8px 5px; /* more breathing room */
   font-size: 9px;
   background: white;
 }
 
 .sheet-table td {
   border: 0.8px solid #000;
-  padding: 6px 4px;
-  font-size: 10px;
-  line-height: 1.2;
+  padding: 8px 6px; /* added padding for clarity */
   vertical-align: middle;
   page-break-inside: avoid;
 }
@@ -171,11 +153,9 @@
 
 .sheet-footer {
   display: flex;
-  gap: 30px;
-  margin-bottom: 10px;
-  font-size: 10px;
-  page-break-inside: avoid;
-}
+  gap: 20px; /* narrower gap to save space */
+  margin-bottom: 5px; /* reduce footer height */
+  font-size: 9px; /* slightly smaller text */
 
 .footer-section {
   flex: 1;
@@ -190,11 +170,9 @@
 
 .footer-field {
   border: 1px solid #000;
-  padding: 6px;
-  margin-bottom: 8px;
-  min-height: 18px;
-}
-
+  padding: 4px; /* smaller box padding */
+  margin-bottom: 4px;
+  min-height: 16px;
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
@@ -212,6 +190,7 @@
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  margin: 0; /* eliminate extra spacing between rows */
 }
 
 .footer-left {
