@@ -96,7 +96,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 10px; /* slightly less space below table */
-  table-layout: auto; /* let columns size based on content */
+  table-layout: fixed; /* equal column widths */
 }
 
 /* allow row breaking if page too short */
@@ -105,18 +105,20 @@
 
 .sheet-table td {
   border: 0.3px solid #444;
-  padding: 4px 2px; /* comfortable padding */
+  padding: 4px 2px;
+  font-size: 8px; /* slightly smaller student text */
   vertical-align: middle;
 }
 
 .sheet-table th {
   border: 0.3px solid #444; /* very light grid lines */
-  padding: 4px 2px; /* more breathing room again */
+  padding: 4px 2px; /* comfortable padding */
   text-align: left;
-  font-weight: bold;
-  font-size: 9px;
+  font-weight: normal; /* reduce boldness slightly */
+  font-size: 8px; /* smaller text for headers */
   background: white;
   vertical-align: middle;
+  width: 16.66%; /* equal width for all six columns */
 }
 
 /* remove zebra stripe to match image */
@@ -147,8 +149,8 @@
 .sheet-footer {
   display: flex;
   gap: 20px; /* narrower gap to save space */
-  margin-bottom: 5px; /* reduce footer height */
-  font-size: 9px; /* slightly smaller text */
+  margin-bottom: 3px; /* reduce footer height further */
+  font-size: 8px; /* slightly smaller text */
 }
 
 .footer-section {
@@ -177,8 +179,8 @@
 }
 
 .footer-label {
-  font-weight: bold;
-  margin-bottom: 5px;
+  font-weight: normal; /* remove boldness */
+  margin-bottom: 3px;
 }
 
 /* new layout helpers */
@@ -192,11 +194,12 @@
 .footer-left {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 1px; /* bring present/absent boxes closer */
 }
 
 .footer-section.small {
   flex: 0 0 120px;
+  margin-bottom: 0;
 }
 
 .footer-right-internal {
