@@ -317,7 +317,7 @@ function showStep3(pages, examName){
         <div style="font-size:12px;">
           ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem' + (pageMeta.semester || '')) : ''}
         </div>
-        <div style="font-size:12px;">Page ${pageMeta.global_index} of ${pageMeta.total_sheets}</div>
+        <div style="font-size:12px;">Page ${pageMeta.page_index} of ${pageMeta.total_pages}</div>
       </div>
     `;
     

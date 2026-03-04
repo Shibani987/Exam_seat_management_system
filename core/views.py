@@ -942,11 +942,7 @@ def generate_sheets(request):
                         'total_pages': total_pages,
                     })
 
-            # add global indexing so frontend can show Page X of Y universally
-            total_sheets = len(pages)
-            for idx, pg in enumerate(pages):
-                pg['global_index'] = idx + 1
-                pg['total_sheets'] = total_sheets
+            # pagination is handled per branch/semester; frontend will use page_index/total_pages
 
             return JsonResponse({
                 "status": "success",
