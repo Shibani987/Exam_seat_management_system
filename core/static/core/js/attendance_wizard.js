@@ -313,9 +313,11 @@ function showStep3(pages, examName){
         </div>
       </div>
       
-      <div class="sheet-footer" style="display:flex; justify-content:flex-start; align-items:center; margin-top:5px;">
+      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
         <div style="font-size:12px; text-align:left; line-height:1.2;">
-          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}<br>
+          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
+        </div>
+        <div style="font-size:12px; text-align:right; line-height:1.2;">
           Page ${pageMeta.page_index} of ${pageMeta.total_pages}
         </div>
       </div>
