@@ -1087,7 +1087,6 @@ def view_generated_sheet(request):
         return HttpResponse("Sheet not found", status=404)
     context = {
         'exam_name': sheet.exam.name,
-        'exam_id': sheet.exam.id,
         'sheets': sheet.sheet_data or []
     }
     return render(request, 'core/generated_sheet_view.html', context)

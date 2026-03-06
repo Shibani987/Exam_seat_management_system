@@ -16,11 +16,9 @@
   {% comment %} embed data safely for javascript {% endcomment %}
   {{ sheets|json_script:"initialSheets" }}
   {{ exam_name|json_script:"initialExamName" }}
-  {{ exam_id|json_script:"initialExamId" }}
   <script>
     const initialSheets = JSON.parse(document.getElementById('initialSheets').textContent);
     const initialExamName = JSON.parse(document.getElementById('initialExamName').textContent);
-    const initialExamId = JSON.parse(document.getElementById('initialExamId').textContent);
 
     function waitForRenderAndPrint(timeoutMs = 3000) {
       const container = document.getElementById('sheetsPreview');
@@ -65,7 +63,7 @@
   <script>
     // once script loads, render
     document.addEventListener('DOMContentLoaded', () => {
-      showStep3(initialSheets, initialExamName, initialExamId);
+      showStep3(initialSheets, initialExamName);
     });
   </script>
 </body>
