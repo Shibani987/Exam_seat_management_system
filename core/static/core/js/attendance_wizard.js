@@ -190,9 +190,6 @@ function showStep3(pages, examName){
   // save for later (save endpoint uses generatedSheets)
   generatedSheets = pages;
 
-  // prepare serial counters for continuous SL numbers per branch/semester
-  const serialCounters = {};
-
   // Add print-friendly stylesheet if not already added
   if (!document.getElementById('attendance-sheet-css')) {
     const link = document.createElement('link');
@@ -203,12 +200,6 @@ function showStep3(pages, examName){
   }
   
   pages.forEach((pageMeta, pageIdx) => {
-    // establish a unique key for branch+semester so serials continue properly
-    const key = `${pageMeta.branch||''}_${pageMeta.semester||''}`;
-    if (!(key in serialCounters)) {
-      serialCounters[key] = 0;
-    }
-
     const sheetDiv = document.createElement('div');
     sheetDiv.className = 'attendance-sheet';
     
@@ -247,7 +238,7 @@ function showStep3(pages, examName){
       
       <table class="sheet-table">
         <colgroup>
-          <col style="width:3%" />
+          <col style="width:2%" />
           <col />
           <col />
           <col />
@@ -267,14 +258,12 @@ function showStep3(pages, examName){
         <tbody>
     `;
     
-    // Add rows (20 per sheet as per image) with continuous serial numbers per branch/semester
-    // serialCounters will be initialised outside this loop
+    // Add rows (20 per sheet as per image) with serial numbers starting from 1 for each sheet
     for (let i = 0; i < 20; i++) {
       const student = (pageMeta.students || [])[i];
       let slText = '';
       if (student && (student.name || student.registration_number || student.roll_number)) {
-        serialCounters[key] += 1;
-        slText = serialCounters[key];
+        slText = i + 1; // Start from 1 for each sheet
       }
       html += `
           <tr>
@@ -324,8 +313,8 @@ function showStep3(pages, examName){
         </div>
       </div>
       
-      <div class="sheet-footer" style="display:flex; justify-content:flex-end; align-items:center; margin-top:5px;">
-        <div style="font-size:12px; text-align:right; line-height:1.2;">
+      <div class="sheet-footer" style="display:flex; justify-content:flex-start; align-items:center; margin-top:5px;">
+        <div style="font-size:12px; text-align:left; line-height:1.2;">
           ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}<br>
           Page ${pageMeta.page_index} of ${pageMeta.total_pages}
         </div>

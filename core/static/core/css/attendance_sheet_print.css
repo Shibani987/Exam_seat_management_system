@@ -130,7 +130,7 @@
 /* column width rules removed so empty cells shrink and table auto-fits */
 .sl-col {
   text-align: center;
-  width: 3%; /* even narrower */
+  width: 2%; /* even narrower */
   white-space: nowrap;
 }
 
@@ -166,7 +166,7 @@
 /* first two sections small fixed width so they don't stretch */
 .sheet-footer > .footer-section:nth-child(1),
 .sheet-footer > .footer-section:nth-child(2) {
-  flex: 0 0 120px;
+  flex: 0 0 100px;
 }
 
 .footer-field {
@@ -179,8 +179,9 @@
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
-  width: 100%;
+  width: 120px;
   height: 0;
+  margin-left: auto;
 }
 
 .footer-label {
@@ -205,7 +206,7 @@
 }
 
 .footer-section.small {
-  flex: 0 0 120px;
+  flex: 0 0 100px;
   margin-bottom: 0;
 }
 
@@ -220,8 +221,12 @@
 
 .hod-line, .external-line {
   border-top: 1px solid #000;
-  width: 150px;
+  width: 120px;
   margin-bottom: 5px;
+}
+
+.external-line {
+  margin-left: auto;
 }
 
 .footer-right-external {
