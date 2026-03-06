@@ -165,14 +165,14 @@ generateBtn.addEventListener('click', () => {
   }).then(r=>r.json()).then(data=>{
     if (data.status==='success'){
       generatedSheets = data.sheets;
-      showStep3(data.sheets, data.exam_name);
+      showStep3(data.sheets, data.exam_name, currentExamId);
     } else {
       alert('Error generating sheets: '+data.message);
     }
   });
 });
 
-function showStep3(pages, examName){
+function showStep3(pages, examName, examId = null){
   // pages: array of { students: [...], branch: '', semester: '', page_index: N, total_pages: M }
   // if wizard DOM elements exist, toggle them; view page doesn't have these
   const step2Elem = document.getElementById('step2Content');
@@ -186,12 +186,9 @@ function showStep3(pages, examName){
   const container = document.getElementById('sheetsPreview');
   if (!container) return;  // nothing to render on this page
   container.innerHTML = '';
-  
+
   // save for later (save endpoint uses generatedSheets)
   generatedSheets = pages;
-
-  // prepare serial counters for continuous SL numbers per branch/semester
-  const serialCounters = {};
 
   // Add print-friendly stylesheet if not already added
   if (!document.getElementById('attendance-sheet-css')) {
@@ -201,141 +198,109 @@ function showStep3(pages, examName){
     link.href = '/static/core/css/attendance_sheet_print.css';
     document.head.appendChild(link);
   }
-  
-  pages.forEach((pageMeta, pageIdx) => {
-    // establish a unique key for branch+semester so serials continue properly
-    const key = `${pageMeta.branch||''}_${pageMeta.semester||''}`;
-    if (!(key in serialCounters)) {
-      serialCounters[key] = 0;
-    }
 
-    const sheetDiv = document.createElement('div');
-    sheetDiv.className = 'attendance-sheet';
-    
-    // Header (logo left, text centered)
-    let html = `
-      <div class="sheet-header">
-        <div class="header-logo"><img src="/static/core/img/logo.png" alt="logo" /></div>
-        <div class="header-text">
-          <h2>CONTROLLER OF EXAMINATIONS</h2>
-          <p>JIS COLLEGE OF ENGINEERING</p>
-          <p>AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.</p>
+  // Use provided examId or fall back to currentExamId
+  const currentExamIdForQR = examId || currentExamId;
+
+  // Create individual student cards instead of bulk sheets
+  pages.forEach((pageMeta, pageIdx) => {
+    pageMeta.students.forEach((student, studentIdx) => {
+      if (!student || (!student.name && !student.registration_number && !student.roll_number)) return;
+
+      const cardDiv = document.createElement('div');
+      cardDiv.className = 'student-card';
+      cardDiv.style.cssText = `
+        width: 300px;
+        min-height: 400px;
+        border: 2px solid #1976d2;
+        border-radius: 10px;
+        margin: 10px;
+        padding: 15px;
+        background: white;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        display: inline-block;
+        vertical-align: top;
+        page-break-inside: avoid;
+        break-inside: avoid;
+      `;
+
+      // Generate QR code URL for this student
+      const studentPortalUrl = `${window.location.origin}/student-portal/?reg_number=${encodeURIComponent(student.registration_number || '')}&exam_id=${encodeURIComponent(currentExamIdForQR || '')}`;
+
+      const html = `
+        <div style="text-align: center; border-bottom: 1px solid #eee; padding-bottom: 10px; margin-bottom: 15px;">
+          <img src="/static/core/img/logo.png" alt="logo" style="width: 60px; height: 60px; margin-bottom: 5px;" />
+          <h3 style="margin: 5px 0; color: #1976d2; font-size: 16px;">CONTROLLER OF EXAMINATIONS</h3>
+          <p style="margin: 2px 0; font-size: 12px;">JIS COLLEGE OF ENGINEERING</p>
+          <p style="margin: 2px 0; font-size: 11px;">AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.</p>
         </div>
-      </div>
-      
-      <div class="sheet-title">
-        Attendance Sheet for ${(examName||'').toUpperCase()}
-      </div>
-      
-      <div class="sheet-meta">
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Date of Examination</span></div>
+
+        <div style="text-align: center; margin-bottom: 15px;">
+          <h4 style="margin: 5px 0; font-size: 14px;">${(examName||'').toUpperCase()}</h4>
+          <p style="margin: 2px 0; font-size: 12px;">Attendance Sheet</p>
         </div>
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Time</span></div>
+
+        <div style="margin-bottom: 15px;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 12px;">
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold; width: 40%;">Name:</td>
+              <td style="padding: 4px 0;">${(student.name||'').toUpperCase()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold;">Registration No:</td>
+              <td style="padding: 4px 0;">${(student.registration_number||'').toUpperCase()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold;">Roll No:</td>
+              <td style="padding: 4px 0;">${(student.roll_number||'').toUpperCase()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold;">Branch:</td>
+              <td style="padding: 4px 0;">${(pageMeta.branch||'').toUpperCase()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-weight: bold;">Semester:</td>
+              <td style="padding: 4px 0;">${(pageMeta.semester||'')}</td>
+            </tr>
+          </table>
         </div>
-      </div>
-      
-      <div class="sheet-meta">
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Paper Name</span></div>
+
+        <div style="text-align: center; margin: 15px 0;">
+          <img src="/generate_qr/?data=${encodeURIComponent(studentPortalUrl)}" alt="QR Code" style="width: 120px; height: 120px; border: 2px solid #1976d2; padding: 5px;" />
+          <p style="font-size: 10px; margin-top: 5px; color: #666;">Scan to view seat information</p>
         </div>
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Paper Code</span></div>
+
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid #eee;">
+          <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
+            <tr>
+              <td style="padding: 3px 0; text-align: center; border-right: 1px solid #eee;">
+                <div style="font-weight: bold;">Present</div>
+                <div style="margin-top: 8px; border: 1px solid #000; width: 30px; height: 20px; display: inline-block;"></div>
+              </td>
+              <td style="padding: 3px 0; text-align: center;">
+                <div style="font-weight: bold;">Absent</div>
+                <div style="margin-top: 8px; border: 1px solid #000; width: 30px; height: 20px; display: inline-block;"></div>
+              </td>
+            </tr>
+          </table>
         </div>
-      </div>
-      
-      <table class="sheet-table">
-        <colgroup>
-          <col style="width:3%" />
-          <col />
-          <col />
-          <col />
-          <col />
-          <col />
-        </colgroup>
-        <thead>
-          <tr>
-            <th class="sl-col">SL</th>
-            <th class="name-col">NAME</th>
-            <th class="reg-col">REGISTRATION NO</th>
-            <th class="roll-col">ROLL NO</th>
-            <th class="booklet-col">ANSWER<br>BOOKLET NO</th>
-            <th class="signature-col">CANDIDATE<br>SIGNATURE</th>
-          </tr>
-        </thead>
-        <tbody>
-    `;
-    
-    // Add rows (20 per sheet as per image) with continuous serial numbers per branch/semester
-    // serialCounters will be initialised outside this loop
-    for (let i = 0; i < 20; i++) {
-      const student = (pageMeta.students || [])[i];
-      let slText = '';
-      if (student && (student.name || student.registration_number || student.roll_number)) {
-        serialCounters[key] += 1;
-        slText = serialCounters[key];
-      }
-      html += `
-          <tr>
-            <td class="sl-col">${slText}</td>
-            <td class="name-col">${student ? (student.name||'').toUpperCase() : ''}</td>
-            <td class="reg-col">${student ? (student.registration_number||'').toUpperCase() : ''}</td>
-            <td class="roll-col">${student ? (student.roll_number||'').toUpperCase() : ''}</td>
-            <td class="booklet-col"></td>
-            <td class="signature-col"></td>
-          </tr>
-        `;
-    }
-    
-    html += `
-        </tbody>
-      </table>
-      
-      <!-- first footer row: present/absent on left, internal signature on right -->
-      <div class="sheet-footer-row">
-        <div class="footer-left">
-          <div class="footer-section small">
-            <div class="footer-label">No of Student Present</div>
-            <div class="footer-field"></div>
-          </div>
-          <div class="footer-section small">
-            <div class="footer-label">No of Student Absent</div>
-            <div class="footer-field"></div>
-          </div>
+
+        <div style="margin-top: 10px; text-align: center; font-size: 10px; color: #666;">
+          <div>Signature of Candidate</div>
+          <div style="margin-top: 15px; border-top: 1px solid #000; width: 150px; margin-left: auto; margin-right: auto;"></div>
         </div>
-        <div class="footer-right-internal">
-          <div class="signature-box"></div>
-          <div class="footer-label">Signature of Examiner (Internal)</div>
-          <div class="name-caption">Name (in CAPITAL):</div>
+
+        <div style="margin-top: 15px; text-align: center; font-size: 10px; color: #666;">
+          <div>Signature of Examiner</div>
+          <div style="margin-top: 15px; border-top: 1px solid #000; width: 150px; margin-left: auto; margin-right: auto;"></div>
         </div>
-      </div>
-      
-      <!-- second footer row: HOD left, external right -->
-      <div class="sheet-footer-row" style="margin-top:5px;">
-        <div class="footer-left-hod">
-          <div class="hod-line"></div>
-          <div>Signature of HoD</div>
-        </div>
-        <div class="footer-right-external">
-          <div class="external-line"></div>
-          <div class="footer-label">Signature of Examiner (External)</div>
-          <div class="name-caption">Name (in CAPITAL):</div>
-        </div>
-      </div>
-      
-      <div class="sheet-footer" style="display:flex; justify-content:flex-end; align-items:center; margin-top:5px;">
-        <div style="font-size:12px; text-align:right; line-height:1.2;">
-          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}<br>
-          Page ${pageMeta.page_index} of ${pageMeta.total_pages}
-        </div>
-      </div>
-    `;
-    
-    sheetDiv.innerHTML = html;
-    container.appendChild(sheetDiv);
+      `;
+
+      cardDiv.innerHTML = html;
+      container.appendChild(cardDiv);
+    });
   });
-  
+
   // no print button (handled by browser or user can press Ctrl+P)
 }
 
