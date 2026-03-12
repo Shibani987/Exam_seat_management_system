@@ -82,6 +82,9 @@
   width: 160px;
    
 }
+.meta-field-group:last-child {
+  margin-right: 40px;
+}
 .meta-field {
   border: 0.8px solid #000;
   padding: 4px 8px;
@@ -124,7 +127,7 @@
 .sheet-table td {
   border: 0.8px solid #000;
   padding: 6px 4px; 
-  font-size: 20px;
+  font-size: 18px;
   vertical-align: middle;
   height: 20px; /* fixed height so empty rows don’t collapse */
   box-sizing: border-box;
@@ -135,7 +138,7 @@
   padding: 6px 4px; /* more breathing room */
   text-align: left;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 18px;
   background: white;
   vertical-align: middle;
   
@@ -178,7 +181,7 @@
   display: flex;
   gap: 2px;   /* আগে 20px ছিল */
   margin-bottom: 3px;
-  font-size: 10px;
+  font-size: 9px;
 }
 .footer-section {
   flex: 1;
