@@ -197,10 +197,10 @@
 }
 
 .footer-field {
-  border: 0.5px solid #444;
-  padding: 2px; /* smaller box padding */
-  margin-bottom: 0;
-  min-height: 12px;
+  border: 0.8px solid #000;
+  height: 14px;
+  padding: 0;
+  margin: 0;
 }
 
 .signature-box {
@@ -231,16 +231,14 @@
 .footer-left {
   display: flex;
   flex-direction: column;
-  gap: 0px;
-  padding-bottom: 0;
-  line-height: 1;
+  gap: 2px;
 }
 
 .footer-section.small {
-  flex: 0 0 80px;
-  margin-bottom: 0px;
+  flex: 0 0 auto;
+  margin: 0;
+  padding: 0;
 }
-
 .footer-right-internal {
   flex: 1;
   text-align: right;
