@@ -75,27 +75,27 @@
   padding: 6px 0;
 }
 .meta-field-group:last-child {
-  align-items: flex-end;   /* right side box */
+ margin-right: 40px;    /* right side box */
 }
 .meta-field-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
+  width: 260px;
    
 }
 .meta-field {
   border: 0.8px solid #000;
-  padding: 4px 10px;
+  padding: 4px 8px;
   min-height: 25px;
-  display: inline-flex;
+  display: flex;
   align-items: center;
   justify-content: flex-start;
   font-size: 12px;
   font-weight: 500;
   position: relative;
-  width: fit-content;   /* content অনুযায়ী width */
+  width: 100%;   /* group width follow করবে */
 }
-
 .meta-field .meta-label {
   position: absolute;
   top: -0.8em;
@@ -316,7 +316,7 @@
     width: 100%;
     max-width: 100%;
     margin: 0;
-    padding: 20px;
+    padding: 12px;
     page-break-after: always;
     page-break-inside: avoid;
     orphans: 0;
@@ -329,7 +329,7 @@
   
   .sheet-header { page-break-inside: avoid; }
   .sheet-title { page-break-inside: avoid; }
-  .sheet-meta { page-break-inside: avoid; }
+  .sheet-meta-box { page-break-inside: avoid; }
   .sheet-table { page-break-inside: avoid; }
   .sheet-footer { page-break-inside: avoid; }
   
