@@ -890,11 +890,11 @@ def update_temp_exam(request):
 @csrf_exempt
 @admin_required_json
 def generate_sheets(request):
-    """Given an exam_id and file_id, return paginated sheet data (20 students per sheet).
+    """Given an exam_id and file_id, return paginated sheet data (15 students per sheet).
 
     Preserves original file order (DB insertion order), filters by eligible academic_status,
     groups students by (branch, semester) preserving encounter order, and paginates each group
-    into pages of 20. Each page returned as a dict with metadata so the frontend can render
+    into pages of 15. Each page returned as a dict with metadata so the frontend can render
     branch/semester and page numbering.
     """
     if request.method == "POST":
@@ -931,9 +931,9 @@ def generate_sheets(request):
 
             pages = []
             for (branch, semester), group_students in groups.items():
-                total_pages = (len(group_students) + 19) // 20
+                total_pages = (len(group_students) + 14) // 15
                 for p in range(total_pages):
-                    chunk = group_students[p*20:(p+1)*20]
+                    chunk = group_students[p*15:(p+1)*15]
                     pages.append({
                         'students': chunk,
                         'branch': branch,

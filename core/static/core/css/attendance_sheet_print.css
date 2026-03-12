@@ -379,3 +379,19 @@
     text-overflow: clip !important;
   }
 }
+
+/* Shift "Name (in CAPITAL)" column 40px left */
+.sheet-table td.name-col,
+.sheet-table th.name-col {
+    position: relative;
+    left: -40px; /* move left by 40px */
+    text-align: left; /* keep text left-aligned */
+}
+
+/* Optional: for print specifically */
+@media print {
+  .sheet-table td.name-col,
+  .sheet-table th.name-col {
+      left: -40px !important;
+  }
+}
