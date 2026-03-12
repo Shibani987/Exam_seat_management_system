@@ -206,7 +206,7 @@
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
-  width: 120px;
+  width: 220px;
   height: 0;
   margin-left: auto;
 }
@@ -242,12 +242,12 @@
 .footer-right-internal {
   flex: 1;
   text-align: right;
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 .footer-left-hod {
   flex: 1;
-  margin-top: 20px;
+  margin-top: 40px;
 }
 
 .hod-line, .external-line {
@@ -263,7 +263,7 @@
 .footer-right-external {
   flex: 1;
   text-align: right;
-  margin-top: 20px;
+  margin-top: 40px;
 }
 
 .name-caption {
