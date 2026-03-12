@@ -202,8 +202,7 @@ function showStep3(pages, examName){
   pages.forEach((pageMeta, pageIdx) => {
     const sheetDiv = document.createElement('div');
     sheetDiv.className = 'attendance-sheet';
-    
-    // Header (logo left, text centered)
+    // Header (logo left, text centered, no box around title)
     let html = `
       <div class="sheet-header">
         <div class="header-logo"><img src="/static/core/img/logo.png" alt="logo" /></div>
@@ -213,29 +212,19 @@ function showStep3(pages, examName){
           <p>AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.</p>
         </div>
       </div>
-      
       <div class="sheet-title">
-        Attendance Sheet for ${(examName||'').toUpperCase()}
+        Attendance Sheet for B.TECH. SECOND Semester Examination MAY - 2022
       </div>
-      
-      <div class="sheet-meta">
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Date of Examination</span></div>
+      <div class="sheet-meta-box">
+        <div class="meta-field-group">
+          <div class="meta-field">Date of Examination</div>
+          <div class="meta-field">Paper Name</div>
         </div>
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Time</span></div>
-        </div>
-      </div>
-      
-      <div class="sheet-meta">
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Paper Name</span></div>
-        </div>
-        <div style="flex: 1;">
-          <div class="meta-field"><span class="meta-label">Paper Code</span></div>
+        <div class="meta-field-group">
+          <div class="meta-field">Time</div>
+          <div class="meta-field">Paper Code</div>
         </div>
       </div>
-      
       <table class="sheet-table">
         <colgroup>
           <col style="width:2%" />
