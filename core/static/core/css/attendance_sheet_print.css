@@ -156,9 +156,15 @@
   padding-left: 2px !important;
   padding-right: 2px !important;
 }
-.sheet-table th:not(.sl-col),
-.sheet-table td:not(.sl-col) {
-  width: calc((100% - 40px) / 5);
+.name-col{ width:20%; }
+.reg-col{ width:20%; }
+.roll-col{ width:20%; }
+.booklet-col{ width:20%; }
+.signature-col{ width:20%; }
+.sheet-table td,
+.sheet-table th{
+  overflow: hidden;
+  word-wrap: break-word;
 }
 .name-col {
 }
