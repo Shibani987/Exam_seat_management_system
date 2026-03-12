@@ -247,12 +247,12 @@
 
 .footer-left-hod {
   flex: 1;
-  margin-top: 10px;
+  margin-top: 20px;
 }
 
 .hod-line, .external-line {
   border-top: 1px solid #000;
-  width: 120px;
+  width: 220px;
   margin-bottom: 5px;
 }
 
@@ -263,6 +263,7 @@
 .footer-right-external {
   flex: 1;
   text-align: right;
+  margin-top: 20px;
 }
 
 .name-caption {
