@@ -146,17 +146,7 @@
 .sheet-table td{
   vertical-align: middle;
 }
-.sheet-table th {
-  border: 0.8px solid #000; /* moderate grid lines */
-  padding:  4px; /* more breathing room */
-  text-align: left;
-  font-weight: bold;
-  font-size: 12px;
-  background: white;
-  vertical-align: middle;
-  white-space: nowrap;
-  
-}
+
 
 /* remove zebra stripe to match image */
 
@@ -164,13 +154,13 @@
 /* column width rules removed so empty cells shrink and table auto-fits */
 
 .sl-col {
-  text-align: center;
-  width: 40px;   
-  white-space: nowrap;
-  padding-left: 2px !important;
-  padding-right: 2px !important;
+  width: 40px !important;
+  min-width: 40px !important;
+  max-width: 40px !important;
+  white-space: nowrap !important;
+  overflow: visible !important;
+  text-align: center !important;
 }
-.sl-col{ width:40px; }
 
 .name-col{ width:200px; }
 
@@ -370,5 +360,22 @@
   
   .print-btn-group, .print-btn, .no-print {
     display: none !important;
+  }
+}
+/* For print specifically */
+@media print {
+  .sl-col {
+    width: 40px !important;
+    min-width: 40px !important;
+    max-width: 40px !important;
+    white-space: nowrap !important;
+    overflow: visible !important;
+    text-align: center !important;
+  }
+  
+  .sheet-table td,
+  .sheet-table th {
+    overflow: visible !important;
+    text-overflow: clip !important;
   }
 }
