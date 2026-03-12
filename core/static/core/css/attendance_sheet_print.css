@@ -228,16 +228,7 @@
   margin-bottom: 0px; /* no extra space below label */
   line-height: 1;
 }
-.footer-left .footer-section.small .footer-label {
-  position: absolute;
-  top: 50%;          /* vertically center */
-  left: 6px;         /* small padding from left */
-  transform: translateY(-50%);
-  font-size: 10px;   /* adjust text size */
-  font-weight: normal;
-  margin: 0;
-  pointer-events: none; /* allows clicking inside the box */
-}
+
 /* new layout helpers */
 .sheet-footer-row {
   display: flex;
@@ -259,7 +250,7 @@
   flex: 0 0 auto;
   margin: 0;
   padding: 0;
-  position: relative;
+  
 }
 .footer-right-internal {
   flex: 1;
