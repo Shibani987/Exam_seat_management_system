@@ -74,23 +74,26 @@
   margin: 0 0 10px 0;
   padding: 6px 0;
 }
-
+.meta-field-group:last-child {
+  align-items: flex-end;   /* right side box */
+}
 .meta-field-group {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 48%;   /* left group + right group */
+   
 }
 .meta-field {
   border: 0.8px solid #000;
-  padding: 4px 6px;
+  padding: 4px 10px;
   min-height: 25px;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   font-size: 12px;
   font-weight: 500;
   position: relative;
+  width: fit-content;   /* content অনুযায়ী width */
 }
 
 .meta-field .meta-label {
