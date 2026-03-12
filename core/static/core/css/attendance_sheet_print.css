@@ -69,9 +69,9 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  border: 1.5px solid #000;
+  
   margin: 0 auto 10px auto;
-  width: 420px;
+  width: 820px;
   padding: 6px 0 6px 0;
   gap: 30px;
 }
