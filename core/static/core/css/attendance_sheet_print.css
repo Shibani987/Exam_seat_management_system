@@ -383,7 +383,7 @@
 /* Shift "Name (in CAPITAL)" 40px left from right */
 .name-caption {
     position: relative;  /* enable left/right positioning */
-    right: 20px;         /* moves it 40px left */
+    right: 40px;         /* moves it 40px left */
    
 }
 
