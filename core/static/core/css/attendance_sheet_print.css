@@ -380,3 +380,16 @@
   }
 }
 
+/* Shift "Name (in CAPITAL)" 40px left from right */
+.name-caption {
+    position: relative;  /* enable left/right positioning */
+    right: 40px;         /* moves it 40px left */
+    text-align: left;    /* keep text left-aligned */
+}
+
+/* Optional: if you want it to also apply when printing */
+@media print {
+    .name-caption {
+        right: 40px !important;
+    }
+}
