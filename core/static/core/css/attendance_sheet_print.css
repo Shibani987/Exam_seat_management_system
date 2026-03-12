@@ -127,19 +127,25 @@
 .sheet-table td,
 .sheet-table th {
   border: 0.8px solid #000;
-  padding: 4px;
+  padding: 0 4px;
+
+  height: 32px;
+  line-height: 32px;
+
   font-size: 12px;
-  height: 28px;      /* FIXED HEIGHT */
-  max-height: 28px;  /* lock height */
+
   overflow: hidden;
   white-space: nowrap;
   text-overflow: ellipsis;
+
   box-sizing: border-box;
 }
-.sheet-table tr{
-  height:28px;
+.sheet-table tbody tr{
+  height:32px;
 }
-
+.sheet-table td{
+  vertical-align: middle;
+}
 .sheet-table th {
   border: 0.8px solid #000; /* moderate grid lines */
   padding:  4px; /* more breathing room */
@@ -164,15 +170,18 @@
   padding-left: 2px !important;
   padding-right: 2px !important;
 }
-.name-col{ width:20%; }
-.reg-col{ width:20%; }
-.roll-col{ width:20%; }
-.booklet-col{ width:20%; }
-.signature-col{ width:20%; }
-.sheet-table td,
-.sheet-table th{
-  overflow: hidden;
-}
+.sl-col{ width:40px; }
+
+.name-col{ width:200px; }
+
+.reg-col{ width:160px; }
+
+.roll-col{ width:120px; }
+
+.booklet-col{ width:110px; }
+
+.signature-col{ width:150px; }
+
 .name-col {
 }
 
@@ -352,7 +361,11 @@
   .sheet-header { page-break-inside: avoid; }
   .sheet-title { page-break-inside: avoid; }
   .sheet-meta-box { page-break-inside: avoid; }
-  .sheet-table { page-break-inside: avoid; }
+.sheet-table { page-break-inside: auto; }
+
+.sheet-table tr{
+  page-break-inside: avoid;
+}
   .sheet-footer { page-break-inside: avoid; }
   
   .print-btn-group, .print-btn, .no-print {
