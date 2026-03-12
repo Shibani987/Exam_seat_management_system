@@ -171,9 +171,9 @@
 
 .footer-field {
   border: 0.5px solid #444;
-  padding: 4px; /* smaller box padding */
-  margin-bottom: 0;
-  min-height: 16px;
+  padding: 2px; /* smaller box padding */
+  margin-bottom: 2px;
+  min-height: 12px;
 }
 
 .signature-box {
@@ -186,7 +186,7 @@
 
 .footer-label {
   font-weight: normal; /* remove boldness */
-  margin-bottom: 0; /* no extra space below label */
+  margin-bottom: 1px; /* no extra space below label */
 }
 
 /* new layout helpers */
@@ -207,7 +207,7 @@
 
 .footer-section.small {
   flex: 0 0 80px;
-  margin-bottom: 0;
+  margin-bottom: 2px;
 }
 
 .footer-right-internal {
