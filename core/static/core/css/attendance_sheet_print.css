@@ -116,7 +116,7 @@
   width: 100%;
   border-collapse: collapse;
   margin-bottom: 10px; /* slightly less space below table */
-  table-layout: fixed; /* equal column widths governed by colgroup */
+  table-layout: auto; 
   border-spacing: 0; /* ensure cells touch without gaps */
 }
 
