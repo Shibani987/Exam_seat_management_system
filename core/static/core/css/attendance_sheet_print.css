@@ -197,7 +197,7 @@
 .footer-field {
   border: 0.5px solid #444;
   padding: 2px; /* smaller box padding */
-  margin-bottom: 2px;
+  margin-bottom: 0;
   min-height: 12px;
 }
 
@@ -212,6 +212,7 @@
 .footer-label {
   font-weight: normal; /* remove boldness */
   margin-bottom: 0px; /* no extra space below label */
+  line-height: 1;
 }
 
 /* new layout helpers */
@@ -223,10 +224,11 @@
 }
 
 
+
 .footer-left {
   display: flex;
   flex-direction: column;
-  gap: 1px;
+  gap: 0.5px;
   padding-bottom: 0;
   line-height: 1;
 }
