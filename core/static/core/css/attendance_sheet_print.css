@@ -83,7 +83,7 @@
    
 }
 .meta-field-group:last-child {
-  margin-right: 40px;
+  margin-right: 180px;
 }
 .meta-field {
   border: 0.8px solid #000;
@@ -92,7 +92,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  font-size: 18px;
+  font-size: 12px;
   font-weight: 500;
   position: relative;
   width: 100%;   /* group width follow করবে */
@@ -127,7 +127,7 @@
 .sheet-table td {
   border: 0.8px solid #000;
   padding: 6px 4px; 
-  font-size: 18px;
+  font-size: 12px;
   vertical-align: middle;
   height: 20px; /* fixed height so empty rows don’t collapse */
   box-sizing: border-box;
@@ -138,7 +138,7 @@
   padding: 6px 4px; /* more breathing room */
   text-align: left;
   font-weight: bold;
-  font-size: 18px;
+  font-size: 12px;
   background: white;
   vertical-align: middle;
   
@@ -211,7 +211,7 @@
 
 .footer-label {
   font-weight: normal; /* remove boldness */
-  margin-bottom: 1px; /* no extra space below label */
+  margin-bottom: 0px; /* no extra space below label */
 }
 
 /* new layout helpers */
@@ -226,14 +226,14 @@
 .footer-left {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
   padding-bottom: 0;
   line-height: 1;
 }
 
 .footer-section.small {
   flex: 0 0 80px;
-  margin-bottom: 2px;
+  margin-bottom: 0px;
 }
 
 .footer-right-internal {
