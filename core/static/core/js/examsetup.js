@@ -447,11 +447,15 @@ function parseCsv(text) {
         text = text.slice(1);
     }
 
-    // Detect delimiter: count commas and tabs in first line
+    // Detect delimiter: count commas, tabs, and semicolons in first line
     const firstLine = text.split('\n')[0] || '';
     const commaCount = (firstLine.match(/,/g) || []).length;
     const tabCount = (firstLine.match(/\t/g) || []).length;
-    const delimiter = tabCount > commaCount ? '\t' : ',';
+    const semicolonCount = (firstLine.match(/;/g) || []).length;
+    const maxCount = Math.max(commaCount, tabCount, semicolonCount);
+    let delimiter = ',';
+    if (tabCount === maxCount) delimiter = '\t';
+    else if (semicolonCount === maxCount) delimiter = ';';
 
     const rows = [];
     let current = '';
