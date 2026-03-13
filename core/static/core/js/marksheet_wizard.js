@@ -190,15 +190,6 @@ function showStep3(pages, examName){
   // save for later (save endpoint uses generatedSheets)
   generatedSheets = pages;
 
-  // Add print-friendly stylesheet if not already added
-  if (!document.getElementById('marks-sheet-css')) {
-    const link = document.createElement('link');
-    link.id = 'marks-sheet-css';
-    link.rel = 'stylesheet';
-    link.href = '/static/core/css/marks_sheet_print.css';
-    document.head.appendChild(link);
-  }
-
   pages.forEach((pageMeta, pageIdx) => {
     const sheetDiv = document.createElement('div');
     sheetDiv.className = 'attendance-sheet';
