@@ -496,10 +496,9 @@ function parseCsv(text) {
     return rows;
 }
 
-function loadExamScheduleFromCsv(text) {
-    const rows = parseCsv(text);
+function loadExamScheduleFromCsv(rows) {
     if (!rows || rows.length < 2) {
-        throw new Error('CSV file must contain a header row and at least one data row.');
+        throw new Error('File must contain a header row and at least one data row.');
     }
 
     const headerRow = rows[0].map(h => (h || '').trim().toLowerCase());
@@ -603,7 +602,7 @@ if (uploadExamScheduleBtn) {
         const file = examScheduleFileInput?.files?.[0];
         if (!file) {
             uploadScheduleStatus.style.color = '#c62828';
-            uploadScheduleStatus.textContent = 'Please select a CSV file to upload.';
+            uploadScheduleStatus.textContent = 'Please select a CSV or XLSX file to upload.';
             return;
         }
 
@@ -613,7 +612,18 @@ if (uploadExamScheduleBtn) {
         const reader = new FileReader();
         reader.onload = () => {
             try {
-                const payload = loadExamScheduleFromCsv(reader.result);
+                let rows;
+                if (file.name.toLowerCase().endsWith('.xlsx')) {
+                    const workbook = XLSX.read(reader.result, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                } else {
+                    // CSV
+                    const text = reader.result;
+                    rows = parseCsv(text);
+                }
+                const payload = loadExamScheduleFromCsv(rows);
                 selectedDepartments = Object.keys(payload.departments);
                 departmentExams = payload.departments;
 
@@ -645,7 +655,11 @@ if (uploadExamScheduleBtn) {
             uploadScheduleStatus.style.color = '#c62828';
             uploadScheduleStatus.textContent = 'Failed to read file.';
         };
-        reader.readAsText(file);
+        if (file.name.toLowerCase().endsWith('.xlsx')) {
+            reader.readAsArrayBuffer(file);
+        } else {
+            reader.readAsText(file);
+        }
     });
 }
 

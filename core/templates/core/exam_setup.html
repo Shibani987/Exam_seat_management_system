@@ -58,13 +58,13 @@
 <!-- STEP 2 -->
 <div id="step2Content" style="display:none;">
     <div class="bulk-upload" style="margin-bottom: 18px; padding: 14px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa;">
-        <h3 style="margin:0 0 8px 0; font-size:1.1rem;">Bulk Upload Exam Schedule (CSV)</h3>
-        <input type="file" id="examScheduleFileInput" accept=".csv" style="margin-bottom: 8px;" />
+        <h3 style="margin:0 0 8px 0; font-size:1.1rem;">Bulk Upload Exam Schedule (CSV / XLSX)</h3>
+        <input type="file" id="examScheduleFileInput" accept=".csv,.xlsx" style="margin-bottom: 8px;" />
         <button id="uploadExamScheduleBtn" style="margin-bottom: 8px;">Upload Schedule File</button>
         <p style="font-size:0.85rem; color:#555; margin:0;">File columns: <strong>Dept Name</strong>, <strong>Exam Name</strong>, <strong>Paper Code</strong>, <strong>Date</strong> (YYYY-MM-DD), <strong>Session</strong> (Morning/Afternoon), <strong>Start Time</strong> (e.g., 10:00 or 10:00 AM), <strong>End Time</strong> (e.g., 13:00 or 01:00 PM).</p>
         <div id="uploadScheduleStatus" style="font-size:0.9rem; color:#555; margin-top: 8px;"></div>
     </div>
-    <p id="departmentInstructions">Upload a valid exam schedule CSV (columns: Dept Name, Exam Name, Paper Code, Date, Session, Start Time, End Time). Once the file is successfully parsed, the "Proceed to Room Setup" button will be enabled.</p>
+    <p id="departmentInstructions">Upload a valid exam schedule CSV or XLSX (columns: Dept Name, Exam Name, Paper Code, Date, Session, Start Time, End Time). Once the file is successfully parsed, the "Proceed to Room Setup" button will be enabled.</p>
     
     <div class="exams-container" id="examsContainer"></div>
     
@@ -260,5 +260,6 @@
 </div>
 
 <script src="{% static 'core/js/examsetup.js' %}?v=20"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>
