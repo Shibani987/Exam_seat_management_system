@@ -501,6 +501,9 @@ function loadExamScheduleFromCsv(rows) {
         throw new Error('File must contain a header row and at least one data row.');
     }
 
+    // Ensure all cells are strings
+    rows = rows.map(row => row.map(cell => String(cell || '')));
+
     const headerRow = rows[0].map(h => (h || '').trim().toLowerCase());
     const findHeaderIndex = candidates => {
         for (const candidate of candidates) {
