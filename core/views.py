@@ -33,6 +33,7 @@ from .models import (
     ExamStudent,
     SeatAllocation,
     AttendanceSheet,
+    MarksSheet,
     AdminAccount,
     EligibleAdminEmail,
     BlockedAdminEmail,
@@ -1090,6 +1091,220 @@ def view_generated_sheet(request):
         'sheets': sheet.sheet_data or []
     }
     return render(request, 'core/generated_sheet_view.html', context)
+
+
+# =========================
+# Marks Sheet Wizard Page
+# =========================
+@admin_required
+def marksheet_wizard(request):
+    """Two-step wizard for generating marks sheets."""
+    return render(request, "core/marksheet_wizard.html")
+
+
+# =========================
+# Generate Marks Sheets
+# =========================
+@csrf_exempt
+@admin_required_json
+def generate_marks_sheets(request):
+    """Given an exam_id and file_id, return paginated marks sheet data (15 students per sheet).
+
+    Preserves original file order (DB insertion order), filters by eligible academic_status,
+    groups students by (branch, semester) preserving encounter order, and paginates each group
+    into pages of 15. Each page returned as a dict with metadata so the frontend can render
+    branch/semester and page numbering.
+    """
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            exam_id = data.get("exam_id")
+            file_id = data.get("file_id")
+            exam = Exam.objects.get(id=exam_id)
+            student_file = StudentDataFile.objects.get(id=file_id)
+
+            # fetch students in DB insertion order (by PK)
+            qs = Student.objects.filter(student_file=student_file).values(
+                'id', 'name', 'roll_number', 'registration_number', 'semester', 'branch', 'academic_status'
+            ).order_by('id')
+
+            students = list(qs)
+
+            # Group by (branch, semester) while preserving encounter order
+            from collections import OrderedDict
+            groups = OrderedDict()
+
+            def is_eligible(status):
+                s = (status or '').strip().lower()
+                # Accept explicit 'eligible' values or statuses starting with 'reg' (e.g. 'regular')
+                return (s.startswith('reg') or 'elig' in s)
+
+            for s in students:
+                if not is_eligible(s.get('academic_status')):
+                    continue
+                branch = (s.get('branch') or '').strip()
+                semester = str(s.get('semester') or '')
+                key = (branch, semester)
+                groups.setdefault(key, []).append(s)
+
+            pages = []
+            for (branch, semester), group_students in groups.items():
+                total_pages = (len(group_students) + 14) // 15
+                for p in range(total_pages):
+                    chunk = group_students[p*15:(p+1)*15]
+                    pages.append({
+                        'students': chunk,
+                        'branch': branch,
+                        'semester': semester,
+                        'page_index': p + 1,
+                        'total_pages': total_pages,
+                    })
+
+            # pagination is handled per branch/semester; frontend will use page_index/total_pages
+
+            return JsonResponse({
+                "status": "success",
+                "sheets": pages,
+                "exam_name": exam.name or ''
+            })
+        except Exam.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
+        except StudentDataFile.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Student file not found"}, status=404)
+        except Exception as e:
+            logger.error(f"generate_marks_sheets error: {str(e)}")
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+
+# =========================
+# Save Generated Marks Sheets
+# =========================
+@csrf_exempt
+@admin_required_json
+def save_generated_marks_sheets(request):
+    """Store generated marks sheet data so it can be shown on dashboard later."""
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            exam_id = data.get("exam_id")
+            file_id = data.get("file_id")
+            sheets = data.get("sheets")
+            exam = Exam.objects.get(id=exam_id)
+            student_file = StudentDataFile.objects.get(id=file_id)
+            # record in MarksSheet model
+            MarksSheet.objects.create(
+                exam=exam,
+                student_file=student_file,
+                sheet_data=sheets
+            )
+            return JsonResponse({"status": "success"})
+        except Exam.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
+        except StudentDataFile.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Student file not found"}, status=404)
+        except Exception as e:
+            logger.error(f"save_generated_marks_sheets error: {str(e)}")
+            return JsonResponse({"status": "error", "message": str(e)}, status=400)
+    return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+
+# =========================
+# List Generated Marks Sheets (Dashboard)
+# =========================
+@csrf_exempt
+@admin_required_json
+def get_generated_marks_sheets(request):
+    if request.method == "GET":
+        try:
+            rows = []
+            for sheet in MarksSheet.objects.select_related('exam', 'student_file').order_by('-generated_at'):
+                count = 0
+                if sheet.sheet_data:
+                    # calculate actual student count
+                    count = sum(len(page) for page in sheet.sheet_data)
+                rows.append({
+                    'id': sheet.id,
+                    'exam_name': sheet.exam.name,
+                    'file_name': sheet.student_file.file_name,
+                    'generated_at': sheet.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'student_count': count,
+                    'sheet_count': len(sheet.sheet_data) if sheet.sheet_data else 0,
+                })
+            return JsonResponse({'status': 'success', 'sheets': rows})
+        except Exception as e:
+            logger.error(f"get_generated_marks_sheets error: {str(e)}")
+            return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
+    return JsonResponse({'status': 'error', 'message': 'GET required'}, status=400)
+
+
+# API: single marks sheet details
+@csrf_exempt
+@admin_required_json
+def get_generated_marks_sheet(request):
+    if request.method == 'GET':
+        try:
+            sheet_id = request.GET.get('id')
+            if not sheet_id:
+                return JsonResponse({'status':'error','message':'id parameter required'}, status=400)
+            sheet = MarksSheet.objects.select_related('exam','student_file').get(id=sheet_id)
+            return JsonResponse({
+                'status':'success',
+                'sheet':{
+                    'id': sheet.id,
+                    'exam_name': sheet.exam.name,
+                    'file_name': sheet.student_file.file_name,
+                    'generated_at': sheet.generated_at.strftime('%Y-%m-%d %H:%M:%S'),
+                    'sheets': sheet.sheet_data or []
+                }
+            })
+        except MarksSheet.DoesNotExist:
+            return JsonResponse({'status':'error','message':'Saved sheet not found'}, status=404)
+        except Exception as e:
+            logger.error(f"get_generated_marks_sheet error: {str(e)}")
+            return JsonResponse({'status':'error','message':str(e)}, status=400)
+    return JsonResponse({'status':'error','message':'GET required'}, status=400)
+
+
+# API: delete saved marks sheet record
+@csrf_exempt
+@admin_required_json
+def delete_generated_marks_sheet(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            sheet_id = data.get('id')
+            if not sheet_id:
+                return JsonResponse({'status':'error','message':'id required'}, status=400)
+            sheet = MarksSheet.objects.get(id=sheet_id)
+            sheet.delete()
+            return JsonResponse({'status':'success'})
+        except MarksSheet.DoesNotExist:
+            return JsonResponse({'status':'error','message':'Saved sheet not found'}, status=404)
+        except Exception as e:
+            logger.error(f"delete_generated_marks_sheet error: {str(e)}")
+            return JsonResponse({'status':'error','message':str(e)}, status=400)
+    return JsonResponse({'status':'error','message':'POST required'}, status=400)
+
+
+# =========================
+# HTML page for viewing generated marks sheets
+# =========================
+@admin_required
+def view_generated_marks_sheet(request):
+    sheet_id = request.GET.get('id')
+    if not sheet_id:
+        return HttpResponse("Missing id", status=400)
+    try:
+        sheet = MarksSheet.objects.select_related('exam', 'student_file').get(id=sheet_id)
+    except MarksSheet.DoesNotExist:
+        return HttpResponse("Sheet not found", status=404)
+    context = {
+        'exam_name': sheet.exam.name,
+        'sheets': sheet.sheet_data or []
+    }
+    return render(request, 'core/generated_marks_sheet_view.html', context)
+
 
 # =========================
 # Delete Temporary Exam (On page unload/refresh)

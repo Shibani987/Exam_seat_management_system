@@ -1,0 +1,100 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Marks Sheet Wizard - Exam Management</title>
+  <link rel="stylesheet" href="{% static 'core/css/dash_board.css' %}?v=3">
+  <link rel="stylesheet" href="{% static 'core/css/marksheet_wizard.css' %}">
+  <link rel="stylesheet" href="{% static 'core/css/marks_sheet_print.css' %}">
+</head>
+<body>
+
+
+  <!-- Main Content -->
+  <div class="main">
+    <div class="wizard-container">
+      <h1>Marks Sheet Setup Wizard</h1>
+      <p style="color: #666; margin-bottom: 30px;">Configure and generate marks sheets in two simple steps.</p>
+
+      <!-- Step Indicator -->
+      <div class="step-indicator">
+        <div class="step active" id="stepIndicator1">
+          <div class="number">1</div>
+          <span>Exam Name</span>
+        </div>
+        <div style="flex: 1; height: 2px; background: #e0e0e0;"></div>
+        <div class="step" id="stepIndicator2">
+          <div class="number">2</div>
+          <span>Select Files</span>
+        </div>
+        <div style="flex: 1; height: 2px; background: #e0e0e0;"></div>
+        <div class="step" id="stepIndicator3">
+          <div class="number">3</div>
+          <span>Preview</span>
+        </div>
+      </div>
+
+      <!-- Step 1: Exam Name -->
+      <div class="step-content" id="step1Content">
+        <h3>Step 1 — Enter Exam Name</h3>
+        <div class="form-group">
+          <label for="examName">Exam Name:</label>
+          <input type="text" id="examName" placeholder="e.g., Midterm Exam - Data Structures" />
+        </div>
+        <div class="button-group">
+          <button class="btn-primary" id="nextBtn" disabled>Next →</button>
+        </div>
+      </div>
+
+      <!-- Step 2: Select Files -->
+      <div class="step-content" id="step2Content" style="display: none;">
+        <h3>Step 2 — Select Student Data Files</h3>
+
+        <div class="form-group">
+          <label>Filter Files:</label>
+          <div style="display: flex; gap: 8px;">
+            <input type="text" id="fileFilter" placeholder="Search by file name..." style="flex: 1; max-width: 400px;" />
+            <button class="btn-secondary" id="showAllBtn">Show All</button>
+          </div>
+        </div>
+
+        <div style="margin-top: 20px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;">
+          <table class="files-table" style="border: none;">
+            <thead>
+              <tr>
+                <th style="width: 50px;"><input type="checkbox" id="selectAllFiles" /></th>
+                <th>File Name</th>
+              </tr>
+            </thead>
+            <tbody id="filesTableBody">
+              <tr>
+                <td colspan="2" style="text-align: center; padding: 30px; color: #999;">Loading files...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <div class="button-group">
+          <button class="btn-primary" id="generateBtn" disabled>Generate Marks Sheet</button>
+          <button class="btn-secondary" id="backBtn">← Back</button>
+        </div>
+      </div>
+
+      <!-- Step 3: Preview & Save -->
+      <div class="step-content" id="step3Content" style="display: none;">
+        <h3>Step 3 — Preview Generated Sheets</h3>
+        <div id="sheetsPreview" style="margin-bottom: 20px;"></div>
+        <div class="button-group">
+          <button class="btn-primary" id="saveBtn">Save Marks Sheets</button>
+          <button class="btn-secondary" id="backToStep2Btn">← Back</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{% static 'core/js/dash_board.js' %}"></script>
+  <script src="{% static 'core/js/marksheet_wizard.js' %}"></script>
+</body>
+</html>

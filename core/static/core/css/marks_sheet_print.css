@@ -1,0 +1,221 @@
+/* Marks Sheet Print Styling */
+
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  .marks-sheet, .marks-sheet * {
+    visibility: visible;
+  }
+  .marks-sheet {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    page-break-after: always;
+  }
+}
+
+.marks-sheet {
+  width: 100%;
+  max-width: 210mm; /* A4 width */
+  margin: 0 auto;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  background: white;
+  border: 1px solid #ddd;
+  margin-bottom: 20px;
+}
+
+/* Header */
+.sheet-header {
+  display: flex;
+  align-items: center;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #000;
+  padding-bottom: 10px;
+}
+
+.header-logo {
+  flex: 0 0 80px;
+}
+
+.header-logo img {
+  width: 60px;
+  height: auto;
+}
+
+.header-text {
+  flex: 1;
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.header-text h2 {
+  margin: 0;
+  font-size: 16px;
+}
+
+.header-text p {
+  margin: 2px 0;
+}
+
+/* Title */
+.sheet-title {
+  text-align: center;
+  font-size: 14px;
+  font-weight: bold;
+  margin: 15px 0;
+  text-decoration: underline;
+}
+
+/* Meta box */
+.sheet-meta-box {
+  display: flex;
+  justify-content: space-between;
+  margin: 20px 0;
+  border: 1px solid #000;
+}
+
+.meta-field-group {
+  flex: 1;
+  display: flex;
+}
+
+.meta-field {
+  flex: 1;
+  padding: 8px;
+  border-right: 1px solid #000;
+  text-align: center;
+  font-weight: bold;
+  min-height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.meta-field:last-child {
+  border-right: none;
+}
+
+/* Table */
+.sheet-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 20px 0;
+  border: 1px solid #000;
+}
+
+.sheet-table th {
+  border: 1px solid #000;
+  padding: 6px 4px;
+  text-align: center;
+  font-weight: bold;
+  font-size: 10px;
+  background: #f0f0f0;
+}
+
+.sheet-table td {
+  border: 1px solid #000;
+  padding: 6px 4px;
+  text-align: center;
+  font-size: 11px;
+  height: 24px;
+}
+
+.sl-col {
+  width: 3%;
+}
+
+.name-col {
+  width: 25%;
+  text-align: left;
+}
+
+.reg-col {
+  width: 15%;
+}
+
+.roll-col {
+  width: 12%;
+}
+
+.booklet-col {
+  width: 15%;
+}
+
+.marks-col {
+  width: 10%;
+}
+
+.signature-col {
+  width: 15%;
+}
+
+/* Footer */
+.marks-footer {
+  margin-top: 30px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.signature-section {
+  flex: 1;
+  text-align: center;
+  margin: 0 10px;
+}
+
+.signature-line {
+  border-bottom: 1px solid #000;
+  margin-bottom: 5px;
+  height: 30px;
+}
+
+.signature-label {
+  font-size: 11px;
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+
+.name-caption {
+  font-size: 10px;
+  color: #666;
+}
+
+/* Page info */
+.sheet-footer {
+  margin-top: 10px;
+  font-size: 10px;
+  color: #666;
+}
+
+/* Print optimizations */
+@media print {
+  .marks-sheet {
+    margin: 0;
+    padding: 10mm;
+    border: none;
+    page-break-inside: avoid;
+  }
+
+  .sheet-table th,
+  .sheet-table td {
+    font-size: 9px;
+    padding: 3px 2px;
+  }
+
+  .header-text h2 {
+    font-size: 12px;
+  }
+
+  .header-text p {
+    font-size: 10px;
+  }
+
+  .sheet-title {
+    font-size: 11px;
+  }
+}

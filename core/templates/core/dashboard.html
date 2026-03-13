@@ -23,6 +23,7 @@
       <h2>admin panel</h2>
       <a href="#" class="tab-link active" data-tab="create-exam">create exam</a>
       <a href="#" class="tab-link" data-tab="generate-sheet">generate sheet attendance</a>
+      <a href="#" class="tab-link" data-tab="generate-marksheet">generate marksheet</a>
       <a href="#" class="tab-link" data-tab="upload-data">upload student data</a>
       <a href="#" class="tab-link" data-tab="admin-emails">admin emails</a>
       <a href="#" class="tab-link" data-tab="qr-tab">universal qr</a>
@@ -83,6 +84,28 @@
         <h2>Generated Sheets</h2>
         <div id="sheetsContainer">
           <p style="text-align: center; color: #999; padding: 20px;">No sheets generated yet.</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- ================== GENERATE MARKSHEET TAB ================== -->
+    <div class="tab-content" id="generate-marksheet">
+      <div class="header">
+        <h1>Marks Sheet Generator</h1>
+        <button class="new-exam-btn" id="generateMarksheetBtn">+ Generate Marksheet</button>
+      </div>
+
+      <div class="stats">
+        <div class="card">
+          <h3>Total Marksheets Generated</h3>
+          <p id="totalMarksheetsCount">0</p>
+        </div>
+      </div>
+
+      <div class="exam-list">
+        <h2>Generated Marksheets</h2>
+        <div id="marksheetsContainer">
+          <p style="text-align: center; color: #999; padding: 20px;">No marksheets generated yet.</p>
         </div>
       </div>
     </div>

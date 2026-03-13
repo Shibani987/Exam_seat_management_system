@@ -93,11 +93,22 @@ tabLinks.forEach(link => {
       const u = new URL(window.location);
       u.searchParams.set('tab','generate-sheet');
       window.history.replaceState({},'',u);
+    } else if (tabId === 'generate-marksheet') {
+      fetchGeneratedMarksheets();
+      // push state so back button returns here
+      const u = new URL(window.location);
+      u.searchParams.set('tab','generate-marksheet');
+      window.history.replaceState({},'',u);
     } else {
       // Clear sheets container when leaving generate-sheet tab
       const sheetsContainer = document.getElementById('sheetsContainer');
       if (sheetsContainer) {
         sheetsContainer.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No sheets generated yet.</p>';
+      }
+      // Clear marksheets container when leaving generate-marksheet tab
+      const marksheetsContainer = document.getElementById('marksheetsContainer');
+      if (marksheetsContainer) {
+        marksheetsContainer.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No marksheets generated yet.</p>';
       }
     }
   });
@@ -192,11 +203,22 @@ if (document.readyState === 'loading') {
       u.searchParams.set('tab','generate-sheet');
       window.history.replaceState({},'',u);
     }
+    const marksheetTab = document.getElementById('generate-marksheet');
+    if (marksheetTab && marksheetTab.classList.contains('active')) {
+      fetchGeneratedMarksheets();
+      const u = new URL(window.location);
+      u.searchParams.set('tab','generate-marksheet');
+      window.history.replaceState({},'',u);
+    }
   });
 } else {
   const sheetTab = document.getElementById('generate-sheet');
   if (sheetTab && sheetTab.classList.contains('active')) {
     fetchGeneratedSheets();
+  }
+  const marksheetTab = document.getElementById('generate-marksheet');
+  if (marksheetTab && marksheetTab.classList.contains('active')) {
+    fetchGeneratedMarksheets();
   }
 }
 
@@ -312,6 +334,92 @@ if (uploadCheckModal) {
       uploadCheckModal.classList.remove('active');
     }
   });
+}
+
+// ================= GENERATE MARKSHEET =================
+const generateMarksheetBtn = document.getElementById('generateMarksheetBtn');
+
+if (generateMarksheetBtn) {
+  generateMarksheetBtn.addEventListener('click', () => {
+    // Check if student data has been uploaded
+    checkStudentDataAndShowMarksheetModal();
+  });
+}
+
+function checkStudentDataAndShowMarksheetModal() {
+  // Fetch uploaded files to check if any exist
+  fetch('/get_uploaded_files/?t=' + Date.now())
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success' && Array.isArray(data.files) && data.files.length > 0) {
+        // Proceed to marksheet wizard
+        window.location.href = '/marksheet-wizard/';
+      } else {
+        // Show message to upload data first
+        alert('To generate a marksheet, you must first upload student data. Please go to the "Upload Student Data" tab.');
+        // Switch to upload-data tab
+        document.querySelector('[data-tab="generate-marksheet"]').classList.remove('active');
+        document.querySelector('[data-tab="upload-data"]').classList.add('active');
+        document.getElementById('generate-marksheet').classList.remove('active');
+        document.getElementById('upload-data').classList.add('active');
+      }
+    })
+    .catch(err => {
+      console.error('Error checking files:', err);
+      alert('Error checking student data. Please try again.');
+    });
+}
+
+// ================= GENERATED MARKSHEETS API =================
+function fetchGeneratedMarksheets() {
+  // Only execute if generate-marksheet tab is visible
+  const generateMarksheetTab = document.getElementById('generate-marksheet');
+  if (!generateMarksheetTab || !generateMarksheetTab.classList.contains('active')) {
+    console.log('[dash_board.js] fetchGeneratedMarksheets called but generate-marksheet tab not active - aborting');
+    return;
+  }
+
+  fetch('/get-generated-marks-sheets/?t=' + Date.now())
+    .then(r => r.json())
+    .then(data => {
+      if (data.status === 'success') {
+        const cont = document.getElementById('marksheetsContainer');
+        const total = document.getElementById('totalMarksheetsCount');
+        // display number of distinct exams for which marksheets exist
+        const uniqueExams = new Set(data.sheets.map(s => s.exam_name));
+        total.textContent = uniqueExams.size;
+        if (data.sheets.length === 0) {
+          cont.innerHTML = '<p style="text-align:center;color:#999;padding:20px;">No marksheets generated yet.</p>';
+        } else {
+          cont.innerHTML = '';
+          // create styled table with actions
+          const tbl = document.createElement('table');
+          tbl.className = 'sheets-table';
+          tbl.innerHTML = '<thead><tr><th>Exam</th><th>File</th><th>Sheets</th><th>Generated At</th><th>Actions</th></tr></thead>';
+          const body = document.createElement('tbody');
+          data.sheets.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td>${s.exam_name}</td><td>${s.file_name}</td><td>${s.sheet_count}</td><td>${s.generated_at}</td>`;
+            const actTd = document.createElement('td');
+            // action buttons with classes
+            const viewBtn = document.createElement('button'); viewBtn.textContent='View'; viewBtn.className='btn-view';
+            viewBtn.onclick = ()=>{ window.open('/generated-marks-sheet-view/?id='+s.id, '_blank'); };
+            const delBtn = document.createElement('button'); delBtn.textContent='Delete'; delBtn.className='btn-delete';
+            delBtn.onclick = ()=>{
+              if(!confirm('Remove marksheets for this exam?')) return;
+              fetch('/delete-generated-marks-sheet/',{method:'POST',headers:{'Content-Type':'application/json','X-CSRFToken':getCsrfToken()},body:JSON.stringify({id:s.id})})
+                .then(rr=>rr.json()).then(j=>{ if(j.status==='success') fetchGeneratedMarksheets(); else alert('delete failed'); });
+            };
+            actTd.appendChild(viewBtn); actTd.appendChild(delBtn);
+            tr.appendChild(actTd);
+            body.appendChild(tr);
+          });
+          tbl.appendChild(body);
+          cont.appendChild(tbl);
+        }
+      }
+    })
+    .catch(err => console.error('Error fetching generated marksheets', err));
 }
 
 
