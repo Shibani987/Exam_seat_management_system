@@ -61,26 +61,10 @@
         <h3 style="margin:0 0 8px 0; font-size:1.1rem;">Bulk Upload Exam Schedule (CSV)</h3>
         <input type="file" id="examScheduleFileInput" accept=".csv" style="margin-bottom: 8px;" />
         <button id="uploadExamScheduleBtn" style="margin-bottom: 8px;">Upload Schedule File</button>
-        <p style="font-size:0.85rem; color:#555; margin:0;">File columns: <strong>Dept Name</strong>, <strong>Exam Name</strong>, <strong>Paper Code</strong>, <strong>Date</strong> (YYYY-MM-DD), <strong>Session</strong> (Morning/Afternoon), <strong>Start Time</strong> (e.g., 10:00 AM), <strong>End Time</strong> (e.g., 01:00 PM).</p>
+        <p style="font-size:0.85rem; color:#555; margin:0;">File columns: <strong>Dept Name</strong>, <strong>Exam Name</strong>, <strong>Paper Code</strong>, <strong>Date</strong> (YYYY-MM-DD), <strong>Session</strong> (Morning/Afternoon), <strong>Start Time</strong> (e.g., 10:00 or 10:00 AM), <strong>End Time</strong> (e.g., 13:00 or 01:00 PM).</p>
         <div id="uploadScheduleStatus" style="font-size:0.9rem; color:#555; margin-top: 8px;"></div>
     </div>
-    <p>Select Departments — choose one or more departments. After selecting a department you must add and complete at least one exam (Name, Code, Date, Session, Start Time, End Time) for that department before the "Proceed to Room Setup" button becomes active.</p>
-    <div class="department-container">
-        <div class="department" data-name="Agricultural Engineering">Agricultural Engineering</div>
-        <div class="department" data-name="Bio-Medical Engineering">Bio-Medical Engineering</div>
-        <div class="department" data-name="Civil Engineering">Civil Engineering</div>
-        <div class="department" data-name="Computer Science and Engineering (CSE)">Computer Science and Engineering (CSE)</div>
-        <div class="department" data-name="Computer Science & Technology (CST)">Computer Science & Technology (CST)</div>
-        <div class="department" data-name="Computer Science & Engineering – AI & ML">Computer Science & Engineering – AI & ML</div>
-        <div class="department" data-name="Electronics & Communication Engineering (ECE)">Electronics & Communication Engineering (ECE)</div>
-        <div class="department" data-name="Electrical Engineering (EE)">Electrical Engineering (EE)</div>
-        <div class="department" data-name="Information Technology (IT)">Information Technology (IT)</div>
-        <div class="department" data-name="Mechanical Engineering (ME)">Mechanical Engineering (ME)</div>
-        <div class="department" data-name="Bachelor of Business Administration (BBA)">Bachelor of Business Administration (BBA)</div>
-        <div class="department" data-name="Master of Business Administration (MBA)">Master of Business Administration (MBA)</div>
-        <div class="department" data-name="Bachelor of Computer Applications (BCA)">Bachelor of Computer Applications (BCA)</div>
-        <div class="department" data-name="Master of Computer Applications (MCA)">Master of Computer Applications (MCA)</div>
-    </div>
+    <p id="departmentInstructions">Upload a valid exam schedule CSV (columns: Dept Name, Exam Name, Paper Code, Date, Session, Start Time, End Time). Once the file is successfully parsed, the "Proceed to Room Setup" button will be enabled.</p>
     
     <div class="exams-container" id="examsContainer"></div>
     
@@ -93,28 +77,13 @@
 <div id="step3Content" style="display:none;">
     <p>Room Setup</p>
     <div class="room-setup">
-        <label for="buildingSelect">Select Building</label>
-        <select id="buildingSelect">
-            <option value="">Select Building</option>
-            <option value="Main Building">Main Building</option>
-            <option value="CMS">CMS</option>
-        </select>
-
-        <label for="roomNumber">Room Number</label>
-        <input type="text" id="roomNumber" placeholder="e.g., 303">
-
-        <label for="roomCapacity">Capacity</label>
-        <input type="number" id="roomCapacity" placeholder="e.g., 40">
-
         <div style="margin-top: 18px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa;">
             <h3 style="margin: 0 0 8px 0; font-size: 1rem;">Bulk Upload Rooms (CSV / XLS)</h3>
             <input type="file" id="roomFileInput" accept=".csv,.xls" style="margin-bottom: 8px;" />
             <button id="uploadRoomsBtn" style="margin-bottom: 8px;">Upload Rooms File</button>
             <p style="font-size:0.85rem; color:#555; margin:0;">File must include columns: <strong>Building</strong>, <strong>Room Number</strong>, and <strong>Capacity</strong>.</p>
+            <div id="uploadRoomsStatus" style="font-size:0.9rem; color:#555; margin-top: 8px;"></div>
         </div>
-
-        <p style="font-size:0.95rem; color:#555; margin-top:10px;">Click <strong>+ Add Room</strong> to append another room input block. You can add multiple rooms — each will appear below and can be edited or removed.</p>
-        <button id="addRoomBtn">+ Add Room</button>
     </div>
 
     <div id="roomList" style="margin-top: 20px; margin-bottom: 20px;"></div>
@@ -200,6 +169,8 @@
             <div><strong>Exam Name:</strong> <span id="summaryExamName">-</span></div>
             <div><strong>Start Date:</strong> <span id="summaryStartDate">-</span></div>
             <div><strong>End Date:</strong> <span id="summaryEndDate">-</span></div>
+            <div><strong>Schedule File:</strong> <span id="summaryScheduleFile">-</span></div>
+            <div><strong>Rooms File:</strong> <span id="summaryRoomsFile">-</span></div>
         </div>
     </div>
     

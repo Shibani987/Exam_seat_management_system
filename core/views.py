@@ -2683,7 +2683,9 @@ def get_exam_summary(request):
             "id": exam.id,
             "name": exam.name or "",
             "start_date": str(exam.start_date) if exam.start_date else "",
-            "end_date": str(exam.end_date) if exam.end_date else ""
+            "end_date": str(exam.end_date) if exam.end_date else "",
+            "schedule_file_name": exam.schedule_file_name or "",
+            "rooms_file_name": exam.rooms_file_name or ""
         }
         
         # 2. Departments & Exams

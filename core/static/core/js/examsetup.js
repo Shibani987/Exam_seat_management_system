@@ -31,6 +31,8 @@ const csrftoken = getCookie('csrftoken');
 // =============================
 let examId = null;
 let selectedDepartments = [];
+let scheduleFileName = null;  // name of the uploaded exam schedule file (optional)
+let roomsFileName = null;     // name of the uploaded rooms file (optional)
 let roomsList = [];
 let allUploadedFiles = [];
 let selectedFiles = [];
@@ -92,22 +94,39 @@ function convertTo12HourFormat(timeStr) {
 function parse12HourTime(value) {
     if (!value) return null;
 
-    // Accept values like "10:00 AM", "10:00AM", "10:00 am"
+    // Accept values like "10:00 AM", "10:00AM", "10:00 am", or 24h values like "13:00", "09:30"
     const cleaned = String(value).trim();
-    const match = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
-    if (!match) return null;
 
-    const hour = parseInt(match[1], 10);
-    const minute = match[2];
-    const ampm = match[3].toUpperCase();
+    // 12-hour format with AM/PM
+    let match = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (match) {
+        const hour = parseInt(match[1], 10);
+        const minute = match[2];
+        const ampm = match[3].toUpperCase();
+        if (hour < 1 || hour > 12) return null;
+        return {
+            hour: String(hour).padStart(2, '0'),
+            minute,
+            ampm
+        };
+    }
 
-    if (hour < 1 || hour > 12) return null;
+    // 24-hour format without AM/PM
+    match = cleaned.match(/^(\d{1,2}):(\d{2})$/);
+    if (match) {
+        const hour24 = parseInt(match[1], 10);
+        const minute = match[2];
+        if (hour24 < 0 || hour24 > 23) return null;
+        const ampm = hour24 >= 12 ? 'PM' : 'AM';
+        const hour12 = hour24 % 12 || 12;
+        return {
+            hour: String(hour12).padStart(2, '0'),
+            minute,
+            ampm
+        };
+    }
 
-    return {
-        hour: String(hour).padStart(2, '0'),
-        minute,
-        ampm
-    };
+    return null;
 }
 
 function normalizeSession(value) {
@@ -352,7 +371,7 @@ if (nextBtn) {
         fetch('/add_departments/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            body: JSON.stringify({ exam_id: examId, departments: payload })
+            body: JSON.stringify({ exam_id: examId, departments: payload, schedule_file_name: scheduleFileName })
         })
         .then(r => {
             console.log('[STEP 2] Response status:', r.status);
@@ -573,19 +592,29 @@ if (uploadExamScheduleBtn) {
             return;
         }
 
+        // remember file name for later persistence
+        scheduleFileName = file.name;
+
         const reader = new FileReader();
         reader.onload = () => {
             try {
                 const payload = loadExamScheduleFromCsv(reader.result);
                 selectedDepartments = Object.keys(payload.departments);
                 departmentExams = payload.departments;
+
                 updateDepartmentSelectionUI();
                 renderExamInputs();
+
+                // Hide manual department selection once schedule is loaded
+                const deptInstructions = document.getElementById('departmentInstructions');
+                const deptContainer = document.getElementById('departmentContainer');
+                if (deptInstructions) deptInstructions.style.display = 'none';
+                if (deptContainer) deptContainer.style.display = 'none';
 
                 const deptCount = selectedDepartments.length;
                 const examCount = Object.values(departmentExams).reduce((sum, exs) => sum + exs.length, 0);
                 uploadScheduleStatus.style.color = '#2e7d32';
-                uploadScheduleStatus.textContent = `Loaded ${examCount} exam(s) across ${deptCount} department(s).`;
+                uploadScheduleStatus.textContent = `Loaded ${examCount} exam(s) across ${deptCount} department(s) from '${scheduleFileName}'.`;
 
                 if (payload.errors.length) {
                     uploadScheduleStatus.style.color = '#c62828';
@@ -819,12 +848,9 @@ function checkDeptInputs() {
 // =============================
 // STEP 3 - ROOMS
 // =============================
-const buildingSelect = document.getElementById('buildingSelect');
-const roomNumber = document.getElementById('roomNumber');
-const roomCapacity = document.getElementById('roomCapacity');
-const addRoomBtn = document.getElementById('addRoomBtn');
 const roomFileInput = document.getElementById('roomFileInput');
 const uploadRoomsBtn = document.getElementById('uploadRoomsBtn');
+const uploadRoomsStatus = document.getElementById('uploadRoomsStatus');
 const roomList = document.getElementById('roomList');
 const backStep3Btn = document.getElementById('backStep3Btn');
 const proceedStep3Btn = document.getElementById('proceedStep3Btn');
@@ -837,16 +863,8 @@ function escapeHtml(str) {
 }
 
 function getBuildingOptionsHtml() {
-    let opts = '';
-    if (buildingSelect) {
-        for (let i = 0; i < buildingSelect.options.length; i++) {
-            const o = buildingSelect.options[i];
-            opts += `<option value="${escapeHtml(o.value)}">${escapeHtml(o.text)}</option>`;
-        }
-    } else {
-        opts = '<option value="">Select Building</option><option value="Main Building">Main Building</option><option value="CMS">CMS</option>';
-    }
-    return opts;
+    // Fixed building list - only used for room rendering after upload.
+    return '<option value="">Select Building</option><option value="Main Building">Main Building</option><option value="CMS">CMS</option>';
 }
 
 function renderRooms() {
@@ -900,39 +918,6 @@ function renderRooms() {
     }
 }
 
-addRoomBtn.onclick = e => {
-    e.preventDefault();
-    if (!buildingSelect.value || !roomNumber.value || !roomCapacity.value) {
-        alert('Please fill in all fields (Building, Room Number, Capacity)');
-        return;
-    }
-    
-    // Check for duplicate building + room combination
-    const isDuplicate = roomsList.some(r => 
-        r.building === buildingSelect.value && r.room_number === roomNumber.value
-    );
-    
-    if (isDuplicate) {
-        alert(`Error: Room "${roomNumber.value}" in "${buildingSelect.value}" already exists!\n\nEach room must have a unique building + room number combination.`);
-        return;
-    }
-    
-    // Check if building and room number are the same (user-friendly check)
-    if (buildingSelect.value === roomNumber.value) {
-        alert(`Error: Building name and Room number cannot be the same!\n\nPlease use different values.\nExample: Building="Main Building" and Room="303"`);
-        return;
-    }
-    
-    roomsList.push({
-        building: buildingSelect.value,
-        room_number: roomNumber.value,
-        capacity: roomCapacity.value
-    });
-    buildingSelect.value = '';
-    roomNumber.value = '';
-    roomCapacity.value = '';
-    renderRooms();
-};
 
 if (uploadRoomsBtn) {
     uploadRoomsBtn.onclick = async e => {
@@ -947,6 +932,7 @@ if (uploadRoomsBtn) {
         }
 
         const file = roomFileInput.files[0];
+        roomsFileName = file.name;
         const formData = new FormData();
         formData.append('file', file);
         formData.append('exam_id', examId);
@@ -961,16 +947,29 @@ if (uploadRoomsBtn) {
             });
             const data = await resp.json();
             if (data.status !== 'success') {
-                alert('Upload failed: ' + (data.message || 'Unknown error'));
+                if (uploadRoomsStatus) {
+                    uploadRoomsStatus.style.color = '#c62828';
+                    uploadRoomsStatus.textContent = 'Upload failed: ' + (data.message || 'Unknown error');
+                } else {
+                    alert('Upload failed: ' + (data.message || 'Unknown error'));
+                }
                 return;
             }
 
             roomsList = data.rooms || [];
             renderRooms();
-            alert('Rooms loaded from file successfully. You can review and make edits before proceeding.');
+            if (uploadRoomsStatus) {
+                uploadRoomsStatus.style.color = '#2e7d32';
+                uploadRoomsStatus.textContent = `Loaded ${roomsList.length} rooms from '${roomsFileName}'.`;
+            }
         } catch (err) {
             console.error('Upload rooms file failed', err);
-            alert('Upload failed: ' + err.message);
+            if (uploadRoomsStatus) {
+                uploadRoomsStatus.style.color = '#c62828';
+                uploadRoomsStatus.textContent = 'Upload failed: ' + err.message;
+            } else {
+                alert('Upload failed: ' + err.message);
+            }
         }
     };
 }
@@ -991,7 +990,7 @@ if (proceedStep3Btn) {
         fetch('/add_rooms/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            body: JSON.stringify({ exam_id: examId, rooms: roomsList })
+            body: JSON.stringify({ exam_id: examId, rooms: roomsList, rooms_file_name: roomsFileName })
         })
         .then(r => r.json())
         .then(r => {
@@ -1355,6 +1354,11 @@ function populateSummary(data) {
     if (summaryExamName) summaryExamName.textContent = data.exam?.name || '-';
     if (summaryStartDate) summaryStartDate.textContent = data.exam?.start_date || '-';
     if (summaryEndDate) summaryEndDate.textContent = data.exam?.end_date || '-';
+
+    const summaryScheduleFile = document.getElementById('summaryScheduleFile');
+    const summaryRoomsFile = document.getElementById('summaryRoomsFile');
+    if (summaryScheduleFile) summaryScheduleFile.textContent = data.exam?.schedule_file_name || scheduleFileName || '-';
+    if (summaryRoomsFile) summaryRoomsFile.textContent = data.exam?.rooms_file_name || roomsFileName || '-';
     
     // Departments
     const deptBody = document.getElementById('summaryDepartmentsBody');
