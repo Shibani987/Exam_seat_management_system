@@ -442,6 +442,12 @@ function updateDepartmentSelectionUI() {
 }
 
 function parseCsv(text) {
+    // Detect delimiter: count commas and tabs in first line
+    const firstLine = text.split('\n')[0] || '';
+    const commaCount = (firstLine.match(/,/g) || []).length;
+    const tabCount = (firstLine.match(/\t/g) || []).length;
+    const delimiter = tabCount > commaCount ? '\t' : ',';
+
     const rows = [];
     let current = '';
     let inQuotes = false;
@@ -457,7 +463,7 @@ function parseCsv(text) {
             } else {
                 inQuotes = !inQuotes;
             }
-        } else if (ch === ',' && !inQuotes) {
+        } else if (ch === delimiter && !inQuotes) {
             row.push(current);
             current = '';
         } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
