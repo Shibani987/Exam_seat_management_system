@@ -442,6 +442,11 @@ function updateDepartmentSelectionUI() {
 }
 
 function parseCsv(text) {
+    // Remove BOM if present
+    if (text.charCodeAt(0) === 0xFEFF) {
+        text = text.slice(1);
+    }
+
     // Detect delimiter: count commas and tabs in first line
     const firstLine = text.split('\n')[0] || '';
     const commaCount = (firstLine.match(/,/g) || []).length;
