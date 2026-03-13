@@ -213,7 +213,7 @@ function showStep3(pages, examName){
         </div>
       </div>
       <div class="sheet-title">
-        Attendance Sheet for B.TECH. SECOND Semester Examination MAY - 2022
+        Attendance Sheet for ${examName}
       </div>
       <div class="sheet-meta-box">
         <div class="meta-field-group">
