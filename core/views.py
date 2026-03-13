@@ -2032,7 +2032,7 @@ def save_selected_files(request):
         try:
             data = json.loads(request.body)
             exam_id = data.get('exam_id')
-            selected_files = data.get('selected_files', [])
+            selected_files = data.get('selected_files') or []
 
             exam = Exam.objects.get(id=exam_id)
             
@@ -2159,13 +2159,21 @@ def generate_seating(request):
         # Note: column-pattern generation removed — ignore any provided patterns unless column_map provided
         exam = Exam.objects.get(id=exam_id)
         
-        exam_students = ExamStudent.objects.filter(exam=exam).select_related('student')
+        # Only include students who are eligible for seating
+        exam_students_all = ExamStudent.objects.filter(exam=exam).select_related('student')
+        exam_students = exam_students_all.filter(student__academic_status__iexact='eligible')
+        ineligible_count = exam_students_all.count() - exam_students.count()
+
         dept_exams = DepartmentExam.objects.filter(exam=exam)
         rooms = list(Room.objects.filter(exam=exam).order_by('id'))
         
         print(f"\n[DEBUG generate_seating] Exam: {exam_id}")
-        print(f"[DEBUG] Total exam students: {exam_students.count()}")
-        print(f"[DEBUG] Student departments: {list(set(s.student.department for s in exam_students))}")
+        total_students_all = exam_students_all.count()
+        total_students_eligible = exam_students.count()
+        print(f"[DEBUG] Total exam students (all): {total_students_all}")
+        print(f"[DEBUG] Total exam students (eligible): {total_students_eligible}")
+        print(f"[DEBUG] Ineligible students skipped: {ineligible_count}")
+        print(f"[DEBUG] Student departments (eligible): {list(set(s.student.department for s in exam_students))}")
         print(f"[DEBUG] Total rooms: {len(rooms)}")
         print(f"[DEBUG] DepartmentExam records: {dept_exams.count()}")
         

@@ -1207,6 +1207,11 @@ if (proceedStep4Btn) {
         e.preventDefault();
         console.log('[STEP 4] Saving files and generating seating...');
         
+        // Ensure selectedFiles is an array
+        if (!Array.isArray(selectedFiles)) {
+            selectedFiles = [];
+        }
+        
         // Step 1: Save selected files
         fetch('/save_selected_files/', {
             method: 'POST',
