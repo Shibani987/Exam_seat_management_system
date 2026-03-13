@@ -554,6 +554,56 @@ function loadExamScheduleFromCsv(rows) {
         return val;
     }
 
+    function excelSerialToDate(serial) {
+        // Excel serial date to JS Date
+        const utc_days = Math.floor(serial - 25569);
+        const utc_value = utc_days * 86400;
+        const date = new Date(utc_value * 1000);
+        const fractional = serial - Math.floor(serial);
+        let totalSeconds = Math.round(86400 * fractional);
+        const seconds = totalSeconds % 60;
+        totalSeconds = (totalSeconds - seconds) / 60;
+        const minutes = totalSeconds % 60;
+        const hours = (totalSeconds - minutes) / 60;
+        date.setHours(hours, minutes, seconds, 0);
+        return date;
+    }
+
+    function formatDateYYYYMMDD(d) {
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    }
+
+    function normalizeDateValue(value) {
+        if (value == null || value === '') return '';
+        if (typeof value === 'number') {
+            const d = excelSerialToDate(value);
+            return formatDateYYYYMMDD(d);
+        }
+        const s = String(value).trim();
+        // Accept dd-mm-yyyy or dd/mm/yyyy
+        const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
+        if (m) {
+            const [_, d, mth, y] = m;
+            return `${y}-${String(mth).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+        }
+        return s;
+    }
+
+    function normalizeTimeValue(value) {
+        if (value == null || value === '') return '';
+        if (typeof value === 'number') {
+            // Excel time is fraction of a day
+            const totalSeconds = Math.round(86400 * value);
+            const hours = Math.floor(totalSeconds / 3600);
+            const minutes = Math.floor((totalSeconds % 3600) / 60);
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
+        return String(value).trim();
+    }
+
     rows.slice(1).forEach((row, rowIndex) => {
         let dept = (row[deptIdx] || '').trim();
         dept = normalizeDepartmentName(dept);
@@ -561,10 +611,10 @@ function loadExamScheduleFromCsv(rows) {
 
         const examName = (row[examNameIdx] || '').trim();
         const paperCode = (row[paperCodeIdx] || '').trim();
-        const date = (row[dateIdx] || '').trim();
+        const date = normalizeDateValue(row[dateIdx]);
         const session = normalizeSession(row[sessionIdx] || '');
-        const startTimeRaw = (row[startTimeIdx] || '').trim();
-        const endTimeRaw = (row[endTimeIdx] || '').trim();
+        const startTimeRaw = normalizeTimeValue(row[startTimeIdx]);
+        const endTimeRaw = normalizeTimeValue(row[endTimeIdx]);
 
         const startParts = parse12HourTime(startTimeRaw);
         const endParts = parse12HourTime(endTimeRaw);
