@@ -57,6 +57,13 @@
 
 <!-- STEP 2 -->
 <div id="step2Content" style="display:none;">
+    <div class="bulk-upload" style="margin-bottom: 18px; padding: 14px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa;">
+        <h3 style="margin:0 0 8px 0; font-size:1.1rem;">Bulk Upload Exam Schedule (CSV)</h3>
+        <input type="file" id="examScheduleFileInput" accept=".csv" style="margin-bottom: 8px;" />
+        <button id="uploadExamScheduleBtn" style="margin-bottom: 8px;">Upload Schedule File</button>
+        <p style="font-size:0.85rem; color:#555; margin:0;">File columns: <strong>Dept Name</strong>, <strong>Exam Name</strong>, <strong>Paper Code</strong>, <strong>Date</strong> (YYYY-MM-DD), <strong>Session</strong> (Morning/Afternoon), <strong>Start Time</strong> (e.g., 10:00 AM), <strong>End Time</strong> (e.g., 01:00 PM).</p>
+        <div id="uploadScheduleStatus" style="font-size:0.9rem; color:#555; margin-top: 8px;"></div>
+    </div>
     <p>Select Departments — choose one or more departments. After selecting a department you must add and complete at least one exam (Name, Code, Date, Session, Start Time, End Time) for that department before the "Proceed to Room Setup" button becomes active.</p>
     <div class="department-container">
         <div class="department" data-name="Agricultural Engineering">Agricultural Engineering</div>
@@ -99,6 +106,13 @@
         <label for="roomCapacity">Capacity</label>
         <input type="number" id="roomCapacity" placeholder="e.g., 40">
 
+        <div style="margin-top: 18px; padding: 12px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa;">
+            <h3 style="margin: 0 0 8px 0; font-size: 1rem;">Bulk Upload Rooms (CSV / XLS)</h3>
+            <input type="file" id="roomFileInput" accept=".csv,.xls" style="margin-bottom: 8px;" />
+            <button id="uploadRoomsBtn" style="margin-bottom: 8px;">Upload Rooms File</button>
+            <p style="font-size:0.85rem; color:#555; margin:0;">File must include columns: <strong>Building</strong>, <strong>Room Number</strong>, and <strong>Capacity</strong>.</p>
+        </div>
+
         <p style="font-size:0.95rem; color:#555; margin-top:10px;">Click <strong>+ Add Room</strong> to append another room input block. You can add multiple rooms — each will appear below and can be edited or removed.</p>
         <button id="addRoomBtn">+ Add Room</button>
     </div>
@@ -116,57 +130,10 @@
     <p>Select semester, year, and department-wise uploaded student data for seating allocation.</p>
     
     <div class="filter-section">
-        <label for="filterYear">Select Year:</label>
-        <select id="filterYear">
-            <option value="">--Select Year--</option>
-            <option value="2020">2020</option>
-            <option value="2021">2021</option>
-            <option value="2022">2022</option>
-            <option value="2023">2023</option>
-            <option value="2024">2024</option>
-            <option value="2025">2025</option>
-            <option value="2026">2026</option>
-            <option value="2027">2027</option>
-            <option value="2028">2028</option>
-            <option value="2029">2029</option>
-            <option value="2030">2030</option>
-            <option value="2031">2031</option>
-            <option value="2032">2032</option>
-            <option value="2033">2033</option>
-            <option value="2034">2034</option>
-            <option value="2035">2035</option>
-        </select>
-
-        <label for="filterSemester">Select Semester:</label>
-        <select id="filterSemester">
-            <option value="">--Select Semester--</option>
-            <option value="1">Semester 1</option>
-            <option value="2">Semester 2</option>
-            <option value="3">Semester 3</option>
-            <option value="4">Semester 4</option>
-            <option value="5">Semester 5</option>
-            <option value="6">Semester 6</option>
-            <option value="7">Semester 7</option>
-            <option value="8">Semester 8</option>
-        </select>
-
-        <label for="filterDepartment">Select Department:</label>
-        <select id="filterDepartment">
-            <option value="">--Select Department--</option>
-            <option value="CSE">CSE</option>
-            <option value="ECE">ECE</option>
-            <option value="EEE">EEE</option>
-            <option value="IT">IT</option>
-            <option value="ME">ME</option>
-            <option value="CE">CE</option>
-            <option value="AIML">AIML</option>
-            <option value="CSBS">CSBS</option>
-            <option value="BCA">BCA</option>
-            <option value="BBA">BBA</option>
-        </select>
-
+        <label for="filterFileName">Search by File Name:</label>
+        <input type="text" id="filterFileName" placeholder="Enter file name..." />
+        <button id="searchFileBtn" class="filter-btn">Search</button>
         <button id="showAllBtn" class="filter-btn">All</button>
-        <button id="filterBtn" class="filter-btn">Filter Files</button>
     </div>
 
     <div class="files-table-container">
@@ -174,15 +141,12 @@
             <thead>
                 <tr>
                     <th>File Name</th>
-                    <th>Semester</th>
-                    <th>Year</th>
-                    <th>Department</th>
                     <th>Select</th>
                 </tr>
             </thead>
             <tbody id="filesTableBody">
                 <tr>
-                    <td colspan="5" style="text-align:center; padding:20px; color:#999;">
+                    <td colspan="2" style="text-align:center; padding:20px; color:#999;">
                         No files uploaded yet.
                     </td>
                 </tr>
@@ -267,14 +231,11 @@
             <thead>
                 <tr>
                     <th>File Name</th>
-                    <th>Year</th>
-                    <th>Semester</th>
-                    <th>Department</th>
                     <th>Students</th>
                 </tr>
             </thead>
             <tbody id="summaryFilesBody">
-                <tr><td colspan="5" style="text-align:center;">Loading...</td></tr>
+                <tr><td colspan="2" style="text-align:center;">Loading...</td></tr>
             </tbody>
         </table>
     </div>

@@ -89,6 +89,36 @@ function convertTo12HourFormat(timeStr) {
     };
 }
 
+function parse12HourTime(value) {
+    if (!value) return null;
+
+    // Accept values like "10:00 AM", "10:00AM", "10:00 am"
+    const cleaned = String(value).trim();
+    const match = cleaned.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i);
+    if (!match) return null;
+
+    const hour = parseInt(match[1], 10);
+    const minute = match[2];
+    const ampm = match[3].toUpperCase();
+
+    if (hour < 1 || hour > 12) return null;
+
+    return {
+        hour: String(hour).padStart(2, '0'),
+        minute,
+        ampm
+    };
+}
+
+function normalizeSession(value) {
+    if (!value) return '';
+    const v = String(value).trim().toLowerCase();
+    if (v === 'morning' || v === '1st half' || v === '1sthalf') return '1st Half';
+    if (v === 'afternoon' || v === '2nd half' || v === '2ndhalf') return '2nd Half';
+    // Fallback: keep original casing
+    return String(value).trim();
+}
+
 // =============================
 // GLOBAL UI ELEMENTS
 // =============================
@@ -301,6 +331,9 @@ examForm.addEventListener('submit', e => {
 // =============================
 const deptDivs = document.querySelectorAll('.department');
 const examsContainer = document.getElementById('examsContainer');
+const examScheduleFileInput = document.getElementById('examScheduleFileInput');
+const uploadExamScheduleBtn = document.getElementById('uploadExamScheduleBtn');
+const uploadScheduleStatus = document.getElementById('uploadScheduleStatus');
 const backBtn = document.getElementById('backBtn');
 const nextBtn = document.getElementById('nextBtn');
 let departmentExams = {};
@@ -377,6 +410,200 @@ deptDivs.forEach(dept => {
         }, 0);
     });
 });
+
+function updateDepartmentSelectionUI() {
+    deptDivs.forEach(d => {
+        const name = d.dataset.name;
+        if (selectedDepartments.includes(name)) {
+            d.classList.add('selected');
+        } else {
+            d.classList.remove('selected');
+        }
+    });
+}
+
+function parseCsv(text) {
+    const rows = [];
+    let current = '';
+    let inQuotes = false;
+    let row = [];
+
+    for (let i = 0; i < text.length; i++) {
+        const ch = text[i];
+        if (ch === '"') {
+            if (inQuotes && i + 1 < text.length && text[i + 1] === '"') {
+                // Escaped quote
+                current += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (ch === ',' && !inQuotes) {
+            row.push(current);
+            current = '';
+        } else if ((ch === '\n' || ch === '\r') && !inQuotes) {
+            if (ch === '\r' && i + 1 < text.length && text[i + 1] === '\n') {
+                i++; // skip \n in CRLF
+            }
+            row.push(current);
+            rows.push(row);
+            row = [];
+            current = '';
+        } else {
+            current += ch;
+        }
+    }
+
+    if (current !== '' || row.length > 0) {
+        row.push(current);
+        rows.push(row);
+    }
+
+    return rows;
+}
+
+function loadExamScheduleFromCsv(text) {
+    const rows = parseCsv(text);
+    if (!rows || rows.length < 2) {
+        throw new Error('CSV file must contain a header row and at least one data row.');
+    }
+
+    const headerRow = rows[0].map(h => (h || '').trim().toLowerCase());
+    const findHeaderIndex = candidates => {
+        for (const candidate of candidates) {
+            const idx = headerRow.indexOf(candidate);
+            if (idx !== -1) return idx;
+        }
+        return -1;
+    };
+
+    const deptIdx = findHeaderIndex(['dept name', 'department', 'dept']);
+    const examNameIdx = findHeaderIndex(['exam name', 'exam', 'course']);
+    const paperCodeIdx = findHeaderIndex(['paper code', 'code']);
+    const dateIdx = findHeaderIndex(['date']);
+    const sessionIdx = findHeaderIndex(['session']);
+    const startTimeIdx = findHeaderIndex(['start time', 'starttime', 'start']);
+    const endTimeIdx = findHeaderIndex(['end time', 'endtime', 'end']);
+
+    const missing = [];
+    if (deptIdx === -1) missing.push('Dept Name');
+    if (examNameIdx === -1) missing.push('Exam Name');
+    if (paperCodeIdx === -1) missing.push('Paper Code');
+    if (dateIdx === -1) missing.push('Date');
+    if (sessionIdx === -1) missing.push('Session');
+    if (startTimeIdx === -1) missing.push('Start Time');
+    if (endTimeIdx === -1) missing.push('End Time');
+    if (missing.length) {
+        throw new Error('Missing required column(s): ' + missing.join(', '));
+    }
+
+    const newDepartments = {};
+    const errors = [];
+
+    function normalizeDepartmentName(raw) {
+        const val = (raw || '').trim();
+        if (!val) return '';
+        const lower = val.toLowerCase();
+
+        // Exact match for existing department items
+        const existing = Array.from(deptDivs).map(d => d.dataset.name);
+        const exact = existing.find(d => d.toLowerCase() === lower);
+        if (exact) return exact;
+
+        // Try substring match (e.g. "BCA" -> "Bachelor of Computer Applications (BCA)")
+        const substring = existing.find(d => d.toLowerCase().includes(lower));
+        if (substring) return substring;
+
+        // As a fallback, use original value
+        return val;
+    }
+
+    rows.slice(1).forEach((row, rowIndex) => {
+        let dept = (row[deptIdx] || '').trim();
+        dept = normalizeDepartmentName(dept);
+        if (!dept) return; // skip blank lines
+
+        const examName = (row[examNameIdx] || '').trim();
+        const paperCode = (row[paperCodeIdx] || '').trim();
+        const date = (row[dateIdx] || '').trim();
+        const session = normalizeSession(row[sessionIdx] || '');
+        const startTimeRaw = (row[startTimeIdx] || '').trim();
+        const endTimeRaw = (row[endTimeIdx] || '').trim();
+
+        const startParts = parse12HourTime(startTimeRaw);
+        const endParts = parse12HourTime(endTimeRaw);
+
+        if (!examName || !paperCode || !date || !session || !startParts || !endParts) {
+            errors.push(`Row ${rowIndex + 2} is missing required data or has invalid time format.`);
+            return;
+        }
+
+        const startTime24 = convertTo24HourFormat(startParts.hour, startParts.minute, startParts.ampm);
+        const endTime24 = convertTo24HourFormat(endParts.hour, endParts.minute, endParts.ampm);
+
+        if (!newDepartments[dept]) newDepartments[dept] = [];
+        newDepartments[dept].push({
+            name: examName,
+            code: paperCode,
+            date,
+            session,
+            start_time: startTime24,
+            end_time: endTime24,
+            start_hour: startParts.hour,
+            start_minute: startParts.minute,
+            start_ampm: startParts.ampm,
+            end_hour: endParts.hour,
+            end_minute: endParts.minute,
+            end_ampm: endParts.ampm
+        });
+    });
+
+    return { departments: newDepartments, errors };
+}
+
+if (uploadExamScheduleBtn) {
+    uploadExamScheduleBtn.addEventListener('click', e => {
+        e.preventDefault();
+        uploadScheduleStatus.textContent = '';
+
+        const file = examScheduleFileInput?.files?.[0];
+        if (!file) {
+            uploadScheduleStatus.style.color = '#c62828';
+            uploadScheduleStatus.textContent = 'Please select a CSV file to upload.';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = () => {
+            try {
+                const payload = loadExamScheduleFromCsv(reader.result);
+                selectedDepartments = Object.keys(payload.departments);
+                departmentExams = payload.departments;
+                updateDepartmentSelectionUI();
+                renderExamInputs();
+
+                const deptCount = selectedDepartments.length;
+                const examCount = Object.values(departmentExams).reduce((sum, exs) => sum + exs.length, 0);
+                uploadScheduleStatus.style.color = '#2e7d32';
+                uploadScheduleStatus.textContent = `Loaded ${examCount} exam(s) across ${deptCount} department(s).`;
+
+                if (payload.errors.length) {
+                    uploadScheduleStatus.style.color = '#c62828';
+                    uploadScheduleStatus.textContent += ' Some rows were skipped: ' + payload.errors.join(' ');
+                }
+            } catch (err) {
+                console.error('Failed to parse schedule file:', err);
+                uploadScheduleStatus.style.color = '#c62828';
+                uploadScheduleStatus.textContent = 'Failed to parse file: ' + err.message;
+            }
+        };
+        reader.onerror = () => {
+            uploadScheduleStatus.style.color = '#c62828';
+            uploadScheduleStatus.textContent = 'Failed to read file.';
+        };
+        reader.readAsText(file);
+    });
+}
 
 function renderExamInputs() {
     if (!examsContainer) return;
@@ -596,6 +823,8 @@ const buildingSelect = document.getElementById('buildingSelect');
 const roomNumber = document.getElementById('roomNumber');
 const roomCapacity = document.getElementById('roomCapacity');
 const addRoomBtn = document.getElementById('addRoomBtn');
+const roomFileInput = document.getElementById('roomFileInput');
+const uploadRoomsBtn = document.getElementById('uploadRoomsBtn');
 const roomList = document.getElementById('roomList');
 const backStep3Btn = document.getElementById('backStep3Btn');
 const proceedStep3Btn = document.getElementById('proceedStep3Btn');
@@ -705,6 +934,47 @@ addRoomBtn.onclick = e => {
     renderRooms();
 };
 
+if (uploadRoomsBtn) {
+    uploadRoomsBtn.onclick = async e => {
+        e.preventDefault();
+        if (!roomFileInput || !roomFileInput.files || roomFileInput.files.length === 0) {
+            alert('Please select a file to upload.');
+            return;
+        }
+        if (!examId) {
+            alert('Exam ID is missing. Please refresh the page.');
+            return;
+        }
+
+        const file = roomFileInput.files[0];
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('exam_id', examId);
+
+        try {
+            const resp = await fetch('/upload-rooms-file/', {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': csrftoken
+                },
+                body: formData
+            });
+            const data = await resp.json();
+            if (data.status !== 'success') {
+                alert('Upload failed: ' + (data.message || 'Unknown error'));
+                return;
+            }
+
+            roomsList = data.rooms || [];
+            renderRooms();
+            alert('Rooms loaded from file successfully. You can review and make edits before proceeding.');
+        } catch (err) {
+            console.error('Upload rooms file failed', err);
+            alert('Upload failed: ' + err.message);
+        }
+    };
+}
+
 if (backStep3Btn) {
     backStep3Btn.onclick = e => {
         e.preventDefault();
@@ -748,10 +1018,8 @@ if (proceedStep3Btn) {
 // =============================
 // STEP 4 - SELECT STUDENT DATA (Updated with merged student info)
 // =============================
-const filterYear = document.getElementById('filterYear');
-const filterSemester = document.getElementById('filterSemester');
-const filterDepartment = document.getElementById('filterDepartment');
-const filterBtn = document.getElementById('filterBtn');
+const filterFileName = document.getElementById('filterFileName');
+const searchFileBtn = document.getElementById('searchFileBtn');
 const filesTableBody = document.getElementById('filesTableBody');
 const showAllBtn = document.getElementById('showAllBtn');
 const backStep4Btn = document.getElementById('backStep4Btn');
@@ -767,7 +1035,7 @@ function loadUploadedFiles() {
             allUploadedFiles = data.files;
             displayFiles(allUploadedFiles);
         } else {
-            filesTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:20px;">No files uploaded yet.</td></tr>';
+            filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#999;padding:20px;">No files uploaded yet.</td></tr>';
         }
     })
     .catch(err => console.error(err));
@@ -775,19 +1043,21 @@ function loadUploadedFiles() {
 
 function displayFiles(files) {
     if (!files.length) {
-        filesTableBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;padding:20px;">No files found.</td></tr>';
+        filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#999;padding:20px;">No files found.</td></tr>';
         return;
     }
 
-    filesTableBody.innerHTML = files.map(file => `
+    const selectedIds = new Set(selectedFiles.map(f => String(f.id)));
+
+    filesTableBody.innerHTML = files.map(file => {
+        const checked = selectedIds.has(String(file.id)) ? 'checked' : '';
+        return `
         <tr>
             <td>${file.file_name}</td>
-            <td>Semester ${file.semester}</td>
-            <td>${file.year}</td>
-            <td>${file.department}</td>
-            <td><input type="checkbox" class="file-checkbox" data-file-id="${file.id}" data-dept="${file.department}"></td>
+            <td><input type="checkbox" class="file-checkbox" ${checked} data-file-id="${file.id}" data-dept="${file.department}"></td>
         </tr>
-    `).join('');
+    `;
+    }).join('');
 
     document.querySelectorAll('.file-checkbox').forEach(cb => cb.addEventListener('change', onFileCheckboxChange));
 }
@@ -802,7 +1072,7 @@ function onFileCheckboxChange() {
         selectedFiles.push({ id: fileId, department: dept });
         updateProceedStep4Btn();
     } else {
-        selectedFiles = selectedFiles.filter(f => f.id !== parseInt(fileId));
+        selectedFiles = selectedFiles.filter(f => String(f.id) !== String(fileId));
         updateProceedStep4Btn();
     }
 }
@@ -814,13 +1084,15 @@ function updateProceedStep4Btn() {
     }
 }
 
-if (filterBtn) {
-    filterBtn.onclick = e => {
+if (searchFileBtn) {
+    searchFileBtn.onclick = e => {
         e.preventDefault();
-        let filtered = allUploadedFiles;
-        if (filterYear.value) filtered = filtered.filter(f => f.year == filterYear.value);
-        if (filterSemester.value) filtered = filtered.filter(f => f.semester == filterSemester.value);
-        if (filterDepartment.value) filtered = filtered.filter(f => f.department === filterDepartment.value);
+        const query = (filterFileName?.value || '').trim().toLowerCase();
+        if (!query) {
+            displayFiles(allUploadedFiles);
+            return;
+        }
+        const filtered = (allUploadedFiles || []).filter(f => (f.file_name || '').toLowerCase().includes(query));
         displayFiles(filtered);
     };
 }
@@ -828,10 +1100,8 @@ if (filterBtn) {
 if (showAllBtn) {
     showAllBtn.onclick = e => {
         e.preventDefault();
-        // Reset filters visually and show everything loaded from the server
-        if (filterYear) filterYear.value = '';
-        if (filterSemester) filterSemester.value = '';
-        if (filterDepartment) filterDepartment.value = '';
+        // Reset search fields and show everything loaded from the server
+        if (filterFileName) filterFileName.value = '';
         displayFiles(allUploadedFiles || []);
     };
 }
@@ -850,28 +1120,6 @@ if (proceedStep4Btn) {
     proceedStep4Btn.onclick = e => {
         e.preventDefault();
         console.log('[STEP 4] Saving files and generating seating...');
-        
-        // VALIDATION 2: Check if all selected departments have student data
-        const selectedDepts = departmentExams ? Object.keys(departmentExams).filter(d => selectedDepartments.includes(d)) : [];
-        const deptWithData = selectedFiles.map(f => f.department);
-        
-        let missingDepts = [];
-        selectedDepts.forEach(dept => {
-            if (!deptWithData.includes(dept)) {
-                missingDepts.push(dept);
-            }
-        });
-        
-        if (missingDepts.length > 0) {
-            let errorMsg = 'MISSING STUDENT DATA\n\n';
-            errorMsg += 'The following departments have exams but NO student data:\n\n';
-            missingDepts.forEach(dept => {
-                errorMsg += `${dept}\n`;
-            });
-            errorMsg += '\nPlease select student data files for these departments in the table above.';
-            alert(errorMsg);
-            return;
-        }
         
         // Step 1: Save selected files
         fetch('/save_selected_files/', {
@@ -1132,14 +1380,11 @@ function populateSummary(data) {
         filesBody.innerHTML = data.student_files.map(f => `
             <tr>
                 <td>${f.file_name}</td>
-                <td>${f.year}</td>
-                <td>${f.semester}</td>
-                <td>${f.department}</td>
                 <td><span class="badge">${f.student_count}</span></td>
             </tr>
         `).join('');
     } else {
-        filesBody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#999;">No student files selected</td></tr>';
+        filesBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#999;">No student files selected</td></tr>';
     }
     
     // Rooms

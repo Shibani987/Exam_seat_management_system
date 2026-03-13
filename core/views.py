@@ -1542,6 +1542,120 @@ def add_rooms(request):
             return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
+@admin_required_json
+def upload_rooms_file(request):
+    """Upload a CSV/XLS file containing room definitions (Building, Room Number, Capacity)."""
+    if request.method != 'POST':
+        return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+    try:
+        exam_id = request.POST.get('exam_id') or request.GET.get('exam_id')
+        if not exam_id:
+            return JsonResponse({"status": "error", "message": "exam_id is required"}, status=400)
+
+        try:
+            Exam.objects.get(id=exam_id)
+        except Exam.DoesNotExist:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=400)
+
+        uploaded_file = request.FILES.get('file')
+        if not uploaded_file:
+            return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
+
+        max_size = 10 * 1024 * 1024
+        if uploaded_file.size > max_size:
+            return JsonResponse({"status": "error", "message": "File size too large. Maximum allowed is 10MB."}, status=400)
+
+        # Try reading as CSV first, then Excel
+        df = None
+        file_name = uploaded_file.name.lower()
+
+        try:
+            df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
+        except Exception:
+            try:
+                uploaded_file.seek(0)
+            except Exception:
+                pass
+            try:
+                df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip')
+            except Exception:
+                try:
+                    uploaded_file.seek(0)
+                except Exception:
+                    pass
+                # Excel (xls/xlsx)
+                if file_name.endswith('.xlsx'):
+                    try:
+                        df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
+                    except Exception:
+                        return JsonResponse({"status": "error", "message": "Unable to parse XLSX file. Please use CSV or XLS format."}, status=400)
+                else:
+                    try:
+                        df = pd.read_excel(uploaded_file, dtype=str, engine='xlrd')
+                    except Exception as e:
+                        return JsonResponse({"status": "error", "message": f"Unable to parse Excel file: {str(e)}"}, status=400)
+
+        if df is None:
+            return JsonResponse({"status": "error", "message": "Unable to parse file. Please provide a CSV or XLS file."}, status=400)
+
+        df = df.dropna(how='all').reset_index(drop=True)
+        if df.empty:
+            return JsonResponse({"status": "error", "message": "File is empty or contains no valid rows."}, status=400)
+
+        df.columns = df.columns.str.strip().str.lower()
+        cols = set(df.columns)
+
+        def find_col(candidates):
+            for c in candidates:
+                if c in cols:
+                    return c
+            return None
+
+        building_col = find_col(['building', 'building name', 'building_name'])
+        room_col = find_col(['room number', 'room_number', 'roomno', 'room no', 'room'])
+        cap_col = find_col(['capacity', 'cap', 'seats', 'seat capacity', 'room capacity'])
+
+        if not (building_col and room_col and cap_col):
+            return JsonResponse({"status": "error", "message": "File must include columns: Building, Room Number, Capacity."}, status=400)
+
+        rooms = []
+        seen = set()
+        for idx, row in df.iterrows():
+            building = str(row.get(building_col, '')).strip()
+            room_number = str(row.get(room_col, '')).strip()
+            capacity_raw = row.get(cap_col, '')
+            capacity = str(capacity_raw).strip() if pd.notna(capacity_raw) else ''
+
+            if not building or not room_number:
+                continue
+
+            try:
+                capacity_val = int(float(capacity)) if capacity != '' else 0
+            except Exception:
+                return JsonResponse({"status": "error", "message": f"Invalid capacity value on row {idx + 2}: '{capacity}'"}, status=400)
+
+            key = (building, room_number)
+            if key in seen:
+                continue
+            seen.add(key)
+
+            rooms.append({
+                'building': building,
+                'room_number': room_number,
+                'capacity': capacity_val
+            })
+
+        if not rooms:
+            return JsonResponse({"status": "error", "message": "No valid rooms found in file."}, status=400)
+
+        return JsonResponse({"status": "success", "rooms": rooms})
+
+    except Exception as e:
+        logger.exception('upload_rooms_file error')
+        return JsonResponse({"status": "error", "message": "Internal server error"}, status=500)
+
+
 # =========================
 # Delete single Room (API)
 # =========================
