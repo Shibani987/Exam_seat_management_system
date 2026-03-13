@@ -5,7 +5,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Marks Sheet - {{ exam_name }}</title>
-  <link rel="stylesheet" href="{% static 'core/css/marks_sheet_print.css' %}">
+  <link rel="stylesheet" href="{% static 'core/css/attendance_sheet_print.css' %}">
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -56,7 +56,7 @@
     </div>
 
     {% for sheet in sheets %}
-    <div class="marks-sheet">
+    <div class="attendance-sheet">
       <div class="sheet-header">
         <div class="header-logo"><img src="{% static 'core/img/logo.png' %}" alt="logo" /></div>
         <div class="header-text">
@@ -85,9 +85,7 @@
           <col />
           <col />
           <col />
-          <col style="width:8%" />
-          <col style="width:8%" />
-          <col style="width:8%" />
+          <col />
         </colgroup>
         <thead>
           <tr>
@@ -95,10 +93,8 @@
             <th class="name-col">NAME</th>
             <th class="reg-col">REGISTRATION NO</th>
             <th class="roll-col">ROLL NO</th>
-            <th class="booklet-col">ANSWER<br>BOOKLET NO</th>
-            <th class="marks-col">MARKS<br>OBTAINED</th>
-            <th class="marks-col">TOTAL<br>MARKS</th>
-            <th class="signature-col">SIGNATURE<br>OF EXAMINER</th>
+            <th class="booklet-col">INTERNAL MARKS</th>
+            <th class="signature-col">EXTERNAL MARKS</th>
           </tr>
         </thead>
         <tbody>
@@ -109,8 +105,6 @@
             <td class="reg-col">{{ student.registration_number|upper }}</td>
             <td class="roll-col">{{ student.roll_number|upper }}</td>
             <td class="booklet-col"></td>
-            <td class="marks-col"></td>
-            <td class="marks-col"></td>
             <td class="signature-col"></td>
           </tr>
           {% empty %}
@@ -121,8 +115,6 @@
             <td class="reg-col"></td>
             <td class="roll-col"></td>
             <td class="booklet-col"></td>
-            <td class="marks-col"></td>
-            <td class="marks-col"></td>
             <td class="signature-col"></td>
           </tr>
           {% endfor %}

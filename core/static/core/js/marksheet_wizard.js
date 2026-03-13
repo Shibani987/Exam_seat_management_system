@@ -201,7 +201,7 @@ function showStep3(pages, examName){
 
   pages.forEach((pageMeta, pageIdx) => {
     const sheetDiv = document.createElement('div');
-    sheetDiv.className = 'marks-sheet';
+    sheetDiv.className = 'attendance-sheet';
     // Header (logo left, text centered, no box around title)
     let html = `
       <div class="sheet-header">
@@ -232,9 +232,7 @@ function showStep3(pages, examName){
           <col />
           <col />
           <col />
-          <col style="width:8%" />
-          <col style="width:8%" />
-          <col style="width:8%" />
+          <col />
         </colgroup>
         <thead>
           <tr>
@@ -242,10 +240,8 @@ function showStep3(pages, examName){
             <th class="name-col">NAME</th>
             <th class="reg-col">REGISTRATION NO</th>
             <th class="roll-col">ROLL NO</th>
-            <th class="booklet-col">ANSWER<br>BOOKLET NO</th>
-            <th class="marks-col">MARKS<br>OBTAINED</th>
-            <th class="marks-col">TOTAL<br>MARKS</th>
-            <th class="signature-col">SIGNATURE<br>OF EXAMINER</th>
+            <th class="booklet-col">INTERNAL MARKS</th>
+            <th class="signature-col">EXTERNAL MARKS</th>
           </tr>
         </thead>
         <tbody>
@@ -265,8 +261,6 @@ function showStep3(pages, examName){
         <td class="reg-col">${student ? (student.registration_number||'').toUpperCase() : ''}</td>
         <td class="roll-col">${student ? (student.roll_number||'').toUpperCase() : ''}</td>
         <td class="booklet-col"></td>
-        <td class="marks-col"></td>
-        <td class="marks-col"></td>
         <td class="signature-col"></td>
       </tr>
     `;
