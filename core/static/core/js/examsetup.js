@@ -528,7 +528,7 @@ function loadExamScheduleFromCsv(text) {
     if (startTimeIdx === -1) missing.push('Start Time');
     if (endTimeIdx === -1) missing.push('End Time');
     if (missing.length) {
-        throw new Error('Missing required column(s): ' + missing.join(', '));
+        throw new Error('Missing required column(s): ' + missing.join(', ') + '. Found headers: ' + rows[0].join(', '));
     }
 
     const newDepartments = {};
