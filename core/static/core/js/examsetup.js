@@ -501,10 +501,7 @@ function loadExamScheduleFromCsv(rows) {
         throw new Error('File must contain a header row and at least one data row.');
     }
 
-    // Ensure all cells are strings
-    rows = rows.map(row => row.map(cell => String(cell || '')));
-
-    const headerRow = rows[0].map(h => (h || '').trim().toLowerCase());
+    const headerRow = rows[0].map(h => (h || '').toString().trim().toLowerCase());
     const findHeaderIndex = candidates => {
         for (const candidate of candidates) {
             const idx = headerRow.indexOf(candidate);
@@ -578,6 +575,9 @@ function loadExamScheduleFromCsv(rows) {
 
     function normalizeDateValue(value) {
         if (value == null || value === '') return '';
+        if (value instanceof Date) {
+            return formatDateYYYYMMDD(value);
+        }
         if (typeof value === 'number') {
             const d = excelSerialToDate(value);
             return formatDateYYYYMMDD(d);
@@ -594,6 +594,11 @@ function loadExamScheduleFromCsv(rows) {
 
     function normalizeTimeValue(value) {
         if (value == null || value === '') return '';
+        if (value instanceof Date) {
+            const hours = value.getHours();
+            const minutes = value.getMinutes();
+            return `${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+        }
         if (typeof value === 'number') {
             // Excel time is fraction of a day
             const totalSeconds = Math.round(86400 * value);
