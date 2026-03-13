@@ -122,30 +122,44 @@
         </tbody>
       </table>
 
-      <!-- footer with examiner signatures -->
-      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+      <!-- first footer row: present/absent on left, internal signature on right -->
+      <div class="sheet-footer-row">
+        <div class="footer-left">
+          <div class="footer-section small">
+            <div class="footer-label">No of Student Present</div>
+            <div class="footer-field"></div>
+          </div>
+          <div class="footer-section small">
+            <div class="footer-label">No of Student Absent</div>
+            <div class="footer-field"></div>
+          </div>
+        </div>
+        <div class="footer-right-internal">
+          <div class="signature-box"></div>
+          <div class="footer-label">Signature of Examiner (Internal)</div>
+          <div class="name-caption">Name (in CAPITAL):</div>
+        </div>
+      </div>
+
+      <!-- second footer row: HOD left, external right -->
+      <div class="sheet-footer-row" style="margin-top:5px;">
+        <div class="footer-left-hod">
+          <div class="hod-line"></div>
+          <div>Signature of HoD</div>
+        </div>
+        <div class="footer-right-external">
+          <div class="external-line"></div>
+          <div class="footer-label">Signature of Examiner (External)</div>
+          <div class="name-caption">Name (in CAPITAL):</div>
+        </div>
+      </div>
+
+      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
         <div style="font-size:12px; text-align:left; line-height:1.2;">
           {{ sheet.branch|upper }}_Sem {{ sheet.semester }}
         </div>
         <div style="font-size:12px; text-align:right; line-height:1.2;">
           Page {{ sheet.page_index }} of {{ sheet.total_pages }}
-        </div>
-      </div>
-
-      <div class="marks-footer" style="margin-top: 20px; display: flex; justify-content: space-between;">
-        <div class="signature-section">
-          <div class="signature-line"></div>
-          <div class="signature-label">Signature of Examiner (Internal)</div>
-          <div class="name-caption">Name (in CAPITAL):</div>
-        </div>
-        <div class="signature-section">
-          <div class="signature-line"></div>
-          <div class="signature-label">Signature of Examiner (External)</div>
-          <div class="name-caption">Name (in CAPITAL):</div>
-        </div>
-        <div class="signature-section">
-          <div class="signature-line"></div>
-          <div class="signature-label">Signature of HoD</div>
         </div>
       </div>
     </div>
