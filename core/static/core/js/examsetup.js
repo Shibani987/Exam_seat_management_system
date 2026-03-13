@@ -1212,11 +1212,16 @@ if (proceedStep4Btn) {
             selectedFiles = [];
         }
         
+        // Ensure selectedFiles is an array
+        if (!Array.isArray(selectedFiles)) {
+            selectedFiles = [];
+        }
+        
         // Step 1: Save selected files
         fetch('/save_selected_files/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            body: JSON.stringify({ exam_id: examId, selected_files: selectedFiles })
+            body: JSON.stringify({ exam_id: examId, selected_files: selectedFiles || [] })
         })
         .then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
