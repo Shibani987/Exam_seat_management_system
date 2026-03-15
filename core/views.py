@@ -2004,9 +2004,9 @@ def get_uploaded_files(request):
             
             files_data = []
             for file_obj in uploaded_files:
-                # StudentDataFile does not store department directly. Use first student department as fallback.
+                # StudentDataFile does not store department directly. Use first student branch as department fallback.
                 first_student = Student.objects.filter(student_file=file_obj).order_by('id').first()
-                dept = first_student.department if first_student else ''
+                dept = first_student.branch if first_student else ''
 
                 files_data.append({
                     'id': file_obj.id,
