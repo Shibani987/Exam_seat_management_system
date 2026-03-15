@@ -2198,7 +2198,7 @@ def generate_seating(request):
         print(f"[DEBUG] Total exam students (all): {total_students_all}")
         print(f"[DEBUG] Total exam students (eligible): {total_students_eligible}")
         print(f"[DEBUG] Ineligible students skipped: {ineligible_count}")
-        print(f"[DEBUG] Student departments (eligible): {list(set(s.student.department for s in exam_students))}")
+        print(f"[DEBUG] Student branches (eligible): {list(set(s.student.branch for s in exam_students))}")
         print(f"[DEBUG] Total rooms: {len(rooms)}")
         print(f"[DEBUG] DepartmentExam records: {dept_exams.count()}")
         
@@ -2209,7 +2209,7 @@ def generate_seating(request):
         
         # CHECK: If no DepartmentExam records, that's the problem!
         if not dept_exams.exists():
-            student_depts = list(set(s.student.department for s in exam_students))
+            student_depts = list(set(s.student.branch for s in exam_students))
             print(f"\n[DEBUG] ⚠ CRITICAL: NO DepartmentExam records for this exam!")
             print(f"[DEBUG] Students have departments: {student_depts}")
             print(f"[DEBUG] Please go back to Step 2 and ADD departments & exams for: {', '.join(student_depts)}")
@@ -2245,7 +2245,7 @@ def generate_seating(request):
             student = exam_student.student
             year = getattr(student, 'year', '') or ''
             semester = getattr(student, 'semester', '') or ''
-            dept_raw = getattr(student, 'department', '') or ''
+            dept_raw = getattr(student, 'branch', '') or ''
             dept = dept_raw.strip().upper()
 
             if not dept or dept not in dept_exam_map:
@@ -2553,7 +2553,7 @@ def generate_seating(request):
         if len(skipped_students) == exam_students.count():
             print(f"[DEBUG] ✗ CRITICAL: ALL {exam_students.count()} STUDENTS WERE SKIPPED!")
             print(f"[DEBUG] Department mismatch between student file and Step 2 departments")
-            student_depts_in_file = list(set(s.student.department for s in exam_students))
+            student_depts_in_file = list(set(s.student.branch for s in exam_students))
             configured_depts = list(dept_exam_map.keys())
             print(f"[DEBUG] Departments in student file: {student_depts_in_file}")
             print(f"[DEBUG] Departments in Step 2: {configured_depts}")
