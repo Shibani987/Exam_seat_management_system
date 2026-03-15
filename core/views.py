@@ -2034,67 +2034,89 @@ def get_uploaded_files(request):
 # =========================
 @admin_required_json
 def save_selected_files(request):
+
     if request.method != "POST":
         return JsonResponse({"status": "error", "message": "POST required"}, status=405)
 
     try:
-        data = json.loads(request.body)
-        exam_id = data.get('exam_id')
-        selected_files = data.get('selected_files') or []
+        # Safe JSON parse
+        try:
+            data = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
 
-        if not exam_id or not selected_files:
-            return JsonResponse({"status": "error", "message": "Exam ID or selected files missing"}, status=400)
+        exam_id = data.get("exam_id")
+        selected_files = data.get("selected_files", [])
 
-        exam = Exam.objects.get(id=exam_id)
+        if not exam_id:
+            return JsonResponse({"status": "error", "message": "exam_id missing"}, status=400)
+
+        if not selected_files:
+            return JsonResponse({"status": "error", "message": "No files selected"}, status=400)
+
+        # safer exam fetch
+        exam = Exam.objects.filter(id=exam_id).first()
+        if not exam:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
 
         # Normalize file IDs
         file_ids = []
         for f in selected_files:
-            if isinstance(f, dict) and 'id' in f:
-                file_ids.append(f['id'])
+            if isinstance(f, dict):
+                fid = f.get("id")
             else:
-                file_ids.append(f)
+                fid = f
+
+            if fid:
+                file_ids.append(fid)
 
         student_files = StudentDataFile.objects.filter(id__in=file_ids)
+
+        if not student_files.exists():
+            return JsonResponse({"status": "error", "message": "No valid student files found"}, status=400)
+
         students = Student.objects.filter(student_file__in=student_files)
 
-        # Delete previous allocations for this exam
+        # Remove old allocations
         ExamStudent.objects.filter(exam=exam).delete()
 
-        # Create ExamStudent safely
-        exam_student_records = [
-            ExamStudent(exam=exam, student_file=student.student_file, student=student)
-            for student in students if student.student_file is not None
-        ]
-        
-        # Ignore duplicates to avoid 500 errors
-        ExamStudent.objects.bulk_create(exam_student_records, ignore_conflicts=True)
+        records = []
+        for student in students:
+            if student.student_file:
+                records.append(
+                    ExamStudent(
+                        exam=exam,
+                        student_file=student.student_file,
+                        student=student
+                    )
+                )
+
+        # Bulk insert safely
+        ExamStudent.objects.bulk_create(records, ignore_conflicts=True)
 
         # Prepare response
         files_data = []
         for file_obj in student_files:
-            file_students = Student.objects.filter(student_file=file_obj)
+            count = Student.objects.filter(student_file=file_obj).count()
+
             files_data.append({
-                'file_id': file_obj.id,
-                'year': getattr(file_obj, 'year', None),
-                'semester': getattr(file_obj, 'semester', None),
-                'branch': getattr(file_obj, 'branch', ''),  
-                'file_name': file_obj.file_name,
-                'student_count': file_students.count()
+                "file_id": file_obj.id,
+                "file_name": file_obj.file_name,
+                "student_count": count
             })
 
         return JsonResponse({
             "status": "success",
-            "message": f"Files and {len(exam_student_records)} students merged and saved successfully",
+            "message": f"{len(records)} students merged successfully",
             "files": files_data,
-            "total_students": len(exam_student_records)
+            "total_students": len(records)
         })
 
-    except Exam.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Exam not found"}, status=400)
     except Exception as e:
-        # Show full error in response for debugging
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
+        return JsonResponse({
+            "status": "error",
+            "message": f"SERVER ERROR: {str(e)}"
+        }, status=500)
 # =========================
 # Generate Seating Algorithm
 # =========================
