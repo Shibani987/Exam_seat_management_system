@@ -2033,80 +2033,64 @@ def get_uploaded_files(request):
 # =========================
 @admin_required_json
 def save_selected_files(request):
-    if request.method == "POST":
-        try:
-            data = json.loads(request.body)
-            exam_id = data.get('exam_id')
-            selected_files = data.get('selected_files') or []
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST required"}, status=405)
 
-            exam = Exam.objects.get(id=exam_id)
-            
-            # Extract file IDs from selected files
-            file_ids = [f['id'] for f in selected_files]
-            
-            # Fetch all StudentDataFile records
-            student_files = StudentDataFile.objects.filter(id__in=file_ids)
-            
-            # Fetch all Student records from these files
-            students = Student.objects.filter(student_file__in=student_files)
-            
-            print(f"\n[DEBUG save_selected_files] Exam: {exam_id}")
-            print(f"[DEBUG] Selected files: {list(student_files.values_list('id', 'department'))}")
-            print(f"[DEBUG] Total students from selected files: {students.count()}")
-            print(f"[DEBUG] Student departments: {list(set(students.values_list('department', flat=True)))}")
-            
-            # Delete previous allocations for this exam (if any)
-            ExamStudent.objects.filter(exam=exam).delete()
-            
-            # Merge: Create ExamStudent records by merging StudentDataFile + Student data
-            exam_student_records = []
-            for student in students:
-                exam_student = ExamStudent(
-                    exam=exam,
-                    student_file=student.student_file,
-                    student=student
-                )
-                exam_student_records.append(exam_student)
-            
-            # Bulk create for efficiency
-            ExamStudent.objects.bulk_create(exam_student_records)
-            
-            print(f"[DEBUG] Created {len(exam_student_records)} ExamStudent records")
-            
-            # Check what DepartmentExam records exist for this exam
-            dept_exams_query = DepartmentExam.objects.filter(exam=exam).values_list('department', flat=True).distinct()
-            print(f"[DEBUG] DepartmentExam departments for this exam: {list(dept_exams_query)}")
-            
-            # Prepare response
-            files_data = []
-            for file_obj in student_files:
-                file_students = Student.objects.filter(student_file=file_obj)
-                files_data.append({
-                    'file_id': file_obj.id,
-                    'year': file_obj.year,
-                    'semester': file_obj.semester,
-                    'department': file_obj.department,
-                    'file_name': file_obj.file_name,
-                    'student_count': file_students.count()
-                })
-            
-            return JsonResponse({
-                "status": "success",
-                "message": f"Files and {students.count()} students merged and saved successfully",
-                "files": files_data,
-                "total_students": students.count()
+    try:
+        data = json.loads(request.body)
+        exam_id = data.get('exam_id')
+        selected_files = data.get('selected_files') or []
+
+        if not exam_id or not selected_files:
+            return JsonResponse({"status": "error", "message": "Exam ID or selected files missing"}, status=400)
+
+        exam = Exam.objects.get(id=exam_id)
+
+        # Normalize file IDs
+        file_ids = []
+        for f in selected_files:
+            if isinstance(f, dict) and 'id' in f:
+                file_ids.append(f['id'])
+            else:
+                file_ids.append(f)
+
+        student_files = StudentDataFile.objects.filter(id__in=file_ids)
+        students = Student.objects.filter(student_file__in=student_files)
+
+        # Delete previous allocations
+        ExamStudent.objects.filter(exam=exam).delete()
+
+        # Bulk create ExamStudent
+        exam_student_records = [
+            ExamStudent(exam=exam, student_file=student.student_file, student=student)
+            for student in students
+        ]
+        ExamStudent.objects.bulk_create(exam_student_records)
+
+        # Prepare response
+        files_data = []
+        for file_obj in student_files:
+            file_students = Student.objects.filter(student_file=file_obj)
+            files_data.append({
+                'file_id': file_obj.id,
+                'year': getattr(file_obj, 'year', None),
+                'semester': getattr(file_obj, 'semester', None),
+                'branch': getattr(file_obj, 'branch', ''),  # renamed key
+                'file_name': file_obj.file_name,
+                'student_count': file_students.count()
             })
-        except Exam.DoesNotExist:
-            return JsonResponse({
-                "status": "error",
-                "message": "Exam not found"
-            }, status=400)
-        except Exception as e:
-            return JsonResponse({
-                "status": "error",
-                "message": str(e)
-            }, status=400)
 
+        return JsonResponse({
+            "status": "success",
+            "message": f"Files and {students.count()} students merged and saved successfully",
+            "files": files_data,
+            "total_students": students.count()
+        })
+
+    except Exam.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Exam not found"}, status=400)
+    except Exception as e:
+        return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 # =========================
 # Generate Seating Algorithm
