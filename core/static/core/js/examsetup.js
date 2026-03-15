@@ -1137,10 +1137,11 @@ function displayFiles(files) {
 
     filesTableBody.innerHTML = files.map(file => {
         const checked = selectedIds.has(String(file.id)) ? 'checked' : '';
+        const dept = file.department || '';
         return `
         <tr>
             <td>${file.file_name}</td>
-            <td><input type="checkbox" class="file-checkbox" ${checked} data-file-id="${file.id}" data-dept="${file.department}"></td>
+            <td><input type="checkbox" class="file-checkbox" ${checked} data-file-id="${file.id}" data-dept="${dept}"></td>
         </tr>
     `;
     }).join('');
@@ -1151,7 +1152,7 @@ function displayFiles(files) {
 function onFileCheckboxChange() {
     const checkbox = this;
     const fileId = checkbox.dataset.fileId;
-    const dept = checkbox.dataset.dept;
+    const dept = checkbox.dataset.dept || '';
 
     if (checkbox.checked) {
         // Just store file ID, backend will fetch students on Proceed
