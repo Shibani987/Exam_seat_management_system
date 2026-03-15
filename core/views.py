@@ -2028,8 +2028,9 @@ def get_uploaded_files(request):
                 "message": str(e)
             }, status=400)
 
+
 # =========================
-# Save Selected Files for Exam (API)
+# Save Selected Files for Exam 
 # =========================
 @admin_required_json
 def save_selected_files(request):
@@ -2057,15 +2058,17 @@ def save_selected_files(request):
         student_files = StudentDataFile.objects.filter(id__in=file_ids)
         students = Student.objects.filter(student_file__in=student_files)
 
-        # Delete previous allocations
+        # Delete previous allocations for this exam
         ExamStudent.objects.filter(exam=exam).delete()
 
-        # Bulk create ExamStudent
+        # Create ExamStudent safely
         exam_student_records = [
             ExamStudent(exam=exam, student_file=student.student_file, student=student)
-            for student in students
+            for student in students if student.student_file is not None
         ]
-        ExamStudent.objects.bulk_create(exam_student_records)
+        
+        # Ignore duplicates to avoid 500 errors
+        ExamStudent.objects.bulk_create(exam_student_records, ignore_conflicts=True)
 
         # Prepare response
         files_data = []
@@ -2075,23 +2078,23 @@ def save_selected_files(request):
                 'file_id': file_obj.id,
                 'year': getattr(file_obj, 'year', None),
                 'semester': getattr(file_obj, 'semester', None),
-                'branch': getattr(file_obj, 'branch', ''),  # renamed key
+                'branch': getattr(file_obj, 'branch', ''),  
                 'file_name': file_obj.file_name,
                 'student_count': file_students.count()
             })
 
         return JsonResponse({
             "status": "success",
-            "message": f"Files and {students.count()} students merged and saved successfully",
+            "message": f"Files and {len(exam_student_records)} students merged and saved successfully",
             "files": files_data,
-            "total_students": students.count()
+            "total_students": len(exam_student_records)
         })
 
     except Exam.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Exam not found"}, status=400)
     except Exception as e:
+        # Show full error in response for debugging
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
-
 # =========================
 # Generate Seating Algorithm
 # =========================
