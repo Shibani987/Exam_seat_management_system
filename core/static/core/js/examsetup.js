@@ -1151,7 +1151,7 @@ function displayFiles(files) {
 function onFileCheckboxChange() {
     const checkbox = this;
     const fileId = checkbox.dataset.fileId;
-    const dept = checkbox.dataset.dept || null;
+    const dept = checkbox.dataset.dept;
 
     if (checkbox.checked) {
         // Just store file ID, backend will fetch students on Proceed
@@ -1569,17 +1569,17 @@ function populateSummary(data) {
     }
     
     // QR Code details
-    const examNameQRElem = document.getElementById('examNameQR');
-    const examDateQRElem = document.getElementById('examDateQR');
-    const examSessionQRElem = document.getElementById('examSessionQR');
-    const totalRoomsQRElem = document.getElementById('totalRoomsQR');
+    const examNameQR = document.getElementById('examNameQR');
+    const examDateQR = document.getElementById('examDateQR');
+    const examSessionQR = document.getElementById('examSessionQR');
+    const totalRoomsQR = document.getElementById('totalRoomsQR');
     
-    if (examNameQRElem) examNameQRElem.textContent = data.exam.name || '-';
-    if (examDateQRElem) examDateQRElem.textContent = data.exam.start_date && data.exam.end_date 
+    if (examNameQR) examNameQR.textContent = data.exam.name || '-';
+    if (examDateQR) examDateQR.textContent = data.exam.start_date && data.exam.end_date 
         ? `${data.exam.start_date} to ${data.exam.end_date}` 
         : '-';
-    if (examSessionQRElem) examSessionQRElem.textContent = 'First Half';
-    if (totalRoomsQRElem) totalRoomsQRElem.textContent = (data.rooms || []).length;
+    if (examSessionQR) examSessionQR.textContent = 'First Half';
+    if (totalRoomsQR) totalRoomsQR.textContent = (data.rooms || []).length;
     
     // ✅ Generate UNIVERSAL QR code (same for all exams - no exam_id needed)
     console.log('[STEP 6] Generating UNIVERSAL QR code (no exam_id)');
@@ -1712,16 +1712,11 @@ function renderSeatGrid(rooms) {
                     seatDiv.className = 'seat';
 
                     // Find seat matching this row and column
-                    const seat = room.seats?.find(s => 
-                        (s.row === row && Number(s.column) === Number(col)) ||
-                        (s.seat_code === `${row}${col}`) ||
-                        (s.seat === `${row}${col}`)
-                    );
+                    const seat = room.seats?.find(s => s.row === row && s.column === col);
                     
                     if (seat) {
                         seatDiv.classList.add('allocated');
-                        const reg = seat.registration_number || seat.registration || 'N/A';
-                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${reg}</div><div class="seat-dept">${seat.department || 'N/A'}</div>`;
+                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${seat.registration || 'N/A'}</div><div class="seat-dept">${seat.department || 'N/A'}</div>`;
                     } else {
                         seatDiv.classList.add('empty');
                         seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">Empty</div>`;
