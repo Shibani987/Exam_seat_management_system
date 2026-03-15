@@ -2004,10 +2004,12 @@ def get_uploaded_files(request):
             
             files_data = []
             for file_obj in uploaded_files:
+                # StudentDataFile model does not have department; infer from first student's department if available
+                dept = Student.objects.filter(student_file=file_obj).values_list('department', flat=True).first() or ''
                 files_data.append({
                     'id': file_obj.id,
                     'file_name': file_obj.file_name,
-                    'department': file_obj.department,
+                    'department': dept,
                     # include timestamp string for UI if needed
                     'uploaded_at': file_obj.uploaded_at.strftime('%Y-%m-%d %H:%M') if file_obj.uploaded_at else None,
                     # number of student records attached to this file
