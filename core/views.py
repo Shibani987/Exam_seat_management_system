@@ -2131,8 +2131,19 @@ def generate_seating(request):
         return JsonResponse({"status": "error", "message": "POST required"}, status=400)
     
     try:
-        data = json.loads(request.body)
+        try:
+            data = json.loads(request.body or "{}")
+        except json.JSONDecodeError:
+            return JsonResponse({"status": "error", "message": "Invalid JSON"}, status=400)
+
         exam_id = data.get('exam_id')
+        if not exam_id:
+            return JsonResponse({"status": "error", "message": "exam_id is required"}, status=400)
+
+        exam = Exam.objects.filter(id=exam_id).first()
+        if not exam:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
+
         # optional global column_map from frontend: list/dict mapping column index (1-5) -> department or null
         column_map = data.get('column_map')
         column_map_provided = bool(column_map)
@@ -2207,14 +2218,17 @@ def generate_seating(request):
                 "message": f"NO DEPARTMENTS CONFIGURED! Please go back to Step 2 and add departments & exams.\nYour students are in: {', '.join(student_depts)}"
             }, status=400)
         
-        # Build dept_exam_map
+        # Build dept_exam_map with normalized department names
         dept_exam_map = {}
         for de in dept_exams:
-            if de.department not in dept_exam_map:
-                dept_exam_map[de.department] = []
-            dept_exam_map[de.department].append({
-                'date': de.exam_date, 
-                'session': de.session, 
+            dept_key = (de.department or '').strip().upper()
+            if not dept_key:
+                continue
+            if dept_key not in dept_exam_map:
+                dept_exam_map[dept_key] = []
+            dept_exam_map[dept_key].append({
+                'date': de.exam_date,
+                'session': de.session,
                 'name': de.exam_name,
                 'start_time': str(de.start_time) if de.start_time else None,
                 'end_time': str(de.end_time) if de.end_time else None
@@ -2229,23 +2243,26 @@ def generate_seating(request):
         
         for exam_student in exam_students:
             student = exam_student.student
-            year, semester, dept = student.year, student.semester, student.department
-            
-            if dept not in dept_exam_map:
-                skipped_students.append((student.registration_number, dept))
-                print(f"[DEBUG] SKIPPED student {student.registration_number} with dept='{dept}' (not in dept_exam_map)")
+            year = getattr(student, 'year', '') or ''
+            semester = getattr(student, 'semester', '') or ''
+            dept_raw = getattr(student, 'department', '') or ''
+            dept = dept_raw.strip().upper()
+
+            if not dept or dept not in dept_exam_map:
+                skipped_students.append((student.registration_number, dept_raw))
+                print(f"[DEBUG] SKIPPED student {student.registration_number} with dept='{dept_raw}' (not in dept_exam_map)")
                 continue
-            
+
             # Add student to ALL matching exam groups
             for dept_exam_info in dept_exam_map[dept]:
-                exam_date, session = dept_exam_info['date'], dept_exam_info['session']
+                exam_date = dept_exam_info['date']
+                session = dept_exam_info['session']
                 exam_name = dept_exam_info['name']
                 start_time = dept_exam_info.get('start_time')
                 end_time = dept_exam_info.get('end_time')
                 group_key = (year, semester, exam_date, session)
-                
-                # Create a wrapper to avoid attribute conflicts
-                student_wrapper = type('StudentWrapper', (), {
+
+                student_wrapper = {
                     'id': exam_student.id,
                     'registration_number': student.registration_number,
                     'department': dept,
@@ -2255,10 +2272,9 @@ def generate_seating(request):
                     'start_time': start_time,
                     'end_time': end_time,
                     'student': student
-                })()
-                
-                # Check if this student is already in this group (avoid duplicates)
-                if not any(sw.id == exam_student.id for sw in room_groups[group_key]):
+                }
+
+                if not any(sw['id'] == exam_student.id for sw in room_groups[group_key]):
                     room_groups[group_key].append(student_wrapper)
         
         # Assign rooms
@@ -2268,7 +2284,7 @@ def generate_seating(request):
             temp_dept_groups = defaultdict(list)
             
             for exam_student in students_in_group:
-                temp_dept_groups[exam_student.department].append(exam_student)
+                temp_dept_groups[exam_student['department']].append(exam_student)
             
             total_cols = sum(math.ceil(len(s) / 8) for s in temp_dept_groups.values())
             # If the group has only one department, each room will only use odd columns (1,3,5) — 3 usable cols per room
@@ -2303,7 +2319,7 @@ def generate_seating(request):
         for group_key, students_in_group in room_groups.items():
             dept_groups = defaultdict(list)
             for exam_student in students_in_group:
-                dept_groups[exam_student.student.department].append(exam_student)
+                dept_groups[exam_student['department']].append(exam_student)
             
             sorted_depts = sorted(dept_groups.keys())
             # Randomize department order to avoid seating adjacency issues
@@ -2425,7 +2441,10 @@ def generate_seating(request):
 
             # Allocate students to assigned (room, col) pairs
             for dept in sorted_depts:
-                dept_students = sorted(dept_groups[dept], key=lambda es: int(es.registration_number[-3:]) if es.registration_number and len(es.registration_number) >= 3 and es.registration_number[-3:].isdigit() else 999)
+                dept_students = sorted(
+                    dept_groups[dept],
+                    key=lambda es: int(es['registration_number'][-3:]) if es.get('registration_number') and len(es['registration_number']) >= 3 and es['registration_number'][-3:].isdigit() else 999
+                )
                 
                 for room_idx, col in dept_col_assignment[dept]:
                     room = assigned_rooms[room_idx]
@@ -2438,16 +2457,16 @@ def generate_seating(request):
                         # Use dynamically generated letters (A, B, C, ...). Fall back to A.. if needed.
                         row_letter = rows_letters[row_idx] if row_idx < len(rows_letters) else chr(ord('A') + row_idx)
                         seating_results[room.id].append({
-                            'registration': es.registration_number,
+                            'registration': es.get('registration_number', ''),
                             'department': dept,
                             'seat': f"{row_letter}{col}",
                             'row': row_letter,
                             'column': col,
-                            'exam_date': str(es.exam_date),
-                            'session': es.session,
-                            'exam_name': es.exam_name,
-                            'start_time': es.start_time,
-                            'end_time': es.end_time
+                            'exam_date': str(es.get('exam_date', '')),
+                            'session': es.get('session', ''),
+                            'exam_name': es.get('exam_name', ''),
+                            'start_time': es.get('start_time', ''),
+                            'end_time': es.get('end_time', '')
                         })
 
                 # Fallback: if there are remaining students in this department, fill any free seats across assigned rooms
@@ -2475,16 +2494,16 @@ def generate_seating(request):
                                     break
                                 es = dept_students.pop(0)
                                 seating_results[room2.id].append({
-                                    'registration': es.registration_number,
+                                    'registration': es.get('registration_number', ''),
                                     'department': dept,
                                     'seat': f"{row_letter2}{col2}",
                                     'row': row_letter2,
                                     'column': col2,
-                                    'exam_date': str(es.exam_date),
-                                    'session': es.session,
-                                    'exam_name': es.exam_name,
-                                    'start_time': es.start_time,
-                                    'end_time': es.end_time
+                                    'exam_date': str(es.get('exam_date', '')),
+                                    'session': es.get('session', ''),
+                                    'exam_name': es.get('exam_name', ''),
+                                    'start_time': es.get('start_time', ''),
+                                    'end_time': es.get('end_time', '')
                                 })
                             if not dept_students:
                                 break
