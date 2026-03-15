@@ -1207,22 +1207,34 @@ if (proceedStep4Btn) {
     proceedStep4Btn.onclick = e => {
         e.preventDefault();
         console.log('[STEP 4] Saving files and generating seating...');
-        
-        // Ensure selectedFiles is an array
-        if (!Array.isArray(selectedFiles)) {
-            selectedFiles = [];
+
+        if (!examId) {
+            alert('Error: exam_id is missing. Please refresh and try again.');
+            return;
         }
-        
-        // Ensure selectedFiles is an array
-        if (!Array.isArray(selectedFiles)) {
-            selectedFiles = [];
+
+        if (!Array.isArray(selectedFiles) || selectedFiles.length === 0) {
+            alert('Please select at least one uploaded file before proceeding.');
+            return;
         }
-        
-        // Step 1: Save selected files
+
+        const selectedFileIds = selectedFiles
+            .map(f => {
+                if (typeof f === 'number' || typeof f === 'string') return Number(f);
+                if (f && (typeof f === 'object') && (f.id || f.file_id)) return Number(f.id || f.file_id);
+                return null;
+            })
+            .filter(id => Number.isInteger(id) && id > 0);
+
+        if (selectedFileIds.length === 0) {
+            alert('No valid selected file IDs found. Please re-select files.');
+            return;
+        }
+
         fetch('/save_selected_files/', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrftoken },
-            body: JSON.stringify({ exam_id: examId, selected_files: selectedFiles || [] })
+            body: JSON.stringify({ exam_id: examId, selected_files: selectedFileIds })
         })
         .then(r => {
             if (!r.ok) throw new Error(`HTTP ${r.status}`);
