@@ -2116,7 +2116,7 @@ def save_selected_files(request):
         # Full traceback for debugging in console/logs
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": f"Unexpected error: {str(e)}"}, status=500)
-        
+    
 # =========================
 # Generate Seating Algorithm
 # =========================
