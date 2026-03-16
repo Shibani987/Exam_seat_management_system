@@ -2039,7 +2039,6 @@ def save_selected_files(request):
         return JsonResponse({"status": "error", "message": "POST required"}, status=405)
 
     try:
-        # Safe JSON parse
         try:
             data = json.loads(request.body or "{}")
         except json.JSONDecodeError:
@@ -2054,45 +2053,42 @@ def save_selected_files(request):
         if not selected_files:
             return JsonResponse({"status": "error", "message": "No files selected"}, status=400)
 
-        # safer exam fetch
+        # Fetch exam safely
         exam = Exam.objects.filter(id=exam_id).first()
         if not exam:
             return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
 
         # Normalize file IDs
-        file_ids = []
-        for f in selected_files:
-            if isinstance(f, dict):
-                fid = f.get("id")
-            else:
-                fid = f
-
-            if fid:
-                file_ids.append(fid)
+        file_ids = [int(fid) for fid in selected_files if str(fid).isdigit()]
 
         student_files = StudentDataFile.objects.filter(id__in=file_ids)
 
         if not student_files.exists():
             return JsonResponse({"status": "error", "message": "No valid student files found"}, status=400)
 
-        students = Student.objects.filter(student_file__in=student_files)
+        # ✅ FIX 1 — safer student fetch
+        students = Student.objects.filter(
+            student_file__in=student_files
+        ).select_related("student_file")
+
+        if not students.exists():
+            return JsonResponse({"status": "error", "message": "No students found in selected files"}, status=400)
 
         # Remove old allocations
         ExamStudent.objects.filter(exam=exam).delete()
 
-        records = []
-        for student in students:
-            if student.student_file:
-                records.append(
-                    ExamStudent(
-                        exam=exam,
-                        student_file=student.student_file,
-                        student=student
-                    )
-                )
+        records = [
+            ExamStudent(
+                exam=exam,
+                student=student,
+                student_file=student.student_file
+            )
+            for student in students
+        ]
 
-        # Bulk insert safely
-        ExamStudent.objects.bulk_create(records, ignore_conflicts=True)
+        # ✅ FIX 2 — safe bulk insert
+        if records:
+            ExamStudent.objects.bulk_create(records, ignore_conflicts=True)
 
         # Prepare response
         files_data = []
@@ -2113,6 +2109,9 @@ def save_selected_files(request):
         })
 
     except Exception as e:
+        import traceback
+        traceback.print_exc()   # ✅ shows exact error in server log
+
         return JsonResponse({
             "status": "error",
             "message": f"SERVER ERROR: {str(e)}"
