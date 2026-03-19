@@ -2276,40 +2276,39 @@ def generate_seating(request):
                 if not any(sw['id'] == exam_student.id for sw in room_groups[group_key]):
                     room_groups[group_key].append(student_wrapper)
         
-        # Assign rooms (session-aware reuse by date/session)
-        room_assignment = {}
-        room_usage = set()  # track (room_id, exam_date, session)
+        # Assign rooms
+        room_assignment, rooms_idx = {}, 0
         for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], k[1], str(k[2]), k[3])):
             students_in_group = room_groups[group_key]
             temp_dept_groups = defaultdict(list)
-
+            
             for exam_student in students_in_group:
                 temp_dept_groups[exam_student['department']].append(exam_student)
-
+            
             total_cols = sum(math.ceil(len(s) / 8) for s in temp_dept_groups.values())
             # If the group has only one department, each room will only use odd columns (1,3,5) — 3 usable cols per room
             if len(temp_dept_groups) == 1:
                 rooms_needed = math.ceil(total_cols / 3) if total_cols > 3 else 1
             else:
                 rooms_needed = math.ceil(total_cols / 5) if total_cols > 5 else 1
-
-            exam_date = group_key[2]
-            session = group_key[3]
-            # Only choose a room if it is not already used for this exact date+session
-            available_rooms = [room for room in rooms if (room.id, exam_date, session) not in room_usage]
-            if len(available_rooms) < rooms_needed:
-                total_students_in_group = len(students_in_group)
-                total_rooms_needed = rooms_needed
-                additional_rooms = rooms_needed - len(available_rooms)
-                return JsonResponse({
-                    "status": "error",
-                    "message": f"NOT ENOUGH ROOMS! You have {len(rooms)} rooms but need {total_rooms_needed} rooms for {exam_date} session {session} to accommodate {total_students_in_group} students. Please add {additional_rooms} more room(s) in Step 3 and try again."
-                }, status=400)
-
-            assigned_rooms = available_rooms[:rooms_needed]
-            for r in assigned_rooms:
-                room_usage.add((r.id, exam_date, session))
-
+            
+            assigned_rooms = []
+            for _ in range(rooms_needed):
+                if rooms_idx >= len(rooms):
+                    # Calculate how many more rooms are needed
+                    total_rooms_needed = rooms_idx + (rooms_needed - len(assigned_rooms))
+                    additional_rooms = total_rooms_needed - len(rooms)
+                    
+                    # Get total student count for this group
+                    total_students_in_group = len(students_in_group)
+                    
+                    return JsonResponse({
+                        "status": "error", 
+                        "message": f"NOT ENOUGH ROOMS! You have {len(rooms)} rooms but need {total_rooms_needed} rooms to accommodate {total_students_in_group} students. Please add {additional_rooms} more room(s) in Step 3 and try again."
+                    }, status=400)
+                assigned_rooms.append(rooms[rooms_idx])
+                rooms_idx += 1
+            
             room_assignment[group_key] = assigned_rooms
         
         # Allocate seats
