@@ -2375,12 +2375,16 @@ def generate_seating(request):
                         # Single department: prefer odd columns within rooms (1,3,5) separated by empty columns
                         odd_cols = [1, 3, 5]
                         room_iter = 0
+                        needed_rooms_for_dept = math.ceil(cols_needed / len(odd_cols)) if odd_cols else len(assigned_rooms)
                         while len(dept_cols) < cols_needed:
                             for oc in odd_cols:
                                 if len(dept_cols) >= cols_needed:
                                     break
                                 if room_iter >= len(assigned_rooms):
-                                    return JsonResponse({"status": "error", "message": "Not enough rooms for odd-column layout. Please add more rooms."}, status=400)
+                                    return JsonResponse({
+                                        "status": "error",
+                                        "message": f"Not enough rooms for odd-column layout: need {needed_rooms_for_dept} rooms for dept '{dept}', but only {len(assigned_rooms)} assigned. Add more rooms."
+                                    }, status=400)
                                 pair = (room_iter, oc)
                                 if pair in dept_cols:
                                     continue
@@ -2388,6 +2392,7 @@ def generate_seating(request):
                             room_iter += 1
                     else:
                         # Standard distribution across rooms/cols
+                        needed_rooms_for_dept = math.ceil(cols_needed / 5)
                         for col_count in range(cols_needed):
                             # Column number: dept_idx + 1 + (col_count * num_depts)
                             col_num = dept_idx + 1 + (col_count * num_depts)
@@ -2397,7 +2402,10 @@ def generate_seating(request):
                             col_in_room = ((col_num - 1) % 5) + 1
                             
                             if room_idx >= len(assigned_rooms):
-                                return JsonResponse({"status": "error", "message": "Not enough rooms!"}, status=400)
+                                return JsonResponse({
+                                    "status": "error",
+                                    "message": f"Not enough rooms for dept '{dept}' at {group_key[2]} {group_key[3]}: need {needed_rooms_for_dept} rooms for {cols_needed} columns, but only {len(assigned_rooms)} assigned. Add more rooms."
+                                }, status=400)
                             pair = (room_idx, col_in_room)
                             if pair in dept_cols:
                                 continue
@@ -2439,7 +2447,10 @@ def generate_seating(request):
                             overflow -= take
                             next_room += 1
                         if overflow > 0:
-                            return JsonResponse({"status":"error","message":"Not enough rooms to redistribute columns for single-department room. Please add more rooms."}, status=400)
+                            return JsonResponse({
+                                "status":"error",
+                                "message": f"Not enough rooms to redistribute columns for single-department room '{dept}'. Need at least {math.ceil((n + overflow) / 3)} rooms (3 odd columns per room) and got {len(assigned_rooms)}. Please add more rooms."
+                            }, status=400)
 
             # Allocate students to assigned (room, col) pairs
             for dept in sorted_depts:
@@ -2514,7 +2525,12 @@ def generate_seating(request):
 
                     if dept_students:
                         # Not enough seats within assigned rooms — return a useful error
-                        return JsonResponse({"status": "error", "message": f"Not enough seats to allocate all students in department {dept}. {len(dept_students)} students remain. Please add more rooms or adjust capacities."}, status=400)
+                        remaining = len(dept_students)
+                        total_capacity = sum(int(r.capacity) for r in assigned_rooms)
+                        return JsonResponse({
+                            "status": "error",
+                            "message": f"Not enough seats for department {dept}: {remaining} students remain. Assigned rooms capacity={total_capacity}, students={len(dept_groups[dept])}. Add more rooms or increase capacities."
+                        }, status=400)
         
         response_rooms = []
         print(f"[DEBUG] Building response_rooms from {len(rooms)} rooms")
