@@ -2259,7 +2259,7 @@ def generate_seating(request):
                 exam_name = dept_exam_info['name']
                 start_time = dept_exam_info.get('start_time')
                 end_time = dept_exam_info.get('end_time')
-                group_key = (year, semester, exam_date, session)
+                group_key = (year, semester, exam_date, session, exam_name)
 
                 student_wrapper = {
                     'id': exam_student.id,
@@ -2273,23 +2273,42 @@ def generate_seating(request):
                     'student': student
                 }
 
-                if not any(sw['id'] == exam_student.id for sw in room_groups[group_key]):
-                    room_groups[group_key].append(student_wrapper)
+                # Prevent duplicates for the same exam slot
+                registration_set = set(sw['registration_number'] for sw in room_groups[group_key])
+                if student.registration_number in registration_set:
+                    print(f"[DEBUG] SKIPPING duplicate registration {student.registration_number} for exam_date={exam_date}, session={session}, exam_name={exam_name}")
+                    continue
+
+                room_groups[group_key].append(student_wrapper)
         
         # Assign rooms (session-aware reuse: room can be reused for different session/date)
         room_assignment = {}
         used_room_sessions = set()  # (room_id, exam_date, session)
-        for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], k[1], str(k[2]), k[3])):
+        for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], k[1], str(k[2]), k[3], k[4])):
             students_in_group = list(room_groups[group_key])
+
+            # Deduplicate by registration_number in the group to avoid double assignment
+            deduped = []
+            seen_regs = set()
+            for sw in students_in_group:
+                reg = sw.get('registration_number')
+                if reg in seen_regs:
+                    print(f"[DEBUG] Removing duplicate registration in group {group_key}: {reg}")
+                    continue
+                seen_regs.add(reg)
+                deduped.append(sw)
+            students_in_group = deduped
+
             random.shuffle(students_in_group)
             exam_date = group_key[2]
             session = group_key[3]
+            exam_name = group_key[4]
 
             available_rooms = [r for r in rooms if (r.id, exam_date, session) not in used_room_sessions]
             if not available_rooms:
                 return JsonResponse({
                     "status": "error",
-                    "message": f"Not enough rooms available for {exam_date} {session}. Students: {len(students_in_group)}. Add more rooms in Step 3."}, status=400)
+                    "message": f"Not enough rooms available for {exam_date} {session} ({exam_name}). Students: {len(students_in_group)}. Add more rooms in Step 3."}, status=400)
 
             available_rooms = sorted(available_rooms, key=lambda r: int(r.capacity), reverse=True)
             assigned_rooms = []
@@ -2303,7 +2322,7 @@ def generate_seating(request):
             if capacity_sum < len(students_in_group):
                 return JsonResponse({
                     "status": "error",
-                    "message": f"Not enough rooms. Need capacity for {len(students_in_group)} students at {exam_date} {session}, but only {capacity_sum} available. Add more rooms or increase capacities."}, status=400)
+                    "message": f"Not enough rooms. Need capacity for {len(students_in_group)} students at {exam_date} {session} ({exam_name}), but only {capacity_sum} available. Add more rooms or increase capacities."}, status=400)
 
             room_assignment[group_key] = {
                 'students': students_in_group,
@@ -2445,8 +2464,8 @@ def generate_seating(request):
                 )
                 seat_allocations.append(sa)
         
-        SeatAllocation.objects.bulk_create(seat_allocations)
-        print(f"[DEBUG] Saved {len(seat_allocations)} seat allocations to database")
+        SeatAllocation.objects.bulk_create(seat_allocations, ignore_conflicts=True)
+        print(f"[DEBUG] Saved {len(seat_allocations)} seat allocations to database (ignore_conflicts=True)")
         
         return JsonResponse({
             "status": "success", 
