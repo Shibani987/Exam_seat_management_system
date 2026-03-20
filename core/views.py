@@ -2183,21 +2183,21 @@ def generate_seating(request):
         # Note: column-pattern generation removed — ignore any provided patterns unless column_map provided
         exam = Exam.objects.get(id=exam_id)
         
-        # Only include students who are eligible for seating
+        # Include all students; eligibility is shown in seat metadata
         exam_students_all = ExamStudent.objects.filter(exam=exam).select_related('student')
-        exam_students = exam_students_all.filter(student__academic_status__iexact='eligible')
-        ineligible_count = exam_students_all.count() - exam_students.count()
+        exam_students = exam_students_all
+        ineligible_count = exam_students_all.filter(student__academic_status__iexact='eligible').count()
 
         dept_exams = DepartmentExam.objects.filter(exam=exam)
         rooms = list(Room.objects.filter(exam=exam).order_by('id'))
         
         print(f"\n[DEBUG generate_seating] Exam: {exam_id}")
         total_students_all = exam_students_all.count()
-        total_students_eligible = exam_students.count()
+        total_students_eligible = ineligible_count
         print(f"[DEBUG] Total exam students (all): {total_students_all}")
         print(f"[DEBUG] Total exam students (eligible): {total_students_eligible}")
-        print(f"[DEBUG] Ineligible students skipped: {ineligible_count}")
-        print(f"[DEBUG] Student branches (eligible): {list(set(s.student.branch for s in exam_students))}")
+        print(f"[DEBUG] Ineligible students (count): {total_students_all - total_students_eligible}")
+        print(f"[DEBUG] Student branches: {list(set(s.student.branch for s in exam_students))}")
         print(f"[DEBUG] Total rooms: {len(rooms)}")
         print(f"[DEBUG] DepartmentExam records: {dept_exams.count()}")
         
@@ -2235,14 +2235,13 @@ def generate_seating(request):
         
         print(f"[DEBUG] DepartmentExam map departments: {list(dept_exam_map.keys())}")
         
-        # Group students by (year, semester, exam_date, session)
-        # Students can take MULTIPLE exams (different dates)
+        # Group students by (semester, exam_date, session)
         room_groups = defaultdict(list)
         skipped_students = []
-        
+        seen_by_slot = defaultdict(set)
+
         for exam_student in exam_students:
             student = exam_student.student
-            year = getattr(student, 'year', '') or ''
             semester = getattr(student, 'semester', '') or ''
             dept_raw = getattr(student, 'branch', '') or ''
             dept = dept_raw.strip().upper()
@@ -2252,14 +2251,20 @@ def generate_seating(request):
                 print(f"[DEBUG] SKIPPED student {student.registration_number} with dept='{dept_raw}' (not in dept_exam_map)")
                 continue
 
-            # Add student to ALL matching exam groups
             for dept_exam_info in dept_exam_map[dept]:
                 exam_date = dept_exam_info['date']
                 session = dept_exam_info['session']
                 exam_name = dept_exam_info['name']
                 start_time = dept_exam_info.get('start_time')
                 end_time = dept_exam_info.get('end_time')
-                group_key = (year, semester, exam_date, session, exam_name)
+
+                group_key = (semester, exam_date, session)
+                slot_key = (student.registration_number, exam_date, session)
+
+                if slot_key in seen_by_slot[group_key]:
+                    # already assigned once for this date/session
+                    continue
+                seen_by_slot[group_key].add(slot_key)
 
                 student_wrapper = {
                     'id': exam_student.id,
@@ -2270,144 +2275,148 @@ def generate_seating(request):
                     'session': session,
                     'start_time': start_time,
                     'end_time': end_time,
+                    'is_eligible': str(getattr(student, 'academic_status', '')).strip().lower() == 'eligible',
                     'student': student
                 }
-
-                # Prevent duplicates for the same exam slot
-                registration_set = set(sw['registration_number'] for sw in room_groups[group_key])
-                if student.registration_number in registration_set:
-                    print(f"[DEBUG] SKIPPING duplicate registration {student.registration_number} for exam_date={exam_date}, session={session}, exam_name={exam_name}")
-                    continue
-
                 room_groups[group_key].append(student_wrapper)
-        
-        # Assign rooms (session-aware reuse: room can be reused for different session/date)
-        room_assignment = {}
-        used_room_sessions = set()  # (room_id, exam_date, session)
-        for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], k[1], str(k[2]), k[3], k[4])):
-            students_in_group = list(room_groups[group_key])
 
-            # Deduplicate by registration_number in the group to avoid double assignment
+        seating_results = defaultdict(list)
+        used_room_sessions = set()  # (room_id, exam_date, session)
+
+        def _build_column_assignments(departments):
+            if not departments:
+                return [None] * 5
+            if len(departments) == 1:
+                return [departments[0], None, departments[0], None, departments[0]]
+
+            assignments = []
+            idx = 0
+            for _ in range(5):
+                placed = False
+                for attempt in range(len(departments)):
+                    candidate = departments[(idx + attempt) % len(departments)]
+                    if not assignments or candidate != assignments[-1]:
+                        assignments.append(candidate)
+                        idx = (idx + attempt + 1) % len(departments)
+                        placed = True
+                        break
+                if not placed:
+                    assignments.append(departments[0])
+            return assignments
+
+        from collections import deque
+
+        for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], str(k[1]), k[2])):
+            students_in_group = list(room_groups[group_key])
+            semester, exam_date, session = group_key
+
+            # Dedup by reg+date+session
             deduped = []
-            seen_regs = set()
+            seen_reg_slot = set()
             for sw in students_in_group:
                 reg = sw.get('registration_number')
-                if reg in seen_regs:
-                    print(f"[DEBUG] Removing duplicate registration in group {group_key}: {reg}")
+                if not reg:
                     continue
-                seen_regs.add(reg)
+                slot_key = (reg, sw.get('exam_date'), sw.get('session'))
+                if slot_key in seen_reg_slot:
+                    continue
+                seen_reg_slot.add(slot_key)
                 deduped.append(sw)
             students_in_group = deduped
 
-            exam_date = group_key[2]
-            session = group_key[3]
-            exam_name = group_key[4]
-
-            # Column-based dept assignment: group students by dept
-            dept_students = {}
+            dept_queues = {}
             for sw in students_in_group:
                 dept = sw.get('department') or 'UNKNOWN'
-                dept_students.setdefault(dept, []).append(sw)
+                dept_queues.setdefault(dept, deque()).append(sw)
 
-            # determine columns needed per department (max 8 per column)
-            columns = []  # list of dict {department, students_chunk}
-            for dept in sorted(dept_students.keys()):
-                dept_list = dept_students[dept]
-                if not dept_list:
-                    continue
-                # Keep stable order while ensuring department block
-                for i in range(0, len(dept_list), 8):
-                    chunk = dept_list[i:i+8]
-                    columns.append({'department': dept, 'students': chunk})
-
-            total_columns = len(columns)
-            if total_columns == 0:
-                room_assignment[group_key] = {'columns': [], 'rooms': []}
+            if not dept_queues:
                 continue
 
-            # Room assignment in columns: each room max 5 columns and each room capacity must support at least num_columns*8
             available_rooms = [r for r in rooms if (r.id, exam_date, session) not in used_room_sessions]
             if not available_rooms:
                 return JsonResponse({
                     "status": "error",
-                    "message": f"Not enough rooms available for {exam_date} {session} ({exam_name}). Students: {len(students_in_group)}. Add more rooms in Step 3."}, status=400)
+                    "message": f"Not enough rooms available for {exam_date} {session}. Add more rooms or adjust capacities."}, status=400)
 
             available_rooms = sorted(available_rooms, key=lambda r: int(r.capacity), reverse=True)
-            assigned_rooms = []
-            assigned_columns = 0
-            for room in available_rooms:
-                room_columns = min(5, max(0, int(room.capacity) // 8))
-                if room_columns <= 0:
+            total_remaining = sum(len(q) for q in dept_queues.values())
+
+            room_idx = 0
+            while total_remaining > 0:
+                if room_idx >= len(available_rooms):
+                    return JsonResponse({
+                        "status": "error",
+                        "message": f"Not enough room capacity for {exam_date} {session}. {total_remaining} students remain unassigned."}, status=400)
+                room = available_rooms[room_idx]
+                room_idx += 1
+
+                rows = int(room.capacity) // 5
+                if rows <= 0:
                     continue
-                assigned_rooms.append((room, room_columns))
-                assigned_columns += room_columns
-                if assigned_columns >= total_columns:
-                    break
 
-            if assigned_columns < total_columns:
-                return JsonResponse({
-                    "status": "error",
-                    "message": f"Not enough room columns. Need {total_columns} columns for {len(students_in_group)} students at {exam_date} {session} ({exam_name}), but available rooms provide only {assigned_columns} columns. Add more rooms."}, status=400)
+                current_depts = sorted(dept_queues.keys(), key=lambda d: -len(dept_queues[d]))[:5]
+                if len(current_depts) == 1:
+                    columns_depts = [current_depts[0], None, current_depts[0], None, current_depts[0]]
+                else:
+                    columns_depts = []
+                    idx = 0
+                    for _ in range(5):
+                        placed = False
+                        for attempt in range(len(current_depts)):
+                            candidate = current_depts[(idx + attempt) % len(current_depts)]
+                            if not columns_depts or candidate != columns_depts[-1]:
+                                columns_depts.append(candidate)
+                                idx = (idx + attempt + 1) % len(current_depts)
+                                placed = True
+                                break
+                        if not placed:
+                            columns_depts.append(current_depts[0])
 
-            room_assignment[group_key] = {
-                'columns': columns,
-                'rooms': assigned_rooms,
-                'exam_date': exam_date,
-                'session': session,
-                'exam_name': exam_name
-            }
-            for room, _ in assigned_rooms:
+                for col_index, col_dept in enumerate(columns_depts, start=1):
+                    queue = dept_queues.get(col_dept) if col_dept else None
+                    for row_idx in range(rows):
+                        if queue and len(queue) > 0:
+                            sw = queue.popleft()
+                            eligible = bool(sw.get('is_eligible'))
+                            seating_results[room.id].append({
+                                'registration': sw.get('registration_number') if eligible else 'BLOCKED',
+                                'department': col_dept or '',
+                                'seat': f"{chr(ord('A') + row_idx)}{col_index}",
+                                'row': chr(ord('A') + row_idx),
+                                'column': col_index,
+                                'exam_date': str(exam_date),
+                                'session': session,
+                                'exam_name': sw.get('exam_name', ''),
+                                'is_eligible': eligible,
+                                'start_time': sw.get('start_time', ''),
+                                'end_time': sw.get('end_time', '')
+                            })
+                            total_remaining -= 1
+                        else:
+                            seating_results[room.id].append({
+                                'registration': 'Empty',
+                                'department': '',
+                                'seat': f"{chr(ord('A') + row_idx)}{col_index}",
+                                'row': chr(ord('A') + row_idx),
+                                'column': col_index,
+                                'exam_date': str(exam_date),
+                                'session': session,
+                                'exam_name': '',
+                                'is_eligible': False,
+                                'start_time': '',
+                                'end_time': ''
+                            })
+
                 used_room_sessions.add((room.id, exam_date, session))
+                dept_queues = {d: q for d, q in dept_queues.items() if q}
 
-        # Allocate seats column-wise per room
-        seating_results = defaultdict(list)
-
-        for group_key, group_data in room_assignment.items():
-            columns = group_data.get('columns', [])
-            assigned_rooms = group_data.get('rooms', [])
-            exam_date = group_data.get('exam_date', group_key[2])
-            session = group_data.get('session', group_key[3])
-            exam_name = group_data.get('exam_name', group_key[4])
-
-            if not columns:
-                continue
-
-            col_pointer = 0
-            for room, room_columns in assigned_rooms:
-                for room_col_no in range(1, room_columns + 1):
-                    if col_pointer >= len(columns):
-                        break
-                    col_data = columns[col_pointer]
-                    dept = col_data['department']
-                    students_chunk = col_data['students']
-
-                    # Each column has up to 8 rows (A-H)
-                    for row_idx, es in enumerate(students_chunk):
-                        if row_idx >= 8:
-                            break
-                        row = chr(ord('A') + row_idx)
-                        seat_code = f"{row}{room_col_no}"
-                        seating_results[room.id].append({
-                            'registration': es.get('registration_number', ''),
-                            'department': dept,
-                            'seat': seat_code,
-                            'row': row,
-                            'column': room_col_no,
-                            'exam_date': str(exam_date),
-                            'session': session,
-                            'exam_name': exam_name,
-                            'start_time': es.get('start_time', ''),
-                            'end_time': es.get('end_time', '')
-                        })
-                    col_pointer += 1
-                if col_pointer >= len(columns):
+                if total_remaining <= 0:
                     break
 
-            if col_pointer < len(columns):
-                remaining_columns = len(columns) - col_pointer
+            if any(len(q) > 0 for q in dept_queues.values()):
                 return JsonResponse({
                     "status": "error",
-                    "message": f"Not enough room columns allocated for {group_key[2]} {group_key[3]} ({group_key[4]}). Remaining columns: {remaining_columns}. Add more rooms or adjust capacities."}, status=400)
+                    "message": "Some students are not allocated. Not enough rooms for this date/session."}, status=400)
 
         response_rooms = []
         print(f"[DEBUG] Building response_rooms from {len(rooms)} rooms")
