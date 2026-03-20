@@ -1728,10 +1728,19 @@ function renderSeatGrid(rooms) {
                     const seat = room.seats?.find(s => s.row === row && s.column === col);
                     
                     if (seat) {
-                        seatDiv.classList.add('allocated');
-                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${seat.registration || 'N/A'}</div><div class="seat-dept">${seat.department || 'N/A'}</div>`;
+                        if (seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true') {
+                            seatDiv.classList.add('eligible');
+                            seatDiv.classList.remove('blocked', 'empty');
+                        } else {
+                            seatDiv.classList.add('blocked');
+                            seatDiv.classList.remove('eligible', 'empty');
+                        }
+                        const reg = seat.registration || seat.registration_number || 'N/A';
+                        const dept = seat.department || 'N/A';
+                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${reg}</div><div class="seat-dept">${dept}</div>`;
                     } else {
                         seatDiv.classList.add('empty');
+                        seatDiv.classList.remove('eligible', 'blocked');
                         seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">Empty</div>`;
                     }
                     rowDiv.appendChild(seatDiv);

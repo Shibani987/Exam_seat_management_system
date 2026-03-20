@@ -2239,6 +2239,7 @@ def generate_seating(request):
         room_groups = defaultdict(list)
         skipped_students = []
         seen_by_slot = defaultdict(set)
+        total_group_students = 0
 
         for exam_student in exam_students:
             student = exam_student.student
@@ -2279,6 +2280,7 @@ def generate_seating(request):
                     'student': student
                 }
                 room_groups[group_key].append(student_wrapper)
+                total_group_students += 1
 
         seating_results = defaultdict(list)
         used_room_sessions = set()  # (room_id, exam_date, session)
@@ -2378,8 +2380,9 @@ def generate_seating(request):
                         if queue and len(queue) > 0:
                             sw = queue.popleft()
                             eligible = bool(sw.get('is_eligible'))
+                            registration_value = sw.get('registration_number', '')
                             seating_results[room.id].append({
-                                'registration': sw.get('registration_number') if eligible else 'BLOCKED',
+                                'registration': registration_value,
                                 'department': col_dept or '',
                                 'seat': f"{chr(ord('A') + row_idx)}{col_index}",
                                 'row': chr(ord('A') + row_idx),
@@ -2417,6 +2420,19 @@ def generate_seating(request):
                 return JsonResponse({
                     "status": "error",
                     "message": "Some students are not allocated. Not enough rooms for this date/session."}, status=400)
+
+        # Final allocation validation
+        allocated_students = sum(
+            1
+            for room_id in seating_results
+            for s in seating_results[room_id]
+            if s.get('registration') not in ['Empty']
+        )
+        if allocated_students != total_group_students:
+            return JsonResponse({
+                "status": "error",
+                "message": "Some students are not allocated or allocation mismatch."
+            }, status=400)
 
         response_rooms = []
         print(f"[DEBUG] Building response_rooms from {len(rooms)} rooms")
