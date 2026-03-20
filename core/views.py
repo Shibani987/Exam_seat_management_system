@@ -2280,258 +2280,80 @@ def generate_seating(request):
         room_assignment = {}
         used_room_sessions = set()  # (room_id, exam_date, session)
         for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], k[1], str(k[2]), k[3])):
-            students_in_group = room_groups[group_key]
-            temp_dept_groups = defaultdict(list)
-            
-            for exam_student in students_in_group:
-                temp_dept_groups[exam_student['department']].append(exam_student)
-            
-            total_cols = sum(math.ceil(len(s) / 8) for s in temp_dept_groups.values())
-            # If the group has only one department, each room will only use odd columns (1,3,5) — 3 usable cols per room
-            if len(temp_dept_groups) == 1:
-                rooms_needed = math.ceil(total_cols / 3) if total_cols > 3 else 1
-            else:
-                rooms_needed = math.ceil(total_cols / 5) if total_cols > 5 else 1
-            
-            assigned_rooms = []
+            students_in_group = list(room_groups[group_key])
+            random.shuffle(students_in_group)
             exam_date = group_key[2]
             session = group_key[3]
-            for _ in range(rooms_needed):
-                available_room = None
-                for room in rooms:
-                    room_key = (room.id, exam_date, session)
-                    if room_key not in used_room_sessions and room not in assigned_rooms:
-                        available_room = room
-                        break
-                if available_room is None:
-                    total_students_in_group = len(students_in_group)
-                    return JsonResponse({
-                        "status": "error",
-                        "message": f"NOT ENOUGH ROOMS! You have {len(rooms)} rooms but need {rooms_needed} rooms to accommodate {total_students_in_group} students for {exam_date} {session}. Please add more rooms in Step 3 and try again."
-                    }, status=400)
-                assigned_rooms.append(available_room)
-                used_room_sessions.add((available_room.id, exam_date, session))
-            
-            room_assignment[group_key] = assigned_rooms
-        
-        # Allocate seats
-        rows = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H']
+
+            available_rooms = [r for r in rooms if (r.id, exam_date, session) not in used_room_sessions]
+            if not available_rooms:
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Not enough rooms available for {exam_date} {session}. Students: {len(students_in_group)}. Add more rooms in Step 3."}, status=400)
+
+            available_rooms = sorted(available_rooms, key=lambda r: int(r.capacity), reverse=True)
+            assigned_rooms = []
+            capacity_sum = 0
+            for room in available_rooms:
+                assigned_rooms.append(room)
+                capacity_sum += int(room.capacity)
+                if capacity_sum >= len(students_in_group):
+                    break
+
+            if capacity_sum < len(students_in_group):
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Not enough rooms. Need capacity for {len(students_in_group)} students at {exam_date} {session}, but only {capacity_sum} available. Add more rooms or increase capacities."}, status=400)
+
+            room_assignment[group_key] = {
+                'students': students_in_group,
+                'rooms': assigned_rooms
+            }
+            for room in assigned_rooms:
+                used_room_sessions.add((room.id, exam_date, session))
+
+        # Allocate seats sequentially from the global student pool per group
         seating_results = defaultdict(list)
-        
-        for group_key, students_in_group in room_groups.items():
-            dept_groups = defaultdict(list)
-            for exam_student in students_in_group:
-                dept_groups[exam_student['department']].append(exam_student)
-            
-            sorted_depts = sorted(dept_groups.keys())
-            # Randomize department order to avoid seating adjacency issues
-            random.shuffle(sorted_depts)
-            
-            # Round-robin column assignment (prevents adjacent departments)
-            # Dept0 -> Col1, Col4, Col8...
-            # Dept1 -> Col2, Col5, Col9...
-            # Dept2 -> Col3, Col6, Col10...
-            assigned_rooms = room_assignment[group_key]
-            num_depts = len(sorted_depts)
-            
-            # Compute rows per room from capacity: rows_per_room = ceil(capacity / 5)
-            rows_per_room_list = [max(1, math.ceil(int(r.capacity) / 5)) for r in assigned_rooms]
-            min_rows_per_room = min(rows_per_room_list) if rows_per_room_list else 8
-            max_rows_per_room = max(rows_per_room_list) if rows_per_room_list else 8
-            # Generate row letters dynamically based on the maximum rows needed for any room in this group
-            rows_letters = [chr(ord('A') + i) for i in range(max_rows_per_room)]
-            
-            dept_col_assignment = {}  # {dept: [(room_idx, col), ...]}
-            
-            for dept_idx, dept in enumerate(sorted_depts):
-                # Estimate columns needed using the smallest row count available to be safe
-                cols_needed = math.ceil(len(dept_groups[dept]) / min_rows_per_room) if min_rows_per_room > 0 else math.ceil(len(dept_groups[dept]) / 8)
-                dept_cols = []
 
-                # Honor room-specific mapping first (if provided), then global mapping
-                if room_col_map_norm:
-                    for room_idx, room in enumerate(assigned_rooms):
-                        mapping = room_col_map_norm.get(room.id) or {}
-                        for col_idx in range(1, 6):
-                            mapped_dept = mapping.get(col_idx)
-                            if mapped_dept and mapped_dept == dept:
-                                dept_cols.append((room_idx, col_idx))
+        for group_key, group_data in room_assignment.items():
+            students_in_group = group_data['students']
+            assigned_rooms = group_data['rooms']
 
-                if not dept_cols and col_map_norm:
-                    for room_idx, room in enumerate(assigned_rooms):
-                        for col_idx in range(1, 6):
-                            mapped_dept = col_map_norm.get(col_idx)
-                            if mapped_dept and mapped_dept == dept:
-                                dept_cols.append((room_idx, col_idx))
+            student_index = 0
+            total_students = len(students_in_group)
 
-                # If not enough pattern columns, fall back to algorithmic assignment
-                # (but NOT for single-dept rooms where user explicitly configured columns)
-                user_configured_for_dept = any(
-                    room.id in room_col_map_norm and dept in room_col_map_norm[room.id].values()
-                    for room in assigned_rooms
-                )
-                if len(dept_cols) < cols_needed and not (num_depts == 1 and user_configured_for_dept):
-                    if num_depts == 1:
-                        # Single department: prefer odd columns within rooms (1,3,5) separated by empty columns
-                        odd_cols = [1, 3, 5]
-                        room_iter = 0
-                        needed_rooms_for_dept = math.ceil(cols_needed / len(odd_cols)) if odd_cols else len(assigned_rooms)
-                        while len(dept_cols) < cols_needed:
-                            for oc in odd_cols:
-                                if len(dept_cols) >= cols_needed:
-                                    break
-                                if room_iter >= len(assigned_rooms):
-                                    return JsonResponse({
-                                        "status": "error",
-                                        "message": f"Not enough rooms for odd-column layout: need {needed_rooms_for_dept} rooms for dept '{dept}', but only {len(assigned_rooms)} assigned. Add more rooms."
-                                    }, status=400)
-                                pair = (room_iter, oc)
-                                if pair in dept_cols:
-                                    continue
-                                dept_cols.append(pair)
-                            room_iter += 1
-                    else:
-                        # Standard distribution across rooms/cols
-                        needed_rooms_for_dept = math.ceil(cols_needed / 5)
-                        for col_count in range(cols_needed):
-                            # Column number: dept_idx + 1 + (col_count * num_depts)
-                            col_num = dept_idx + 1 + (col_count * num_depts)
-                            
-                            # Determine which room this column belongs to
-                            room_idx = (col_num - 1) // 5
-                            col_in_room = ((col_num - 1) % 5) + 1
-                            
-                            if room_idx >= len(assigned_rooms):
-                                return JsonResponse({
-                                    "status": "error",
-                                    "message": f"Not enough rooms for dept '{dept}' at {group_key[2]} {group_key[3]}: need {needed_rooms_for_dept} rooms for {cols_needed} columns, but only {len(assigned_rooms)} assigned. Add more rooms."
-                                }, status=400)
-                            pair = (room_idx, col_in_room)
-                            if pair in dept_cols:
-                                continue
-                            dept_cols.append(pair)
+            for room in assigned_rooms:
+                capacity = max(1, int(room.capacity))
+                for seat_num in range(capacity):
+                    if student_index >= total_students:
+                        break
+                    row_idx = seat_num // 5
+                    col = (seat_num % 5) + 1
+                    row = chr(ord('A') + row_idx) if row_idx < 26 else f"R{row_idx+1}"
+                    es = students_in_group[student_index]
+                    student_index += 1
+                    seating_results[room.id].append({
+                        'registration': es.get('registration_number', ''),
+                        'department': es.get('department', ''),
+                        'seat': f"{row}{col}",
+                        'row': row,
+                        'column': col,
+                        'exam_date': str(es.get('exam_date', '')),
+                        'session': es.get('session', ''),
+                        'exam_name': es.get('exam_name', ''),
+                        'start_time': es.get('start_time', ''),
+                        'end_time': es.get('end_time', '')
+                    })
+                if student_index >= total_students:
+                    break
 
-                dept_col_assignment[dept] = dept_cols
-            
-            # If any room ends up with columns assigned from only a single department, remap those columns to odd positions (1,3,5)
-            from collections import defaultdict as _dd
-            room_dept_map = _dd(set)
-            for dept, pairs in dept_col_assignment.items():
-                for (room_idx, col) in pairs:
-                    room_dept_map[room_idx].add(dept)
+            if student_index < total_students:
+                remaining = total_students - student_index
+                total_capacity = sum(int(r.capacity) for r in assigned_rooms)
+                return JsonResponse({
+                    "status": "error",
+                    "message": f"Not enough seats: {remaining} students remain for {group_key[2]} {group_key[3]}. Assigned capacity {total_capacity}, students {total_students}. Add more rooms or increase capacity."}, status=400)
 
-            for room_idx, dept_set in room_dept_map.items():
-                room_configured = assigned_rooms[room_idx].id in room_col_map_norm
-                if len(dept_set) == 1 and not column_map_provided and not room_configured:
-                    dept = next(iter(dept_set))
-                    # Columns currently assigned to this dept in the room
-                    room_pairs = [p for p in dept_col_assignment[dept] if p[0] == room_idx]
-                    n = len(room_pairs)
-                    odd_cols = [1, 3, 5]
-                    if n <= len(odd_cols):
-                        # Remove existing room pairs and replace with odd columns in same count/order
-                        dept_col_assignment[dept] = [p for p in dept_col_assignment[dept] if p[0] != room_idx]
-                        for i in range(n):
-                            dept_col_assignment[dept].append((room_idx, odd_cols[i]))
-                    else:
-                        # If overflow, keep first 3 in this room and try to distribute the rest to following rooms' odd columns
-                        dept_col_assignment[dept] = [p for p in dept_col_assignment[dept] if p[0] != room_idx]
-                        for i in range(3):
-                            dept_col_assignment[dept].append((room_idx, odd_cols[i]))
-                        overflow = n - 3
-                        next_room = room_idx + 1
-                        while overflow > 0 and next_room < len(assigned_rooms):
-                            take = min(overflow, 3)
-                            for i in range(take):
-                                dept_col_assignment[dept].append((next_room, odd_cols[i]))
-                            overflow -= take
-                            next_room += 1
-                        if overflow > 0:
-                            return JsonResponse({
-                                "status":"error",
-                                "message": f"Not enough rooms to redistribute columns for single-department room '{dept}'. Need at least {math.ceil((n + overflow) / 3)} rooms (3 odd columns per room) and got {len(assigned_rooms)}. Please add more rooms."
-                            }, status=400)
-
-            # Allocate students to assigned (room, col) pairs
-            for dept in sorted_depts:
-                dept_students = sorted(
-                    dept_groups[dept],
-                    key=lambda es: int(es['registration_number'][-3:]) if es.get('registration_number') and len(es['registration_number']) >= 3 and es['registration_number'][-3:].isdigit() else 999
-                )
-                
-                for room_idx, col in dept_col_assignment[dept]:
-                    room = assigned_rooms[room_idx]
-                    # Rows for this room depend on its capacity (columns are fixed at 5)
-                    rows_for_room = max(1, math.ceil(int(room.capacity) / 5))
-                    for row_idx in range(min(rows_for_room, len(dept_students))):
-                        if not dept_students:
-                            break
-                        es = dept_students.pop(0)
-                        # Use dynamically generated letters (A, B, C, ...). Fall back to A.. if needed.
-                        row_letter = rows_letters[row_idx] if row_idx < len(rows_letters) else chr(ord('A') + row_idx)
-                        seating_results[room.id].append({
-                            'registration': es.get('registration_number', ''),
-                            'department': dept,
-                            'seat': f"{row_letter}{col}",
-                            'row': row_letter,
-                            'column': col,
-                            'exam_date': str(es.get('exam_date', '')),
-                            'session': es.get('session', ''),
-                            'exam_name': es.get('exam_name', ''),
-                            'start_time': es.get('start_time', ''),
-                            'end_time': es.get('end_time', '')
-                        })
-
-                # Fallback: if there are remaining students in this department, fill any free seats across assigned rooms
-                if dept_students:
-                    for room_idx2, room2 in enumerate(assigned_rooms):
-                        rows_for_room2 = max(1, math.ceil(int(room2.capacity) / 5))
-                        for row_idx2 in range(rows_for_room2):
-                            row_letter2 = rows_letters[row_idx2] if row_idx2 < len(rows_letters) else chr(ord('A') + row_idx2)
-                            # Determine columns to iterate for this row (respect last-row partial columns)
-                            cols_to_iter = range(1, 6)
-                            if row_idx2 == rows_for_room2 - 1:
-                                filled_before = (rows_for_room2 - 1) * 5
-                                last_row_cols = max(0, int(room2.capacity) - filled_before)
-                                if last_row_cols > 0:
-                                    cols_to_iter = range(1, last_row_cols + 1)
-                                else:
-                                    cols_to_iter = []
-
-                            for col2 in cols_to_iter:
-                                # Skip seats already assigned
-                                existing = any(s['row'] == row_letter2 and s['column'] == col2 for s in seating_results[room2.id])
-                                if existing:
-                                    continue
-                                if not dept_students:
-                                    break
-                                es = dept_students.pop(0)
-                                seating_results[room2.id].append({
-                                    'registration': es.get('registration_number', ''),
-                                    'department': dept,
-                                    'seat': f"{row_letter2}{col2}",
-                                    'row': row_letter2,
-                                    'column': col2,
-                                    'exam_date': str(es.get('exam_date', '')),
-                                    'session': es.get('session', ''),
-                                    'exam_name': es.get('exam_name', ''),
-                                    'start_time': es.get('start_time', ''),
-                                    'end_time': es.get('end_time', '')
-                                })
-                            if not dept_students:
-                                break
-                        if not dept_students:
-                            break
-
-                    if dept_students:
-                        # Not enough seats within assigned rooms — return a useful error
-                        remaining = len(dept_students)
-                        total_capacity = sum(int(r.capacity) for r in assigned_rooms)
-                        return JsonResponse({
-                            "status": "error",
-                            "message": f"Not enough seats for department {dept}: {remaining} students remain. Assigned rooms capacity={total_capacity}, students={len(dept_groups[dept])}. Add more rooms or increase capacities."
-                        }, status=400)
-        
         response_rooms = []
         print(f"[DEBUG] Building response_rooms from {len(rooms)} rooms")
         print(f"[DEBUG] seating_results keys (room IDs with seats): {list(seating_results.keys())}")
