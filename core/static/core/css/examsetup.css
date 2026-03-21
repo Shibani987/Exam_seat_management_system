@@ -662,9 +662,24 @@ button.enabled {
 }
 
 
-/* ========================
-   STEP 6 - QR CODE GENERATION
-======================== */
+/* Seat color classes */
+.seat.eligible {
+    background-color: #4CAF50; /* Green for eligible students */
+    color: white;
+    border-color: #2E7D32;
+}
+
+.seat.blocked {
+    background-color: #FFFFFF; /* White for ineligible students */
+    color: #333;
+    border-color: #CCC;
+}
+
+.seat.empty {
+    background-color: #9E9E9E; /* Gray for empty seats */
+    color: white;
+    border-color: #757575;
+}
 .qr-layout {
     display: flex;
     justify-content: space-between;
