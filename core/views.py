@@ -2304,6 +2304,7 @@ def generate_seating(request):
                     'id': exam_student.id,
                     'registration_number': student.registration_number,
                     'department': dept,
+                    'semester': semester,
                     'exam_date': exam_date,
                     'exam_name': exam_name,
                     'session': session,
@@ -2480,12 +2481,36 @@ def generate_seating(request):
             if room.id in seating_results:
                 seats = seating_results[room.id]
                 print(f"[DEBUG]   ✓ Found {len(seats)} seats for this room")
+
+                # Build clean dept list and exam details (skip blanks/empty seats)
+                dept_set = set()
+                dept_details = []
+                seen_details = set()
+                for s in seats:
+                    d = str(s.get('department') or '').strip()
+                    if not d or d.lower() == 'empty':
+                        continue
+                    dept_set.add(d)
+                    key = f"{d}||{s.get('exam_name','')}||{s.get('exam_date','')}||{s.get('session','')}||{s.get('start_time','')}||{s.get('end_time','')}||{s.get('semester','')}"
+                    if key not in seen_details:
+                        seen_details.add(key)
+                        dept_details.append({
+                            'department': d,
+                            'semester': s.get('semester',''),
+                            'exam_name': s.get('exam_name','N/A'),
+                            'exam_date': s.get('exam_date','N/A'),
+                            'session': s.get('session','N/A'),
+                            'start_time': s.get('start_time','N/A'),
+                            'end_time': s.get('end_time','N/A')
+                        })
+
                 response_rooms.append({
                     'id': room.id,
                     'building': room.building,
                     'room_number': room.room_number,
                     'capacity': room.capacity,
-                    'departments': list(set(s['department'] for s in seats)),
+                    'departments': sorted(list(dept_set)),
+                    'department_details': dept_details,
                     'seats': seats
                 })
             else:

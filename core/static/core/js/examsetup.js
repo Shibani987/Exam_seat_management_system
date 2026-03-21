@@ -1676,14 +1676,24 @@ function renderSeatGrid(rooms) {
         roomDiv.appendChild(header);
 
         // Department exams info
-        if (room.departments && room.departments.length > 0) {
-            const deptDiv = document.createElement('div');
-            deptDiv.className = 'dept-info';
-            
-            // Get unique exam info for each department
+        const deptDiv = document.createElement('div');
+        deptDiv.className = 'dept-info';
+
+        if (room.department_details && room.department_details.length > 0) {
+            let deptHtml = '<strong>Departments in this room:</strong><br>';
+            room.department_details.forEach(item => {
+                const semText = item.semester ? ` [Sem ${item.semester}]` : '';
+                deptHtml += `<strong>${item.department}</strong>${semText} - ${item.exam_name} (${item.exam_date}, ${item.session})<br>`;
+                deptHtml += `&nbsp;&nbsp;Timing: ${item.start_time} - ${item.end_time}<br>`;
+            });
+            deptDiv.innerHTML = deptHtml;
+            roomDiv.appendChild(deptDiv);
+        } else if (room.departments && room.departments.length > 0) {
+            // fallback: old behavior
             const deptExamMap = {};
             if (room.seats && room.seats.length > 0) {
                 room.seats.forEach(seat => {
+                    if (!seat.department || seat.department === 'Empty') return;
                     if (!deptExamMap[seat.department]) {
                         deptExamMap[seat.department] = {
                             exam_name: seat.exam_name || 'N/A',
@@ -1695,7 +1705,7 @@ function renderSeatGrid(rooms) {
                     }
                 });
             }
-            
+
             let deptHtml = '<strong>Departments in this room:</strong><br>';
             room.departments.forEach(dept => {
                 const examInfo = deptExamMap[dept] || {exam_name: 'N/A', exam_date: 'N/A', session: 'N/A', start_time: 'N/A', end_time: 'N/A'};
