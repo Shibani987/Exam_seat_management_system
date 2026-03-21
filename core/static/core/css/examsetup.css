@@ -652,6 +652,16 @@ button.enabled {
     color: #444;
 }
 
+
+
+.seating-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); /* each seat min 70px, stretch if room */
+    gap: 8px;
+    justify-content: center;       /* center the grid inside room-box */
+}
+
+
 /* Seat color classes */
 .seat.eligible {
     background-color: #4CAF50; /* Green for eligible students */
@@ -670,18 +680,6 @@ button.enabled {
     color: white;
     border-color: #757575;
 }
-
-.seating-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(70px, 1fr)); /* each seat min 70px, stretch if room */
-    gap: 8px;
-    justify-content: center;       /* center the grid inside room-box */
-}
-
-
-/* ========================
-   STEP 6 - QR CODE GENERATION
-======================== */
 .qr-layout {
     display: flex;
     justify-content: space-between;
