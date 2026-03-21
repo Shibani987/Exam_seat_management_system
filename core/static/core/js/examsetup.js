@@ -1688,13 +1688,25 @@ function renderSeatGrid(rooms) {
             if (room.seats && room.seats.length > 0) {
                 room.seats.forEach(seat => {
                     if (seat.registration && seat.registration !== 'Empty' && seat.department) {
-                        roomDepartments.add(seat.department);
+                        roomDepartments.add(seat.department.trim().toUpperCase());
                     }
                 });
             }
             
+            console.log(`[Room ${room.id}] Departments with students:`, Array.from(roomDepartments));
+            console.log(`[Room ${room.id}] All department_details:`, room.department_details.map(d => d.department));
+            
             // Filter to only exams for departments actually in this room
-            const filteredDetails = room.department_details.filter(item => roomDepartments.has(item.department));
+            const filteredDetails = room.department_details.filter(item => {
+                const itemDept = String(item.department || '').trim().toUpperCase();
+                const included = roomDepartments.has(itemDept);
+                if (!included) {
+                    console.log(`[Room ${room.id}] Filtering OUT ${itemDept} - not in room departments`);
+                }
+                return included;
+            });
+            
+            console.log(`[Room ${room.id}] Filtered department_details:`, filteredDetails.map(d => d.department));
             
             // Group department details by date/session
             const groupedBySlot = {};

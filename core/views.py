@@ -2485,14 +2485,28 @@ def generate_seating(request):
                 seats = seating_results[room.id]
                 print(f"[DEBUG]   ✓ Found {len(seats)} seats for this room")
 
-                # Build clean dept list and exam details (skip blanks/empty seats)
+                # First, get all departments that actually have students in this room
+                room_departments_with_students = set()
+                for s in seats:
+                    if s.get('registration') and s.get('registration') != 'Empty' and s.get('department'):
+                        room_departments_with_students.add(s.get('department').strip().upper())
+                
+                print(f"[DEBUG]   Departments with actual students in room: {room_departments_with_students}")
+
+                # Build clean dept list and exam details ONLY for departments with students
                 dept_set = set()
                 dept_details = []
                 seen_details = set()
                 for s in seats:
-                    d = str(s.get('department') or '').strip()
+                    d = str(s.get('department') or '').strip().upper()
                     if not d or d.lower() == 'empty':
                         continue
+                    
+                    # CRITICAL: Only include if this department has actual students in this room
+                    if d not in room_departments_with_students:
+                        print(f"[DEBUG]   ⚠ SKIPPING department '{d}' - no actual students in this room")
+                        continue
+                    
                     dept_set.add(d)
                     key = f"{d}||{s.get('exam_name','')}||{s.get('exam_date','')}||{s.get('session','')}||{s.get('start_time','')}||{s.get('end_time','')}||{s.get('semester','')}"
                     if key not in seen_details:
