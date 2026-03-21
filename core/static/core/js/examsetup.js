@@ -1683,8 +1683,18 @@ function renderSeatGrid(rooms) {
             // Get the semester of students in this room (assume all have same semester)
             const roomSemester = room.seats && room.seats.length > 0 ? room.seats.find(s => s.registration !== 'Empty')?.semester : null;
             
-            // Filter department details to only those matching the room's student semester
-            const filteredDetails = roomSemester ? room.department_details.filter(item => item.semester == roomSemester) : room.department_details;
+            // Get unique departments actually sitting in this room (from seats with non-Empty registrations)
+            const roomDepartments = new Set();
+            if (room.seats && room.seats.length > 0) {
+                room.seats.forEach(seat => {
+                    if (seat.registration && seat.registration !== 'Empty' && seat.department) {
+                        roomDepartments.add(seat.department);
+                    }
+                });
+            }
+            
+            // Filter to only exams for departments actually in this room
+            const filteredDetails = room.department_details.filter(item => roomDepartments.has(item.department));
             
             // Group department details by date/session
             const groupedBySlot = {};
