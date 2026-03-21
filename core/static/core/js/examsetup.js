@@ -1697,7 +1697,7 @@ function renderSeatGrid(rooms) {
             console.log(`[Room ${room.id}] All department_details:`, room.department_details.map(d => d.department));
             
             // Filter to only exams for departments actually in this room
-            const filteredDetails = room.department_details.filter(item => {
+            let filteredDetails = room.department_details.filter(item => {
                 const itemDept = String(item.department || '').trim().toUpperCase();
                 const included = roomDepartments.has(itemDept);
                 if (!included) {
@@ -1706,7 +1706,16 @@ function renderSeatGrid(rooms) {
                 return included;
             });
             
-            console.log(`[Room ${room.id}] Filtered department_details:`, filteredDetails.map(d => d.department));
+            // Further filter to only show exams for the date/session of the first student in the room
+            const firstSeat = room.seats && room.seats.length > 0 ? room.seats.find(s => s.registration !== 'Empty') : null;
+            if (firstSeat) {
+                const roomDate = firstSeat.exam_date;
+                const roomSession = firstSeat.session;
+                console.log(`[Room ${room.id}] Filtering to only show exams for ${roomDate} ${roomSession}`);
+                filteredDetails = filteredDetails.filter(item => item.exam_date == roomDate && item.session == roomSession);
+            }
+            
+            console.log(`[Room ${room.id}] Final filtered department_details:`, filteredDetails.map(d => `${d.department} ${d.exam_date} ${d.session}`));
             
             // Group department details by date/session
             const groupedBySlot = {};
