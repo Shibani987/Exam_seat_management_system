@@ -1731,8 +1731,8 @@ def get_room_details(request):
             a['start_time'] = a_start
             a['end_time'] = a_end
 
-        # All exam students for the room's exam
-        exam_students_qs = ExamStudent.objects.filter(exam=room.exam, room=room).select_related('student')
+        # All exam students for the room's exam - this endpoint returns all students for the exam.
+        exam_students_qs = ExamStudent.objects.filter(exam=room.exam).select_related('student')
         exam_students = []
         for es in exam_students_qs:
             exam_students.append({
@@ -2425,10 +2425,11 @@ def generate_seating(request):
                                 'exam_date': str(exam_date),
                                 'session': session,
                                 'exam_name': sw.get('exam_name', ''),
-                                'is_eligible': eligible,
-                                'start_time': sw.get('start_time', ''),
-                                'end_time': sw.get('end_time', '')
-                            })
+                            'is_eligible': eligible,
+                            'start_time': sw.get('start_time', ''),
+                            'end_time': sw.get('end_time', ''),
+                            'semester': sw.get('semester', '')
+                        })
                             total_remaining -= 1
                         else:
                             seating_results[room.id].append({
@@ -2440,10 +2441,11 @@ def generate_seating(request):
                                 'exam_date': str(exam_date),
                                 'session': session,
                                 'exam_name': '',
-                                'is_eligible': False,
-                                'start_time': '',
-                                'end_time': ''
-                            })
+                            'is_eligible': False,
+                            'start_time': '',
+                            'end_time': '',
+                            'semester': ''
+                        })
 
                 used_room_sessions.add((room.id, exam_date, session))
                 dept_queues = {d: q for d, q in dept_queues.items() if q}
