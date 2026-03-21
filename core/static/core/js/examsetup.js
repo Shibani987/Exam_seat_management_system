@@ -1680,9 +1680,15 @@ function renderSeatGrid(rooms) {
         deptDiv.className = 'dept-info';
 
         if (room.department_details && room.department_details.length > 0) {
+            // Get the semester of students in this room (assume all have same semester)
+            const roomSemester = room.seats && room.seats.length > 0 ? room.seats.find(s => s.registration !== 'Empty')?.semester : null;
+            
+            // Filter department details to only those matching the room's student semester
+            const filteredDetails = roomSemester ? room.department_details.filter(item => item.semester == roomSemester) : room.department_details;
+            
             // Group department details by date/session
             const groupedBySlot = {};
-            room.department_details.forEach(item => {
+            filteredDetails.forEach(item => {
                 const key = `${item.exam_date}||${item.session}`;
                 if (!groupedBySlot[key]) {
                     groupedBySlot[key] = {
@@ -1695,6 +1701,9 @@ function renderSeatGrid(rooms) {
             });
 
             let deptHtml = '<strong>Departments in this room:</strong><br>';
+            if (roomSemester) {
+                deptHtml += `Students in this room are from Semester ${roomSemester}<br><br>`;
+            }
             Object.values(groupedBySlot).forEach(slot => {
                 deptHtml += `<strong>${slot.date}, ${slot.session}:</strong><br>`;
                 slot.departments.forEach(item => {

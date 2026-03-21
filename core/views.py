@@ -1732,14 +1732,15 @@ def get_room_details(request):
             a['end_time'] = a_end
 
         # All exam students for the room's exam
-        exam_students_qs = ExamStudent.objects.filter(exam=room.exam).select_related('student')
+        exam_students_qs = ExamStudent.objects.filter(exam=room.exam, room=room).select_related('student')
         exam_students = []
         for es in exam_students_qs:
             exam_students.append({
                 'id': es.student.id,
                 'registration_number': es.student.registration_number,
                 'name': es.student.name,
-                'department': es.student.department
+                'department': es.student.department,
+                'semester': es.student.semester
             })
 
         return JsonResponse({
