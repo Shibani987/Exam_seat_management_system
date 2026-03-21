@@ -1680,11 +1680,29 @@ function renderSeatGrid(rooms) {
         deptDiv.className = 'dept-info';
 
         if (room.department_details && room.department_details.length > 0) {
-            let deptHtml = '<strong>Departments in this room:</strong><br>';
+            // Group department details by date/session
+            const groupedBySlot = {};
             room.department_details.forEach(item => {
-                const semText = item.semester ? ` [Sem ${item.semester}]` : '';
-                deptHtml += `<strong>${item.department}</strong>${semText} - ${item.exam_name} (${item.exam_date}, ${item.session})<br>`;
-                deptHtml += `&nbsp;&nbsp;Timing: ${item.start_time} - ${item.end_time}<br>`;
+                const key = `${item.exam_date}||${item.session}`;
+                if (!groupedBySlot[key]) {
+                    groupedBySlot[key] = {
+                        date: item.exam_date,
+                        session: item.session,
+                        departments: []
+                    };
+                }
+                groupedBySlot[key].departments.push(item);
+            });
+
+            let deptHtml = '<strong>Departments in this room:</strong><br>';
+            Object.values(groupedBySlot).forEach(slot => {
+                deptHtml += `<strong>${slot.date}, ${slot.session}:</strong><br>`;
+                slot.departments.forEach(item => {
+                    const semText = item.semester ? ` [Sem ${item.semester}]` : '';
+                    deptHtml += `&nbsp;&nbsp;${item.department}${semText} - ${item.exam_name}<br>`;
+                    deptHtml += `&nbsp;&nbsp;&nbsp;&nbsp;Timing: ${item.start_time} - ${item.end_time}<br>`;
+                });
+                deptHtml += '<br>';
             });
             deptDiv.innerHTML = deptHtml;
             roomDiv.appendChild(deptDiv);
