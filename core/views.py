@@ -2752,14 +2752,14 @@ def get_exam_summary(request):
         
         # 4. Student Files used
         student_files = StudentDataFile.objects.filter(
-            students__exam_allocations__exam=exam
+            students__examstudent__exam=exam
         ).distinct().values('id', 'file_name', 'year', 'semester', 'department')
         
         student_files_data = []
         for file in student_files:
             student_count = Student.objects.filter(
                 student_file_id=file['id'],
-                exam_allocations__exam=exam
+                examstudent__exam=exam
             ).distinct().count()
             file_dict = dict(file)
             file_dict['student_count'] = student_count
