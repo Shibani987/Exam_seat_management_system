@@ -70,6 +70,7 @@ class DepartmentExam(models.Model):
     session = models.CharField(max_length=20)
     start_time = models.TimeField(null=True, blank=True)  # Exam start time
     end_time = models.TimeField(null=True, blank=True)    # Exam end time
+    semester = models.CharField(max_length=10, null=True, blank=True)  # Semester for this exam
 
     def __str__(self):
         return f"{self.department} - {self.exam_name}"

@@ -61,7 +61,7 @@
         <h3 style="margin:0 0 8px 0; font-size:1.1rem;">Bulk Upload Exam Schedule (CSV / XLSX)</h3>
         <input type="file" id="examScheduleFileInput" accept=".csv,.xlsx" style="margin-bottom: 8px;" />
         <button id="uploadExamScheduleBtn" style="margin-bottom: 8px;">Upload Schedule File</button>
-        <p style="font-size:0.85rem; color:#555; margin:0;">File columns: <strong>Dept Name</strong>, <strong>Exam Name</strong>, <strong>Paper Code</strong>, <strong>Date</strong> (YYYY-MM-DD), <strong>Session</strong> (Morning/Afternoon), <strong>Start Time</strong> (e.g., 10:00 or 10:00 AM), <strong>End Time</strong> (e.g., 13:00 or 01:00 PM).</p>
+        <p style="font-size:0.85rem; color:#555; margin:0;">File columns: <strong>Dept Name</strong>, <strong>Exam Name</strong>, <strong>Paper Code</strong>, <strong>Date</strong> (YYYY-MM-DD), <strong>Session</strong> (Morning/Afternoon), <strong>Start Time</strong> (e.g., 10:00 or 10:00 AM), <strong>End Time</strong> (e.g., 13:00 or 01:00 PM), <strong>Semester</strong> (optional, e.g., 1, 2, 3, etc.).</p>
         <div id="uploadScheduleStatus" style="font-size:0.9rem; color:#555; margin-top: 8px;"></div>
     </div>
     <p id="departmentInstructions">Upload a valid exam schedule CSV or XLSX (columns: Dept Name, Exam Name, Paper Code, Date, Session, Start Time, End Time). Once the file is successfully parsed, the "Proceed to Room Setup" button will be enabled.</p>
@@ -185,12 +185,13 @@
                     <th>Paper Code</th>
                     <th>Exam Date</th>
                     <th>Session</th>
+                    <th>Semester</th>
                     <th>Start Time</th>
                     <th>End Time</th>
                 </tr>
             </thead>
             <tbody id="summaryDepartmentsBody">
-                <tr><td colspan="7" style="text-align:center;">Loading...</td></tr>
+                <tr><td colspan="8" style="text-align:center;">Loading...</td></tr>
             </tbody>
         </table>
     </div>

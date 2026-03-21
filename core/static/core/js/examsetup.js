@@ -416,7 +416,8 @@ deptDivs.forEach(dept => {
                 name: '', code: '', date: '', session: '',
                 start_time: '', end_time: '',
                 start_hour: '12', start_minute: '00', start_ampm: 'AM',
-                end_hour: '12', end_minute: '00', end_ampm: 'AM'
+                end_hour: '12', end_minute: '00', end_ampm: 'AM',
+                semester: ''
             }];
         }
 
@@ -517,6 +518,7 @@ function loadExamScheduleFromCsv(rows) {
     const sessionIdx = findHeaderIndex(['session']);
     const startTimeIdx = findHeaderIndex(['start time', 'starttime', 'start']);
     const endTimeIdx = findHeaderIndex(['end time', 'endtime', 'end']);
+    const semesterIdx = findHeaderIndex(['semester', 'sem']);
 
     const missing = [];
     if (deptIdx === -1) missing.push('Dept Name');
@@ -620,6 +622,7 @@ function loadExamScheduleFromCsv(rows) {
         const session = normalizeSession(row[sessionIdx] || '');
         const startTimeRaw = normalizeTimeValue(row[startTimeIdx]);
         const endTimeRaw = normalizeTimeValue(row[endTimeIdx]);
+        const semester = (row[semesterIdx] || '').trim();
 
         const startParts = parse12HourTime(startTimeRaw);
         const endParts = parse12HourTime(endTimeRaw);
@@ -645,7 +648,8 @@ function loadExamScheduleFromCsv(rows) {
             start_ampm: startParts.ampm,
             end_hour: endParts.hour,
             end_minute: endParts.minute,
-            end_ampm: endParts.ampm
+            end_ampm: endParts.ampm,
+            semester: semester
         });
     });
 
@@ -746,7 +750,8 @@ function renderExamInputs() {
                 name: '', code: '', date: '', session: '',
                 start_time: '', end_time: '',
                 start_hour: '12', start_minute: '00', start_ampm: 'AM',
-                end_hour: '12', end_minute: '00', end_ampm: 'AM'
+                end_hour: '12', end_minute: '00', end_ampm: 'AM',
+                semester: ''
             });
             renderDeptExams(dept);
         });
@@ -834,6 +839,7 @@ function renderDeptExams(dept) {
                     <option value="1st Half" ${exam.session==='1st Half'?'selected':''}>1st Half</option>
                     <option value="2nd Half" ${exam.session==='2nd Half'?'selected':''}>2nd Half</option>
                 </select>
+                <input type="text" class="exam-semester" data-dept="${dept}" data-idx="${idx}" placeholder="Semester" value="${exam.semester || ''}">
             </div>
             <div class="exam-row">
                 <div class="time-input-group">
@@ -867,7 +873,7 @@ function renderDeptExams(dept) {
     });
 
     // Event listeners safely
-    examsList.querySelectorAll('.exam-name, .exam-code, .exam-date, .exam-session, .exam-start_hour, .exam-start_minute, .exam-start_ampm, .exam-end_hour, .exam-end_minute, .exam-end_ampm').forEach(input => {
+    examsList.querySelectorAll('.exam-name, .exam-code, .exam-date, .exam-session, .exam-semester, .exam-start_hour, .exam-start_minute, .exam-start_ampm, .exam-end_hour, .exam-end_minute, .exam-end_ampm').forEach(input => {
         input.addEventListener('change', e => {
             const dept = e.target.dataset.dept;
             const idx = e.target.dataset.idx;
@@ -1480,12 +1486,13 @@ function populateSummary(data) {
                 <td>${d.paper_code}</td>
                 <td>${d.exam_date}</td>
                 <td>${d.session}</td>
+                <td>${d.semester || '-'}</td>
                 <td>${d.start_time || '-'}</td>
                 <td>${d.end_time || '-'}</td>
             </tr>
         `).join('');
     } else {
-        deptBody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#999;">No departments added</td></tr>';
+        deptBody.innerHTML = '<tr><td colspan="8" style="text-align:center;color:#999;">No departments added</td></tr>';
     }
     
     // Student files

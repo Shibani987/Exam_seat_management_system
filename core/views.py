@@ -1458,9 +1458,10 @@ def add_departments(request):
                             exam_date=ex.get("date"),
                             session=ex.get("session"),
                             start_time=ex.get("start_time") or None,
-                            end_time=ex.get("end_time") or None
+                            end_time=ex.get("end_time") or None,
+                            semester=ex.get("semester") or None
                         )
-                        print(f"[DEBUG]   ✓ Exam {idx+1}: dept='{de.department}', date={de.exam_date}, session={de.session}, time={de.start_time}-{de.end_time}")
+                        print(f"[DEBUG]   ✓ Exam {idx+1}: dept='{de.department}', date={de.exam_date}, session={de.session}, time={de.start_time}-{de.end_time}, semester={de.semester}")
                         total_exams_created += 1
                     except Exception as exam_err:
                         print(f"[DEBUG]   ✗ ERROR creating exam {idx+1}: {str(exam_err)}")
@@ -2073,6 +2074,38 @@ def save_selected_files(request):
 
         if not students.exists():
             return JsonResponse({"status": "error", "message": "No students found in selected files"}, status=400)
+
+        # ✅ FIX 1.5 — Filter students by semester and department/branch from exam
+        from django.db.models import Q
+        
+        # Get all department exams for this exam
+        department_exams = DepartmentExam.objects.filter(exam=exam)
+        
+        if department_exams.exists():
+            # Build filter: student's (semester, branch) must match at least one (semester, department) from exam
+            q_filters = Q()
+            for dept_exam in department_exams:
+                exam_semester = dept_exam.semester
+                exam_department = dept_exam.department
+                
+                if exam_semester:
+                    # Match both semester and department/branch
+                    q_filters |= Q(semester=exam_semester, branch__icontains=exam_department)
+                else:
+                    # If semester is not specified, just match by department/branch
+                    q_filters |= Q(branch__icontains=exam_department)
+            
+            # Apply filter only if we have matching criteria
+            if q_filters:
+                students = students.filter(q_filters)
+                print(f"[DEBUG save_selected_files] Filtered {students.count()} students by semester/department from {len(list(department_exams))} department exams")
+            else:
+                print(f"[DEBUG save_selected_files] No semester/department filters applied")
+        else:
+            print(f"[DEBUG save_selected_files] No department exams found for exam {exam_id}")
+
+        if not students.exists():
+            return JsonResponse({"status": "error", "message": "No students found matching the exam's semester and department criteria. Please check your student data and exam configuration."}, status=400)
 
         # Remove old allocations
         ExamStudent.objects.filter(exam=exam).delete()
