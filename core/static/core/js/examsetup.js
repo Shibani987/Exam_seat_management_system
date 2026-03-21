@@ -1814,13 +1814,15 @@ function renderSeatGrid(rooms) {
                         if (seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true') {
                             seatDiv.classList.add('eligible');
                             seatDiv.classList.remove('blocked', 'empty');
+                            const reg = seat.registration || seat.registration_number || 'N/A';
+                            const dept = seat.department || 'N/A';
+                            seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${reg}</div><div class="seat-dept">${dept}</div>`;
                         } else {
                             seatDiv.classList.add('blocked');
                             seatDiv.classList.remove('eligible', 'empty');
+                            // For ineligible students, show only seat number, no registration/dept
+                            seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div>`;
                         }
-                        const reg = seat.registration || seat.registration_number || 'N/A';
-                        const dept = seat.department || 'N/A';
-                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${reg}</div><div class="seat-dept">${dept}</div>`;
                     } else {
                         seatDiv.classList.add('empty');
                         seatDiv.classList.remove('eligible', 'blocked');
