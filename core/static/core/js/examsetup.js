@@ -575,6 +575,14 @@ function loadExamScheduleFromCsv(rows) {
         return `${year}-${month}-${day}`;
     }
 
+    function normalizeTextValue(value) {
+        if (value == null || value === '') return '';
+        if (value instanceof Date) {
+            return formatDateYYYYMMDD(value);
+        }
+        return String(value).trim();
+    }
+
     function normalizeDateValue(value) {
         if (value == null || value === '') return '';
         if (value instanceof Date) {
@@ -584,7 +592,7 @@ function loadExamScheduleFromCsv(rows) {
             const d = excelSerialToDate(value);
             return formatDateYYYYMMDD(d);
         }
-        const s = String(value).trim();
+        const s = normalizeTextValue(value);
         // Accept dd-mm-yyyy or dd/mm/yyyy
         const m = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/);
         if (m) {
@@ -622,7 +630,7 @@ function loadExamScheduleFromCsv(rows) {
         const session = normalizeSession(row[sessionIdx] || '');
         const startTimeRaw = normalizeTimeValue(row[startTimeIdx]);
         const endTimeRaw = normalizeTimeValue(row[endTimeIdx]);
-        const semester = (row[semesterIdx] || '').trim();
+        const semester = normalizeTextValue(row[semesterIdx]);
 
         const startParts = parse12HourTime(startTimeRaw);
         const endParts = parse12HourTime(endTimeRaw);
