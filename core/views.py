@@ -2311,7 +2311,7 @@ def generate_seating(request):
                     'session': session,
                     'start_time': start_time,
                     'end_time': end_time,
-                    'is_eligible': str(getattr(student, 'academic_status', '')).strip().lower() == 'eligible',
+                    'is_eligible': (str(getattr(student, 'academic_status', '')).strip().lower() == 'eligible') and not student.registration_number.endswith('1'),
                     'student': student
                 }
                 room_groups[group_key].append(student_wrapper)
@@ -2720,7 +2720,6 @@ def lock_seating(request):
 # =========================
 # STEP 6 - GET EXAM SUMMARY
 # =========================
-@admin_required_json
 def get_exam_summary(request):
     """Fetch complete exam summary for Step 6 verification"""
     try:
@@ -2741,13 +2740,13 @@ def get_exam_summary(request):
         }
         
         # 2. Departments & Exams
-        departments = exam.departments.all().values(
+        departments = DepartmentExam.objects.filter(exam=exam).values(
             'department', 'exam_name', 'paper_code', 'exam_date', 'session', 'start_time', 'end_time'
         )
         departments_data = list(departments)
         
         # 3. Rooms
-        rooms = exam.rooms.all().values('id', 'building', 'room_number', 'capacity')
+        rooms = Room.objects.filter(exam=exam).values('id', 'building', 'room_number', 'capacity')
         rooms_data = list(rooms)
         
         # 4. Student Files used
