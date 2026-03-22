@@ -2740,25 +2740,25 @@ def get_exam_summary(request):
         }
         
         # 2. Departments & Exams
-        departments = DepartmentExam.objects.filter(exam=exam).values(
+        departments = exam.departments.all().values(
             'department', 'exam_name', 'paper_code', 'exam_date', 'session', 'start_time', 'end_time'
         )
         departments_data = list(departments)
         
         # 3. Rooms
-        rooms = Room.objects.filter(exam=exam).values('id', 'building', 'room_number', 'capacity')
+        rooms = exam.rooms.all().values('id', 'building', 'room_number', 'capacity')
         rooms_data = list(rooms)
         
         # 4. Student Files used
         student_files = StudentDataFile.objects.filter(
-            students__examstudent__exam=exam
+            students__exam_allocations__exam=exam
         ).distinct().values('id', 'file_name', 'year', 'semester', 'department')
         
         student_files_data = []
         for file in student_files:
             student_count = Student.objects.filter(
                 student_file_id=file['id'],
-                examstudent__exam=exam
+                exam_allocations__exam=exam
             ).distinct().count()
             file_dict = dict(file)
             file_dict['student_count'] = student_count

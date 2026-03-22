@@ -1811,22 +1811,53 @@ function renderSeatGrid(rooms) {
                     const seat = room.seats?.find(s => s.row === row && s.column === col);
                     
                     if (seat) {
-                        if (seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true') {
-                            seatDiv.classList.add('eligible');
-                            seatDiv.classList.remove('blocked', 'empty');
-                            const reg = seat.registration || seat.registration_number || 'N/A';
-                            const dept = seat.department || 'N/A';
-                            seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">${reg}</div><div class="seat-dept">${dept}</div>`;
+                        const isEligible = seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true';
+
+                        if (seat.registration && seat.registration !== 'Empty') {
+
+                            if (isEligible) {
+                                // ✅ GREEN - Eligible student
+                                seatDiv.classList.add('eligible');
+                                seatDiv.classList.remove('blocked', 'empty');
+
+                                const reg = seat.registration || seat.registration_number || '';
+                                const dept = seat.department || '';
+
+                                seatDiv.innerHTML = `
+                                    <div class="seat-num">${row}${col}</div>
+                                    <div class="seat-info">${dept} ${reg}</div>
+                                `;
+
+                            } else {
+                                // ⚪ WHITE - Not eligible (ONLY seat number)
+                                seatDiv.classList.remove('eligible', 'empty');
+                                seatDiv.classList.add('blocked');
+
+                                seatDiv.innerHTML = `
+                                    <div class="seat-num">${row}${col}</div>
+                                `;
+                            }
+
                         } else {
-                            seatDiv.classList.add('blocked');
-                            seatDiv.classList.remove('eligible', 'empty');
-                            // For ineligible students, show only seat number, no registration/dept
-                            seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div>`;
+                            // 🟡 EMPTY SEAT (backend sends "Empty")
+                            seatDiv.classList.remove('eligible', 'blocked');
+                            seatDiv.classList.add('empty');
+
+                            seatDiv.innerHTML = `
+                                <div class="seat-num">${row}${col}</div>
+                                <div class="seat-info">EMPTY</div>
+                            `;
                         }
+
                     } else {
-                        seatDiv.classList.add('empty');
+                        // 🟡 EMPTY (no seat object)
                         seatDiv.classList.remove('eligible', 'blocked');
-                        seatDiv.innerHTML = `<div class="seat-num">${row}${col}</div><div class="seat-info">Empty</div>`;
+                        seatDiv.classList.add('empty');
+
+                        seatDiv.innerHTML = `
+                            <div class="seat-num">${row}${col}</div>
+                            <div class="seat-info">EMPTY</div>
+                        `;
                     }
                     rowDiv.appendChild(seatDiv);
                 });

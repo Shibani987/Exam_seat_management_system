@@ -662,24 +662,9 @@ button.enabled {
 }
 
 
-/* Seat color classes */
-.seat.eligible {
-    background-color: #4CAF50; /* Green for eligible students */
-    color: white;
-    border-color: #2E7D32;
-}
-
-.seat.blocked {
-    background-color: #FFFFFF; /* White for ineligible students */
-    color: #333;
-    border-color: #CCC;
-}
-
-.seat.empty {
-    background-color: #9E9E9E; /* Gray for empty seats */
-    color: white;
-    border-color: #757575;
-}
+/* ========================
+   STEP 6 - QR CODE GENERATION
+======================== */
 .qr-layout {
     display: flex;
     justify-content: space-between;
@@ -850,36 +835,34 @@ button.enabled {
     transition: all 0.3s ease;
     min-width: 60px;
     min-height: 60px;
-    border: 2px solid #999;
+    background: #ffffff;
+    border: 1px solid #ccc;
 }
 
 .seat.eligible {
-    background-color: #4CAF50;
+    background: #28a745;
     color: white;
-    border: 2px solid #2e7d32;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.15);
 }
 
 .seat.blocked {
-    background-color: #ffffff;
+    background: #ffffff; /* white for not eligible */
     color: #333;
-    border: 2px solid #bdbdbd;
 }
 
 .seat.empty {
-    background-color: #e0e0e0;
+    background: #f1f1f1;
     color: #888;
-    border: 2px dashed #999;
+    font-style: italic;
 }
 
 .seat-num {
     font-weight: 700;
-    font-size: 11px;
+    font-size: 9px;
     margin-bottom: 3px;
 }
 
 .seat-info {
-    font-size: 8px;
+    font-size: 6px;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
