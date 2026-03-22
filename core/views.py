@@ -2801,23 +2801,26 @@ def get_exam_summary(request):
             )
             
             for seat in seating:
-                try:
-                    student = Student.objects.get(registration_number=seat['registration_number'])
-                    semester = student.semester or ""
-                    year = getattr(student, 'year', "") or ""
-                except Student.DoesNotExist:
-                    semester = ""
-                    year = ""
-                
+                semester = ""
+                year = ""
+                reg_num = seat.get('registration_number')
+
+                if reg_num and str(reg_num).strip().lower() != 'empty':
+                    students_qs = Student.objects.filter(registration_number=reg_num)
+                    if students_qs.exists():
+                        student = students_qs.first()
+                        semester = student.semester or ""
+                        year = getattr(student, 'year', "") or ""
+
                 seating_data.append({
-                    'registration_number': seat['registration_number'],
-                    'department': seat['department'],
-                    'seat_code': seat['seat_code'],
-                    'room_building': seat['room__building'],
-                    'room_number': seat['room__room_number'],
-                    'exam_date': str(seat['exam_date']) if seat['exam_date'] else "",
-                    'exam_session': seat['exam_session'] or "First Half",
-                    'exam_name': seat['exam_name'] or "",
+                    'registration_number': reg_num,
+                    'department': seat.get('department', ''),
+                    'seat_code': seat.get('seat_code', ''),
+                    'room_building': seat.get('room__building', ''),
+                    'room_number': seat.get('room__room_number', ''),
+                    'exam_date': str(seat['exam_date']) if seat.get('exam_date') else "",
+                    'exam_session': seat.get('exam_session', 'First Half') or 'First Half',
+                    'exam_name': seat.get('exam_name', '') or "",
                     'semester': semester,
                     'year': year
                 })
@@ -2827,6 +2830,7 @@ def get_exam_summary(request):
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
         total_seats = len(seating_data)
+        print(f"[DEBUG] get_exam_summary exam_id={exam_id} total_students={total_students} total_seats={total_seats}")
         
         return JsonResponse({
             "status": "success",
