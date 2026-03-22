@@ -1503,6 +1503,13 @@ def add_rooms(request):
 
             exam = Exam.objects.get(id=exam_id)
 
+            # Check if seating has been allocated
+            if SeatAllocation.objects.filter(exam=exam).exists():
+                return JsonResponse({
+                    "status": "error",
+                    "message": "Cannot modify rooms after seating has been allocated. Please regenerate seating if needed."
+                }, status=400)
+
             # Validate rooms before saving
             seen_rooms = set()
             for r in rooms:
@@ -3383,5 +3390,3 @@ def debug_department_exams(request):
         return JsonResponse({'status': 'success', 'count': qs.count(), 'rows': rows})
     except Exception as e:
         return JsonResponse({'status': 'error', 'message': str(e)}, status=400)
-
-

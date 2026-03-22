@@ -1774,7 +1774,7 @@ function renderSeatGrid(rooms) {
             roomDiv.appendChild(deptDiv);
         }
         
-        // Seat grid (5 columns × dynamic rows based on room capacity)
+        // Seat grid (dynamic rows × 5 columns based on room capacity)
         const grid = document.createElement('div');
         grid.className = 'seat-grid';
 
@@ -1791,19 +1791,19 @@ function renderSeatGrid(rooms) {
         if (rows.length === 0) {
             grid.innerHTML = '<div style="color:#666; padding:10px;">No seats (capacity set to 0)</div>';
         } else {
-            rows.forEach((row, rowIdx) => {
-                const rowDiv = document.createElement('div');
-                rowDiv.className = 'seat-row';
+            cols.forEach((col, colIdx) => {
+                const colDiv = document.createElement('div');
+                colDiv.className = 'seat-column';
 
-                // For last row, only render the leftover columns up to capacity
-                let colsToRender = cols;
-                if (rowIdx === rows.length - 1) {
-                    const filledBefore = (rows.length - 1) * 5;
-                    const lastRowCols = Math.max(0, capacity - filledBefore);
-                    colsToRender = cols.slice(0, lastRowCols);
+                // For last column, only render the leftover rows up to capacity
+                let rowsToRender = rows;
+                if (colIdx === cols.length - 1) {
+                    const filledBefore = (cols.length - 1) * rowsNeeded;
+                    const lastColRows = Math.max(0, capacity - filledBefore);
+                    rowsToRender = rows.slice(0, lastColRows);
                 }
 
-                colsToRender.forEach(col => {
+                rowsToRender.forEach(row => {
                     const seatDiv = document.createElement('div');
                     seatDiv.className = 'seat';
 
@@ -1859,10 +1859,10 @@ function renderSeatGrid(rooms) {
                             <div class="seat-info">EMPTY</div>
                         `;
                     }
-                    rowDiv.appendChild(seatDiv);
+                    colDiv.appendChild(seatDiv);
                 });
 
-                grid.appendChild(rowDiv);
+                grid.appendChild(colDiv);
             });
         }
         
