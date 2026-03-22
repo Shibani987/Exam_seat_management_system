@@ -2739,24 +2739,33 @@ def get_exam_summary(request):
             "name": exam.name or "",
             "start_date": str(exam.start_date) if exam.start_date else "",
             "end_date": str(exam.end_date) if exam.end_date else "",
-            "schedule_file_name": exam.schedule_file_name or "",
-            "rooms_file_name": exam.rooms_file_name or ""
+            "schedule_file_name": getattr(exam, 'schedule_file_name', None) or "",
+            "rooms_file_name": getattr(exam, 'rooms_file_name', None) or ""
         }
         
         # 2. Departments & Exams
-        departments = exam.departments.all().values(
-            'department', 'exam_name', 'paper_code', 'exam_date', 'session', 'start_time', 'end_time'
-        )
-        departments_data = list(departments)
+        departments_data = []
+        try:
+            departments = exam.departments.all().values(
+                'department', 'exam_name', 'paper_code', 'exam_date', 'session', 'start_time', 'end_time'
+            )
+            departments_data = list(departments)
+        except Exception as e:
+            print(f"[DEBUG] Error loading departments: {e}")
+            departments_data = []
         
         # 3. Rooms
-        rooms = exam.rooms.all().values('id', 'building', 'room_number', 'capacity')
-        rooms_data = list(rooms)
+        rooms_data = []
+        try:
+            rooms = exam.rooms.all().values('id', 'building', 'room_number', 'capacity')
+            rooms_data = list(rooms)
+        except Exception as e:
+            print(f"[DEBUG] Error loading rooms: {e}")
+            rooms_data = []
         
-        # 4. Student Files used - simplified query
+        # 4. Student Files used
         student_files_data = []
         try:
-            # Get student files that have students in this exam
             exam_students = ExamStudent.objects.filter(exam=exam).select_related('student_file')
             student_file_ids = set()
             for es in exam_students:
@@ -2777,10 +2786,10 @@ def get_exam_summary(request):
                 except StudentDataFile.DoesNotExist:
                     continue
         except Exception as e:
-            print(f"Error getting student files: {e}")
+            print(f"[DEBUG] Error loading student files: {e}")
             student_files_data = []
         
-        # 5. Seating arrangement with student semester/year
+        # 5. Seating arrangement
         seating_data = []
         try:
             seating = SeatAllocation.objects.filter(exam=exam).select_related('room').values(
@@ -2790,7 +2799,6 @@ def get_exam_summary(request):
             )
             
             for seat in seating:
-                # Get student data for semester and year
                 try:
                     student = Student.objects.get(registration_number=seat['registration_number'])
                     semester = student.semester or ""
@@ -2812,7 +2820,7 @@ def get_exam_summary(request):
                     'year': year
                 })
         except Exception as e:
-            print(f"Error getting seating data: {e}")
+            print(f"[DEBUG] Error loading seating data: {e}")
             seating_data = []
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
@@ -2830,15 +2838,10 @@ def get_exam_summary(request):
         })
         
     except Exception as e:
-        print(f"Error in get_exam_summary: {e}")
+        print(f"[DEBUG] Error in get_exam_summary: {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": f"Server error: {str(e)}"}, status=500)
-    
-    except Exam.DoesNotExist:
-        return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
-    except Exception as e:
-        return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
 def view_exam(request, exam_id):
