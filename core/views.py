@@ -2733,8 +2733,6 @@ def get_exam_summary(request):
         except Exam.DoesNotExist:
             return JsonResponse({"status": "error", "message": f"Exam with ID {exam_id} not found"}, status=404)
         
-        print(f"DEBUG get_exam_summary: exam_id={exam_id}, exam.id={exam.id}, exam.name={exam.name}")
-        
         # 1. Exam details
         exam_data = {
             "id": exam.id,
@@ -2794,52 +2792,39 @@ def get_exam_summary(request):
         # 5. Seating arrangement
         seating_data = []
         try:
-            seat_qs = SeatAllocation.objects.filter(exam=exam).select_related('room')
-            total_saved_seats = seat_qs.count()
-            print(f"[DEBUG] get_exam_summary exam_id={exam_id} saved SeatAllocation rows={total_saved_seats}")
-
-            seating = seat_qs.values(
+            seating = SeatAllocation.objects.filter(exam=exam).select_related('room').values(
                 'registration_number', 'department', 'seat_code', 
                 'room__building', 'room__room_number',
                 'exam_date', 'exam_session', 'exam_name'
             )
             
             for seat in seating:
-                semester = ""
-                year = ""
-                reg_num = seat.get('registration_number')
-
-                if reg_num and str(reg_num).strip().lower() != 'empty':
-                    students_qs = Student.objects.filter(registration_number=reg_num)
-                    if students_qs.exists():
-                        student = students_qs.first()
-                        semester = student.semester or ""
-                        year = getattr(student, 'year', "") or ""
-
+                try:
+                    student = Student.objects.get(registration_number=seat['registration_number'])
+                    semester = student.semester or ""
+                    year = getattr(student, 'year', "") or ""
+                except Student.DoesNotExist:
+                    semester = ""
+                    year = ""
+                
                 seating_data.append({
-                    'registration_number': reg_num,
-                    'department': seat.get('department', ''),
-                    'seat_code': seat.get('seat_code', ''),
-                    'room_building': seat.get('room__building', ''),
-                    'room_number': seat.get('room__room_number', ''),
-                    'exam_date': str(seat['exam_date']) if seat.get('exam_date') else "",
-                    'exam_session': seat.get('exam_session', 'First Half') or 'First Half',
-                    'exam_name': seat.get('exam_name', '') or "",
+                    'registration_number': seat['registration_number'],
+                    'department': seat['department'],
+                    'seat_code': seat['seat_code'],
+                    'room_building': seat['room__building'],
+                    'room_number': seat['room__room_number'],
+                    'exam_date': str(seat['exam_date']) if seat['exam_date'] else "",
+                    'exam_session': seat['exam_session'] or "First Half",
+                    'exam_name': seat['exam_name'] or "",
                     'semester': semester,
                     'year': year
                 })
-
-            if total_saved_seats == 0:
-                print(f"[DEBUG] get_exam_summary exam_id={exam_id} has no saved SeatAllocation entries")
-
         except Exception as e:
-            print(f"[DEBUG] Error loading seating data: {type(e).__name__}: {e}")
-            import traceback; traceback.print_exc()
+            print(f"[DEBUG] Error loading seating data: {e}")
             seating_data = []
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
         total_seats = len(seating_data)
-        print(f"[DEBUG] get_exam_summary exam_id={exam_id} total_students={total_students} total_seats={total_seats}")
         
         return JsonResponse({
             "status": "success",
@@ -2853,15 +2838,10 @@ def get_exam_summary(request):
         })
         
     except Exception as e:
-        import traceback
-        tb = traceback.format_exc()
         print(f"[DEBUG] Error in get_exam_summary: {e}")
-        print(tb)
-        return JsonResponse({
-            "status": "error",
-            "message": f"Server error: {str(e)}",
-            "details": tb
-        }, status=500)
+        import traceback
+        traceback.print_exc()
+        return JsonResponse({"status": "error", "message": f"Server error: {str(e)}"}, status=500)
 
 
 def view_exam(request, exam_id):
