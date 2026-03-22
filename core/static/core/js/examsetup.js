@@ -1448,9 +1448,19 @@ function loadExamSummary() {
         method: 'GET',
         headers: { 'X-CSRFToken': csrftoken }
     })
-    .then(r => {
+    .then(async r => {
         console.log('[STEP 6] Response status:', r.status);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        if (!r.ok) {
+            let errMsg = `HTTP ${r.status}`;
+            try {
+                const errJson = await r.json();
+                errMsg += ` - ${errJson.message || ''}`;
+                if (errJson.details) errMsg += `\n${errJson.details}`;
+            } catch (jsonErr) {
+                // ignore parse error
+            }
+            throw new Error(errMsg);
+        }
         return r.json();
     })
     .then(data => {

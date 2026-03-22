@@ -2853,10 +2853,15 @@ def get_exam_summary(request):
         })
         
     except Exception as e:
-        print(f"[DEBUG] Error in get_exam_summary: {e}")
         import traceback
-        traceback.print_exc()
-        return JsonResponse({"status": "error", "message": f"Server error: {str(e)}"}, status=500)
+        tb = traceback.format_exc()
+        print(f"[DEBUG] Error in get_exam_summary: {e}")
+        print(tb)
+        return JsonResponse({
+            "status": "error",
+            "message": f"Server error: {str(e)}",
+            "details": tb
+        }, status=500)
 
 
 def view_exam(request, exam_id):
