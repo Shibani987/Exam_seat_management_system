@@ -2720,6 +2720,7 @@ def lock_seating(request):
 # =========================
 # STEP 6 - GET EXAM SUMMARY
 # =========================
+@admin_required_json
 def get_exam_summary(request):
     """Fetch complete exam summary for Step 6 verification"""
     try:
