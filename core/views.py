@@ -2752,7 +2752,7 @@ def get_exam_summary(request):
         # 4. Student Files used
         student_files = StudentDataFile.objects.filter(
             students__exam_allocations__exam=exam
-        ).distinct().values('id', 'file_name', 'year', 'semester', 'department')
+        ).distinct().values('id', 'file_name')
         
         student_files_data = []
         for file in student_files:
@@ -2762,6 +2762,16 @@ def get_exam_summary(request):
             ).distinct().count()
             file_dict = dict(file)
             file_dict['student_count'] = student_count
+            # Add year, semester, department from students
+            students_in_file = Student.objects.filter(student_file_id=file['id']).first()
+            if students_in_file:
+                file_dict['year'] = getattr(students_in_file, 'year', '')
+                file_dict['semester'] = students_in_file.semester or ''
+                file_dict['department'] = students_in_file.branch or ''
+            else:
+                file_dict['year'] = ''
+                file_dict['semester'] = ''
+                file_dict['department'] = ''
             student_files_data.append(file_dict)
         
         # 5. Seating arrangement with student semester/year
@@ -2776,7 +2786,7 @@ def get_exam_summary(request):
             try:
                 student = Student.objects.get(registration_number=seat['registration_number'])
                 semester = student.semester or ""
-                year = student.year or ""
+                year = getattr(student, 'year', "") or ""
             except Student.DoesNotExist:
                 semester = ""
                 year = ""
