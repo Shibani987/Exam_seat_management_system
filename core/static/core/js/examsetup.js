@@ -1450,34 +1450,52 @@ function loadExamSummary() {
     })
     .then(async r => {
         console.log('[STEP 6] Response status:', r.status);
+        console.log('[STEP 6] Response headers:', r.headers);
+        
         if (!r.ok) {
-            // Try to parse error response
+            console.log('[STEP 6] Not OK response, trying to read body...');
+            let rawText = '';
             try {
-                const errData = await r.json();
-                let errMsg = `HTTP ${r.status}`;
-                if (errData.message) errMsg += ` - ${errData.message}`;
-                if (errData.traceback) errMsg += `\n\n${errData.traceback}`;
+                rawText = await r.text();
+                console.log('[STEP 6] Raw response body:', rawText);
+                
+                // Try to parse as JSON
+                const errData = JSON.parse(rawText);
+                let errMsg = `HTTP ${r.status}: ${r.statusText}`;
+                if (errData.message) errMsg += ` | message: ${errData.message}`;
+                if (errData.error_type) errMsg += ` | error: ${errData.error_type}`;
+                if (errData.traceback) errMsg += `\n\nTraceback:\n${errData.traceback}`;
+                console.error('[STEP 6] Throwing error with details:', errMsg);
                 throw new Error(errMsg);
             } catch (parseErr) {
-                // If can't parse JSON, just throw HTTP error
-                throw new Error(`HTTP ${r.status}: ${r.statusText}`);
+                // If can't parse JSON, show raw response
+                console.error('[STEP 6] Failed to parse JSON:', parseErr);
+                console.log('[STEP 6] Raw text was:', rawText);
+                throw new Error(`HTTP ${r.status}: ${r.statusText}\nRaw response: ${rawText.substring(0, 500)}`);
             }
         }
-        return r.json();
+        
+        let data = await r.json();
+        console.log('[STEP 6] Success response parsed:', data);
+        return data;
     })
     .then(data => {
         console.log('[STEP 6] Data received:', data);
         if (data.status === 'error') {
-            let msg = 'Error: ' + data.message;
-            if (data.traceback) msg += `\n\n${data.traceback}`;
+            let msg = 'Error: ' + (data.message || 'Unknown error');
+            if (data.error_type) msg += ` [${data.error_type}]`;
+            if (data.traceback) msg += `\n\nTraceback:\n${data.traceback}`;
+            console.error('[STEP 6] Showing error alert:', msg);
             alert(msg);
             return;
         }
         populateSummary(data);
     })
     .catch(err => {
-        console.error('[STEP 6] Error:', err);
-        alert('Failed to load summary: ' + err.message);
+        console.error('[STEP 6] Catch block error:', err);
+        console.error('[STEP 6] Error message:', err.message);
+        console.error('[STEP 6] Full error:', err);
+        alert('Failed to load summary:\n' + err.message);
     });
 }
 
