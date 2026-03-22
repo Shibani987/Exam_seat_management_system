@@ -2794,7 +2794,11 @@ def get_exam_summary(request):
         # 5. Seating arrangement
         seating_data = []
         try:
-            seating = SeatAllocation.objects.filter(exam=exam).select_related('room').values(
+            seat_qs = SeatAllocation.objects.filter(exam=exam).select_related('room')
+            total_saved_seats = seat_qs.count()
+            print(f"[DEBUG] get_exam_summary exam_id={exam_id} saved SeatAllocation rows={total_saved_seats}")
+
+            seating = seat_qs.values(
                 'registration_number', 'department', 'seat_code', 
                 'room__building', 'room__room_number',
                 'exam_date', 'exam_session', 'exam_name'
@@ -2824,8 +2828,13 @@ def get_exam_summary(request):
                     'semester': semester,
                     'year': year
                 })
+
+            if total_saved_seats == 0:
+                print(f"[DEBUG] get_exam_summary exam_id={exam_id} has no saved SeatAllocation entries")
+
         except Exception as e:
-            print(f"[DEBUG] Error loading seating data: {e}")
+            print(f"[DEBUG] Error loading seating data: {type(e).__name__}: {e}")
+            import traceback; traceback.print_exc()
             seating_data = []
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
