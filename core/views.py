@@ -1503,13 +1503,6 @@ def add_rooms(request):
 
             exam = Exam.objects.get(id=exam_id)
 
-            # Check if seating has been allocated
-            if SeatAllocation.objects.filter(exam=exam).exists():
-                return JsonResponse({
-                    "status": "error",
-                    "message": "Cannot modify rooms after seating has been allocated. Please regenerate seating if needed."
-                }, status=400)
-
             # Validate rooms before saving
             seen_rooms = set()
             for r in rooms:
@@ -2739,6 +2732,8 @@ def get_exam_summary(request):
             exam = Exam.objects.get(id=exam_id)
         except Exam.DoesNotExist:
             return JsonResponse({"status": "error", "message": f"Exam with ID {exam_id} not found"}, status=404)
+        
+        print(f"DEBUG get_exam_summary: exam_id={exam_id}, exam.id={exam.id}, exam.name={exam.name}")
         
         # 1. Exam details
         exam_data = {

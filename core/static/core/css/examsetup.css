@@ -792,7 +792,7 @@ button.enabled {
 
 .seat-grid {
     display: flex;
-    flex-direction: row;
+    flex-direction: column;
     gap: 10px;
     background: #f9f9f9;
     padding: 20px;
@@ -800,7 +800,6 @@ button.enabled {
     width: 100%;
     box-sizing: border-box;
     border: 2px solid #e0e0e0;
-    flex-wrap: wrap;
 }
 
 .seat-column {
