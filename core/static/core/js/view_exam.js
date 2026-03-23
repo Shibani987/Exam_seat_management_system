@@ -62,45 +62,59 @@ document.addEventListener('DOMContentLoaded', function(){
         });
 
     function renderDepartmentInfo(room) {
-        const seatDepartments = new Set();
-        const seatSemesters = new Set();
+        const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
+        const roomDepartments = new Set();
+        const roomSemesters = new Set();
 
-        (room.seats || []).forEach(seat => {
-            if (seat.department && seat.department.trim() && seat.department.toUpperCase() !== 'EMPTY') {
-                seatDepartments.add(seat.department.trim());
+        roomStudents.forEach(seat => {
+            if (seat.department && seat.department.trim()) {
+                roomDepartments.add(seat.department.trim().toUpperCase());
             }
-            if (seat.semester && seat.semester.trim()) {
-                seatSemesters.add(seat.semester.trim());
+            if (seat.semester && seat.semester.toString().trim()) {
+                roomSemesters.add(seat.semester.toString().trim());
             }
         });
 
-        if (!room.department_details || !room.department_details.length) {
-            const deptLine = seatDepartments.size ? Array.from(seatDepartments).join(', ') : 'N/A';
-            const semLine = seatSemesters.size ? Array.from(seatSemesters).join(', ') : 'N/A';
-            return `<strong>Departments in this room:</strong><br/>${deptLine}<br/><strong>Semesters in this room:</strong> ${semLine}`;
-        }
+        const firstSeat = roomStudents.length > 0 ? roomStudents[0] : null;
+        const targetDate = firstSeat ? firstSeat.exam_date : '';
+        const targetSession = firstSeat ? firstSeat.session : '';
 
-        let html = `<strong>Departments in this room:</strong><br/>${Array.from(seatDepartments).join(', ') || 'N/A'}<br/>`;
-        html += `<strong>Semesters in this room:</strong> ${Array.from(seatSemesters).join(', ') || 'N/A'}<br/><br/>`;
-
-        const groupedBySlot = {};
-        (room.department_details || []).forEach(item => {
-            const key = `${item.exam_date}||${item.session}`;
-            if (!groupedBySlot[key]) {
-                groupedBySlot[key] = { date: item.exam_date, session: item.session, rows: [] };
-            }
-            groupedBySlot[key].rows.push(item);
+        let filteredDetails = (room.department_details || []).filter(item => {
+            const dept = (item.department || '').trim().toUpperCase();
+            if (!dept || !roomDepartments.has(dept)) return false;
+            if (targetDate && item.exam_date !== targetDate) return false;
+            if (targetSession && item.session !== targetSession) return false;
+            return true;
         });
 
-        Object.values(groupedBySlot).forEach(slot => {
-            html += `<strong>${slot.date}, ${slot.session}:</strong><br/>`;
-            slot.rows.forEach(item => {
-                const semText = item.semester ? ` [Sem ${item.semester}]` : '';
-                html += `&nbsp;&nbsp;${item.department}${semText} - ${item.exam_name}<br/>`;
-                html += `&nbsp;&nbsp;&nbsp;&nbsp;Timing: ${item.start_time || 'N/A'} - ${item.end_time || 'N/A'}<br/>`;
+        const deptLine = roomDepartments.size ? Array.from(roomDepartments).join(', ') : 'N/A';
+        const semLine = roomSemesters.size ? Array.from(roomSemesters).join(', ') : 'N/A';
+
+        let html = `<strong>Departments in this room:</strong> ${deptLine}<br>`;
+        html += `<strong>Semesters in this room:</strong> ${semLine}<br><br>`;
+
+        if (filteredDetails.length > 0) {
+            const groupedBySlot = {};
+            filteredDetails.forEach(item => {
+                const key = `${item.exam_date}||${item.session}`;
+                if (!groupedBySlot[key]) {
+                    groupedBySlot[key] = { date: item.exam_date, session: item.session, rows: [] };
+                }
+                groupedBySlot[key].rows.push(item);
             });
-            html += '<br/>';
-        });
+
+            Object.values(groupedBySlot).forEach(slot => {
+                html += `<strong>${slot.date}, ${slot.session}:</strong><br>`;
+                slot.rows.forEach(item => {
+                    const semText = item.semester ? ` [Sem ${item.semester}]` : '';
+                    html += `&nbsp;&nbsp;${item.department}${semText} - ${item.exam_name}<br>`;
+                    html += `&nbsp;&nbsp;&nbsp;&nbsp;Timing: ${item.start_time || 'N/A'} - ${item.end_time || 'N/A'}<br>`;
+                });
+                html += '<br>';
+            });
+        } else {
+            html += '<span style="color:#666;">No scheduled exam details for this room / slot.</span>';
+        }
 
         return html;
     }
@@ -138,23 +152,28 @@ document.addEventListener('DOMContentLoaded', function(){
 
                 if (seat && seat.registration && seat.registration !== 'Empty') {
                     const isEligible = seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true';
-                    const semDisplay = seat.semester ? `Sem ${seat.semester}` : (seat.sem ? `Sem ${seat.sem}` : 'Sem N/A');
-                    const studentText = `${seat.department || 'Unknown'} ${seat.registration || 'Unknown'} (${semDisplay})`;
 
                     if (isEligible) {
                         seatDiv.classList.add('eligible');
+                        seatDiv.classList.remove('blocked', 'empty');
+                        const reg = seat.registration || '';
+                        const dept = (seat.department || '').trim();
+                        const sem = seat.semester || seat.sem || '';
+                        const semText = sem ? ` (Sem ${sem})` : '';
                         seatDiv.innerHTML = `
                             <div class="seat-num">${row}${col}</div>
-                            <div class="seat-info">${studentText}</div>
+                            <div class="seat-info">${dept} ${reg}${semText}</div>
                         `;
                     } else {
+                        seatDiv.classList.remove('eligible', 'empty');
                         seatDiv.classList.add('blocked');
                         seatDiv.innerHTML = `
                             <div class="seat-num">${row}${col}</div>
-                            <div class="seat-info">${studentText}</div>
                         `;
                     }
+
                 } else {
+                    seatDiv.classList.remove('eligible', 'blocked');
                     seatDiv.classList.add('empty');
                     seatDiv.innerHTML = `
                         <div class="seat-num">${row}${col}</div>
