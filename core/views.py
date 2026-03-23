@@ -2275,6 +2275,9 @@ def generate_seating(request):
         seen_by_slot = defaultdict(set)
         total_group_students = 0
 
+        # ensure fixed ordering by date/session/semester in generator
+        session_order = { '1st Half': 1, '2nd Half': 2, 'Morning': 1, 'Afternoon': 2, 'Evening': 3 }
+
         for exam_student in exam_students:
             student = exam_student.student
             semester = getattr(student, 'semester', '') or ''
@@ -2343,7 +2346,13 @@ def generate_seating(request):
 
         from collections import deque
 
-        for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], str(k[1]), k[2])):
+        for group_key in sorted(room_groups.keys(), key=lambda k: (
+            str(k[1]),
+            session_order.get(k[2], 99),
+            int(k[0]) if str(k[0]).isdigit() else 999,
+            k[2],
+            k[0]
+        )):
             students_in_group = list(room_groups[group_key])
             semester, exam_date, session = group_key
 

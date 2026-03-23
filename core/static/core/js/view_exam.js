@@ -27,11 +27,11 @@ document.addEventListener('DOMContentLoaded', function(){
             container.innerHTML = '';
 
             rooms.forEach(room => {
-                const roomCard = document.createElement('div');
-                roomCard.className = 'room-card';
-
                 const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
+
                 if (!roomStudents.length) {
+                    const roomCard = document.createElement('div');
+                    roomCard.className = 'room-card';
                     const header = document.createElement('div');
                     header.className = 'room-header';
                     header.innerHTML = `
@@ -61,47 +61,63 @@ document.addEventListener('DOMContentLoaded', function(){
                     return 0;
                 });
 
-                const slotSemester = sortedStudents[0].student_semester || sortedStudents[0].semester || '';
-                const slotDate = sortedStudents[0].exam_date || '';
-                const slotSession = sortedStudents[0].session || '';
-                const slotStudents = roomStudents.filter(s =>
-                    s.exam_date === slotDate &&
-                    s.session === slotSession &&
-                    ((s.student_semester || s.semester || '').toString().trim() === (slotSemester || '').toString().trim())
-                );
-
-                const roomSemesters = new Set();
-                const roomDepartments = new Set();
-                slotStudents.forEach(seat => {
-                    const semValue = seat.semester || seat.student_semester || '';
-                    if (semValue && semValue.toString().trim()) {
-                        roomSemesters.add(semValue.toString().trim());
-                    }
-                    if (seat.department && seat.department.trim()) {
-                        roomDepartments.add(seat.department.trim().toUpperCase());
-                    }
+                // Group by slot (date/session/semester), to show a separate view for each allocated slot in this room:
+                const slotMap = new Map();
+                roomStudents.forEach(s => {
+                    const semVal = (s.student_semester || s.semester || '').toString().trim();
+                    const key = `${s.exam_date}||${s.session}||${semVal}`;
+                    if (!slotMap.has(key)) slotMap.set(key, { date: s.exam_date, session: s.session, semester: semVal, seats: [] });
+                    slotMap.get(key).seats.push(s);
                 });
-                const semesterText = roomSemesters.size ? Array.from(roomSemesters).sort().join(', ') : 'N/A';
 
-                const header = document.createElement('div');
-                header.className = 'room-header';
-                header.innerHTML = `
-                    <div>
-                        <strong>${room.building} — ${room.room_number}</strong>
-                        <div class="room-meta">Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText}</div>
-                    </div>
-                `;
-                roomCard.appendChild(header);
+                // Sort slots deterministically
+                const slotEntries = Array.from(slotMap.values()).sort((a, b) => {
+                    if (a.date < b.date) return -1;
+                    if (a.date > b.date) return 1;
+                    const aOrder = sessionOrder[a.session] || 99;
+                    const bOrder = sessionOrder[b.session] || 99;
+                    if (aOrder < bOrder) return -1;
+                    if (aOrder > bOrder) return 1;
+                    return (parseInt(a.semester || '0', 10) || 0) - (parseInt(b.semester || '0', 10) || 0);
+                });
 
-                const deptDiv = document.createElement('div');
-                deptDiv.className = 'dept-info';
-                deptDiv.innerHTML = renderDepartmentInfo(room, roomDepartments, roomSemesters, slotDate, slotSession);
-                roomCard.appendChild(deptDiv);
+                slotEntries.forEach(slot => {
+                    const roomCard = document.createElement('div');
+                    roomCard.className = 'room-card';
 
-                const seatGrid = renderSeatGrid(room, slotDate, slotSession);
-                roomCard.appendChild(seatGrid);
+                    const roomSemesters = new Set();
+                    const roomDepartments = new Set();
+                    slot.seats.forEach(seat => {
+                        const semValue = seat.student_semester || seat.semester || '';
+                        if (semValue && semValue.toString().trim()) {
+                            roomSemesters.add(semValue.toString().trim());
+                        }
+                        if (seat.department && seat.department.trim()) {
+                            roomDepartments.add(seat.department.trim().toUpperCase());
+                        }
+                    });
 
-                container.appendChild(roomCard);
+                    const semesterText = roomSemesters.size ? Array.from(roomSemesters).sort().join(', ') : 'N/A';
+                    const header = document.createElement('div');
+                    header.className = 'room-header';
+                    header.innerHTML = `
+                        <div>
+                            <strong>${room.building} — ${room.room_number}</strong>
+                            <div class="room-meta">Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText} &nbsp; | &nbsp; ${slot.date}, ${slot.session}</div>
+                        </div>
+                    `;
+                    roomCard.appendChild(header);
+
+                    const deptDiv = document.createElement('div');
+                    deptDiv.className = 'dept-info';
+                    deptDiv.innerHTML = renderDepartmentInfo(room, roomDepartments, roomSemesters, slot.date, slot.session);
+                    roomCard.appendChild(deptDiv);
+
+                    const seatGrid = renderSeatGrid(room, slot.date, slot.session);
+                    roomCard.appendChild(seatGrid);
+
+                    container.appendChild(roomCard);
+                });
             });
 
             console.log('[VIEW_EXAM] Rendered', rooms.length, 'rooms');
