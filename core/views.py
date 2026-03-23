@@ -2793,13 +2793,23 @@ def get_exam_summary(request):
         # 5. Seating arrangement
         seating_data = []
         try:
-            print(f"[DEBUG] About to query SeatAllocation for exam {exam.id} ({exam.name})")
+            print(f"[DEBUG] ===== SEATING QUERY START =====")
+            print(f"[DEBUG] Exam ID: {exam.id}, name: {exam.name}")
+            print(f"[DEBUG] Exam.allocations (reverse relation) count: {exam.allocations.count()}")
+            
+            # Direct query
             seating_queryset = SeatAllocation.objects.filter(exam=exam)
             seating_count = seating_queryset.count()
-            print(f"[DEBUG] SeatAllocation count: {seating_count}")
+            print(f"[DEBUG] Direct SeatAllocation.objects.filter(exam={exam.id}) count: {seating_count}")
             
             if seating_count == 0:
-                print(f"[DEBUG] WARNING: No seat allocations found for exam {exam.id}")
+                print(f"[DEBUG] WARNING: No seats found for exam {exam.id}")
+                print(f"[DEBUG] Checking if exam_id column exists and matches...")
+                all_allocations = SeatAllocation.objects.all()
+                print(f"[DEBUG] Total SeatAllocation records in DB: {all_allocations.count()}")
+                if all_allocations.exists():
+                    sample = all_allocations.first()
+                    print(f"[DEBUG] Sample allocation: exam_id={sample.exam_id}, exam.id={exam.id}, match={sample.exam_id == exam.id}")
             
             seating = seating_queryset.select_related('room').values(
                 'registration_number', 'department', 'seat_code', 
@@ -2807,12 +2817,21 @@ def get_exam_summary(request):
                 'exam_date', 'exam_session', 'exam_name'
             )
             
-            for seat in seating:
+            seating_list = list(seating)
+            print(f"[DEBUG] After .values().list(): {len(seating_list)} records")
+            
+            for idx, seat in enumerate(seating_list):
                 try:
-                    student = Student.objects.get(registration_number=seat['registration_number'])
-                    semester = student.semester or ""
-                    year = getattr(student, 'year', "") or ""
-                except Student.DoesNotExist:
+                    # Use .first() instead of .get() to handle duplicate registration numbers
+                    student = Student.objects.filter(registration_number=seat['registration_number']).first()
+                    if student:
+                        semester = student.semester or ""
+                        year = getattr(student, 'year', "") or ""
+                    else:
+                        semester = ""
+                        year = ""
+                except Exception as e:
+                    print(f"[DEBUG] Error looking up student {seat['registration_number']}: {e}")
                     semester = ""
                     year = ""
                 
@@ -2828,10 +2847,12 @@ def get_exam_summary(request):
                     'semester': semester,
                     'year': year
                 })
+                
+                if idx < 5:
+                    print(f"[DEBUG] Sample seat {idx+1}: seat_code={seat['seat_code']}, building={seat['room__building']}, room={seat['room__room_number']}, reg={seat['registration_number']}")
             
-            print(f"[DEBUG] Final seating_data.length: {len(seating_data)}")
-            if seating_data:
-                print(f"[DEBUG] First record: {seating_data[0]}")
+            print(f"[DEBUG] Final seating_data length: {len(seating_data)}")
+            print(f"[DEBUG] ===== SEATING QUERY END =====")
         except Exception as e:
             print(f"[DEBUG] Error loading seating data: {e}")
             import traceback
