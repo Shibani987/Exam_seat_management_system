@@ -2793,68 +2793,34 @@ def get_exam_summary(request):
         # 5. Seating arrangement
         seating_data = []
         try:
-            print(f"[DEBUG] ===== SEATING QUERY START =====")
-            print(f"[DEBUG] Exam ID: {exam.id}, name: {exam.name}")
-            print(f"[DEBUG] Exam.allocations (reverse relation) count: {exam.allocations.count()}")
-            
-            # Direct query
-            seating_queryset = SeatAllocation.objects.filter(exam=exam)
+            seating_queryset = SeatAllocation.objects.filter(exam=exam).select_related('room')
             seating_count = seating_queryset.count()
-            print(f"[DEBUG] Direct SeatAllocation.objects.filter(exam={exam.id}) count: {seating_count}")
+            print(f"[DEBUG] SeatAllocation count for exam {exam.id}: {seating_count}")
             
-            if seating_count == 0:
-                print(f"[DEBUG] WARNING: No seats found for exam {exam.id}")
-                print(f"[DEBUG] Checking if exam_id column exists and matches...")
-                all_allocations = SeatAllocation.objects.all()
-                print(f"[DEBUG] Total SeatAllocation records in DB: {all_allocations.count()}")
-                if all_allocations.exists():
-                    sample = all_allocations.first()
-                    print(f"[DEBUG] Sample allocation: exam_id={sample.exam_id}, exam.id={exam.id}, match={sample.exam_id == exam.id}")
-            
-            seating = seating_queryset.select_related('room').values(
-                'registration_number', 'department', 'seat_code', 
-                'room__building', 'room__room_number',
-                'exam_date', 'exam_session', 'exam_name'
-            )
-            
-            seating_list = list(seating)
-            print(f"[DEBUG] After .values().list(): {len(seating_list)} records")
-            
-            for idx, seat in enumerate(seating_list):
+            # Get all seats and process them
+            for seat in seating_queryset:
                 try:
-                    # Use .first() instead of .get() to handle duplicate registration numbers
-                    student = Student.objects.filter(registration_number=seat['registration_number']).first()
-                    if student:
-                        semester = student.semester or ""
-                        year = getattr(student, 'year', "") or ""
-                    else:
-                        semester = ""
-                        year = ""
+                    # Build seat data without student lookup (keeping it simple)
+                    seating_data.append({
+                        'registration_number': seat.registration_number or "",
+                        'department': seat.department or "",
+                        'seat_code': seat.seat_code or "",
+                        'room_building': seat.room.building if seat.room else "",
+                        'room_number': seat.room.room_number if seat.room else "",
+                        'exam_date': str(seat.exam_date) if seat.exam_date else "",
+                        'exam_session': seat.exam_session or "First Half",
+                        'exam_name': seat.exam_name or "",
+                        'semester': "",
+                        'year': ""
+                    })
                 except Exception as e:
-                    print(f"[DEBUG] Error looking up student {seat['registration_number']}: {e}")
-                    semester = ""
-                    year = ""
-                
-                seating_data.append({
-                    'registration_number': seat['registration_number'],
-                    'department': seat['department'],
-                    'seat_code': seat['seat_code'],
-                    'room_building': seat['room__building'],
-                    'room_number': seat['room__room_number'],
-                    'exam_date': str(seat['exam_date']) if seat['exam_date'] else "",
-                    'exam_session': seat['exam_session'] or "First Half",
-                    'exam_name': seat['exam_name'] or "",
-                    'semester': semester,
-                    'year': year
-                })
-                
-                if idx < 5:
-                    print(f"[DEBUG] Sample seat {idx+1}: seat_code={seat['seat_code']}, building={seat['room__building']}, room={seat['room__room_number']}, reg={seat['registration_number']}")
+                    print(f"[DEBUG] Error processing seat {getattr(seat, 'seat_code', '?')}: {e}")
+                    continue
             
-            print(f"[DEBUG] Final seating_data length: {len(seating_data)}")
-            print(f"[DEBUG] ===== SEATING QUERY END =====")
+            print(f"[DEBUG] Processed {len(seating_data)} seats successfully")
+            
         except Exception as e:
-            print(f"[DEBUG] Error loading seating data: {e}")
+            print(f"[DEBUG] Error in seating query: {e}")
             import traceback
             traceback.print_exc()
             seating_data = []
@@ -2874,7 +2840,7 @@ def get_exam_summary(request):
         })
         
     except Exception as e:
-        print(f"[DEBUG] Error in get_exam_summary: {e}")
+        print(f"[DEBUG] Outer error in get_exam_summary: {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": f"Server error: {str(e)}"}, status=500)
