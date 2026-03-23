@@ -2755,15 +2755,14 @@ def get_exam_summary(request):
             print(f"[DEBUG] Error loading departments: {e}")
             departments_data = []
         
-        # 3. Rooms
-        rooms_data = []
+        # 3. Rooms - keep full rooms list for potential filtering after seat data is read
+        room_data_all = []
         try:
-            rooms = exam.rooms.all().values('id', 'building', 'room_number', 'capacity')
-            rooms_data = list(rooms)
+            room_data_all = list(exam.rooms.all().values('id', 'building', 'room_number', 'capacity'))
         except Exception as e:
             print(f"[DEBUG] Error loading rooms: {e}")
-            rooms_data = []
-        
+            room_data_all = []
+
         # 4. Student Files used
         student_files_data = []
         try:
@@ -2792,6 +2791,7 @@ def get_exam_summary(request):
         
         # 5. Seating arrangement
         seating_data = []
+        allocated_room_ids = set()
         try:
             seating_queryset = SeatAllocation.objects.filter(exam=exam).select_related('room')
             seating_count = seating_queryset.count()
@@ -2800,6 +2800,7 @@ def get_exam_summary(request):
             # Get all seats and process them
             for seat in seating_queryset:
                 try:
+                    allocated_room_ids.add(seat.room_id)
                     # Build seat data without student lookup (keeping it simple)
                     seating_data.append({
                         'registration_number': seat.registration_number or "",
@@ -2824,6 +2825,11 @@ def get_exam_summary(request):
             import traceback
             traceback.print_exc()
             seating_data = []
+            allocated_room_ids = set()
+
+        # Filter rooms to only those with seating allocations to match Step 5 behavior
+        rooms_data = [r for r in room_data_all if r.get('id') in allocated_room_ids]
+        print(f"[DEBUG] Returning {len(rooms_data)} rooms with seat allocations (from {len(room_data_all)} total rooms)")
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
         total_seats = len(seating_data)

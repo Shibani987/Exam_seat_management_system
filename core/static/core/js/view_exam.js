@@ -139,6 +139,15 @@ document.addEventListener('DOMContentLoaded', function(){
             
             console.log('[VIEW_EXAM] seatMap keys:', Object.keys(seatMap).length, 'keys, total seats for room:', seats.length);
 
+            if (seats.length === 0) {
+                const noSeatsMessage = document.createElement('div');
+                noSeatsMessage.style = 'padding:10px; color:#777; font-style:italic;';
+                noSeatsMessage.textContent = 'No seats assigned for this room yet.';
+                roomCard.appendChild(noSeatsMessage);
+                container.appendChild(roomCard);
+                return; // skip grid rendering for empty room
+            }
+
             // Determine rows needed from room capacity (5 seats per row)
             const colsPerRow = 5;
             const rowsNeeded = Math.max(1, Math.ceil(Number(room.capacity) / colsPerRow));
