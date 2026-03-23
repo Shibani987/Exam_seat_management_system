@@ -30,13 +30,12 @@ document.addEventListener('DOMContentLoaded', function(){
                 const roomCard = document.createElement('div');
                 roomCard.className = 'room-card';
 
-                // Calculate semesters and departments from actual seated students
                 const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
                 const roomSemesters = new Set();
                 const roomDepartments = new Set();
                 roomStudents.forEach(seat => {
-                    if (seat.semester && seat.semester.toString().trim()) {
-                        roomSemesters.add(seat.semester.toString().trim());
+                    if (seat.student_semester && seat.student_semester.toString().trim()) {
+                        roomSemesters.add(seat.student_semester.toString().trim());
                     }
                     if (seat.department && seat.department.trim()) {
                         roomDepartments.add(seat.department.trim().toUpperCase());
@@ -159,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function(){
                         seatDiv.classList.remove('blocked', 'empty');
                         const reg = seat.registration || '';
                         const dept = (seat.department || '').trim();
-                        const sem = seat.semester || seat.sem || '';
+                        const sem = seat.student_semester || '';
                         const semText = sem ? ` (Sem ${sem})` : '';
                         seatDiv.innerHTML = `
                             <div class="seat-num">${row}${col}</div>

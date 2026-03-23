@@ -2794,15 +2794,18 @@ def get_exam_summary(request):
         allocated_room_ids = set()
         # Build student eligibility map from ExamStudent/Student to preserve eligibility status
         student_eligibility = {}
+        student_semester = {}
         try:
             exam_students = ExamStudent.objects.filter(exam=exam).select_related('student')
             for es in exam_students:
                 reg = (es.student.registration_number or '').strip().upper()
                 if reg:
                     student_eligibility[reg] = str(getattr(es.student, 'academic_status', '')).strip().lower() == 'eligible'
+                    student_semester[reg] = str(getattr(es.student, 'semester', '')).strip()
         except Exception as e:
-            print(f"[DEBUG] Error building student eligibility map: {e}")
+            print(f"[DEBUG] Error building student maps: {e}")
             student_eligibility = {}
+            student_semester = {}
 
         # Build a quick lookup for department exam start/end/semester times
         dept_exam_lookup = {}
@@ -2850,6 +2853,7 @@ def get_exam_summary(request):
                         'start_time': dept_times.get('start_time', ''),
                         'end_time': dept_times.get('end_time', ''),
                         'semester': dept_times.get('semester', ''),
+                        'student_semester': student_semester.get(reg_upper, ''),
                         'year': '',
                         'is_eligible': is_eligible
                     })
@@ -2899,7 +2903,7 @@ def get_exam_summary(request):
 
                 dept_details.append({
                     'department': dept,
-                    'semester': s.get('semester',''),
+                    'semester': s.get('student_semester',''),
                     'exam_name': s.get('exam_name','N/A'),
                     'exam_date': s.get('exam_date','N/A'),
                     'session': s.get('session','N/A'),
