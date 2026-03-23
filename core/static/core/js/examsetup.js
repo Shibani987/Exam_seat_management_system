@@ -1422,8 +1422,11 @@ if (lockStep5Btn) {
             step5Content.style.display = 'none';
             step6Content.style.display = 'block';
             
-            // Load exam summary for Step 6
-            loadExamSummary();
+            // Show static summary message (no exam summary table needed)
+            const summaryStatus = document.getElementById('summarySeatsStatus');
+            if (summaryStatus) {
+                summaryStatus.textContent = 'Seating has been saved. Click Complete Setup to finalize the exam permanently.';
+            }
         })
         .catch(err => {
             console.error('Error:', err);
@@ -1436,35 +1439,11 @@ if (lockStep5Btn) {
 // STEP 6 - LOAD EXAM SUMMARY
 // =============================
 function loadExamSummary() {
-    console.log('[STEP 6] Loading exam summary for exam ID:', examId);
-    
-    if (!examId) {
-        console.error('[STEP 6] No exam ID provided');
-        alert('Error: No exam ID found');
-        return;
+    console.log('[STEP 6] No summary fetch needed. Using simplified step 6 process.');
+    const summaryStatus = document.getElementById('summarySeatsStatus');
+    if (summaryStatus) {
+        summaryStatus.textContent = 'All seat data is saved. Click Complete Setup to finalize and make seating accessible from the dashboard.';
     }
-    
-    fetch(`/get_exam_summary/?exam_id=${examId}`, {
-        method: 'GET',
-        headers: { 'X-CSRFToken': csrftoken }
-    })
-    .then(r => {
-        console.log('[STEP 6] Response status:', r.status);
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-        return r.json();
-    })
-    .then(data => {
-        console.log('[STEP 6] Data received:', data);
-        if (data.status === 'error') {
-            alert('Error: ' + data.message);
-            return;
-        }
-        populateSummary(data);
-    })
-    .catch(err => {
-        console.error('[STEP 6] Error:', err);
-        alert('Failed to load summary: ' + err.message);
-    });
 }
 
 function populateSummary(data) {

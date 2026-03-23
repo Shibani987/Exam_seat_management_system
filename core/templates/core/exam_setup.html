@@ -159,88 +159,16 @@
 
 <!-- STEP 6 -->
 <div id="step6Content" style="display:none;">
-    <h2>Exam Setup Summary & Verification</h2>
-    <p>Complete overview of all saved data before completion</p>
-    
-    <!-- EXAM DETAILS -->
+    <h2>Exam Setup Complete</h2>
+    <p>Seat allocation is now saved permanently (after clicking Complete Setup).</p>
+    <p>Proceed to finalize and visit the Dashboard to view the seating layout for this exam.</p>
+    <p>QR code support remains active and works as before.</p>
+
     <div class="summary-section">
-        <h3>Exam Details</h3>
-        <div class="summary-grid">
-            <div><strong>Exam Name:</strong> <span id="summaryExamName">-</span></div>
-            <div><strong>Start Date:</strong> <span id="summaryStartDate">-</span></div>
-            <div><strong>End Date:</strong> <span id="summaryEndDate">-</span></div>
-            <div><strong>Schedule File:</strong> <span id="summaryScheduleFile">-</span></div>
-            <div><strong>Rooms File:</strong> <span id="summaryRoomsFile">-</span></div>
-        </div>
+        <h3>Seat Allocation Status</h3>
+        <p><strong id="summarySeatsStatus">Seating data is ready. Click Complete Setup.</strong></p>
     </div>
-    
-    <!-- DEPARTMENTS & EXAMS -->
-    <div class="summary-section">
-        <h3>Departments & Exams</h3>
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th>Department</th>
-                    <th>Exam Name</th>
-                    <th>Paper Code</th>
-                    <th>Exam Date</th>
-                    <th>Session</th>
-                    <th>Semester</th>
-                    <th>Start Time</th>
-                    <th>End Time</th>
-                </tr>
-            </thead>
-            <tbody id="summaryDepartmentsBody">
-                <tr><td colspan="8" style="text-align:center;">Loading...</td></tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <!-- STUDENT FILES USED -->
-    <div class="summary-section">
-        <h3>Student Data Files Used</h3>
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th>File Name</th>
-                    <th>Students</th>
-                </tr>
-            </thead>
-            <tbody id="summaryFilesBody">
-                <tr><td colspan="2" style="text-align:center;">Loading...</td></tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <!-- ROOMS SETUP -->
-    <div class="summary-section">
-        <h3>Rooms Configured</h3>
-        <table class="summary-table">
-            <thead>
-                <tr>
-                    <th>Building</th>
-                    <th>Room Number</th>
-                    <th>Capacity</th>
-                </tr>
-            </thead>
-            <tbody id="summaryRoomsBody">
-                <tr><td colspan="3" style="text-align:center;">Loading...</td></tr>
-            </tbody>
-        </table>
-    </div>
-    
-    <!-- SEATING ARRANGEMENT -->
-    <div class="summary-section">
-        <h3>Seating Arrangement (5 Columns × 8 Rows)</h3>
-        <div style="margin-bottom: 15px;">
-            <p><strong>Total Students Allocated:</strong> <span id="totalStudentsAllocated">0</span></p>
-            <p><strong>Total Seats Allocated:</strong> <span id="totalSeatsAllocated">0</span></p>
-        </div>
-        <div id="seatingPreview" style="max-height: 400px; overflow-y: auto;">
-            <p style="text-align:center;">Loading seating arrangement...</p>
-        </div>
-    </div>
-    
+
     <!-- QR CODE SECTION -->
     <div class="summary-section">
         <h3>Universal QR Code (Same for All Exams)</h3>
