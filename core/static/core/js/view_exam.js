@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', function(){
         let filteredDetails = (room.department_details || []).filter(item => {
             const dept = (item.department || '').trim().toUpperCase();
             if (!dept || !roomDepartments.has(dept)) return false;
+            if (item.semester && !roomSemesters.has(item.semester.toString().trim())) return false;
             if (targetDate && item.exam_date !== targetDate) return false;
             if (targetSession && item.session !== targetSession) return false;
             return true;
