@@ -2268,6 +2268,12 @@ def generate_seating(request):
             })
         
         print(f"[DEBUG] DepartmentExam map departments: {list(dept_exam_map.keys())}")
+        print(f"[DEBUG] DepartmentExam details:")
+        for dept, exams in dept_exam_map.items():
+            print(f"[DEBUG]   Dept '{dept}': {len(exams)} exams")
+            for exam in exams:
+                print(f"[DEBUG]     - {exam['name']} on {exam['date']} {exam['session']}")
+        print(f"[DEBUG] Total DepartmentExam records: {dept_exams.count()}")
         
         # Group students by (semester, exam_date, session)
         room_groups = defaultdict(list)
@@ -2296,8 +2302,8 @@ def generate_seating(request):
                 start_time = dept_exam_info.get('start_time')
                 end_time = dept_exam_info.get('end_time')
 
-                group_key = (semester, exam_date, session)
-                slot_key = (student.registration_number, exam_date, session)
+                group_key = (semester, exam_date, session, exam_name)
+                slot_key = (student.registration_number, exam_date, session, exam_name)
 
                 if slot_key in seen_by_slot[group_key]:
                     # already assigned once for this date/session
@@ -2348,25 +2354,25 @@ def generate_seating(request):
 
         print(f"\n[DEBUG] ===== ROOM GROUPS CREATED =====")
         print(f"[DEBUG] Total groups: {len(room_groups)}")
-        for group_key in sorted(room_groups.keys(), key=lambda k: (str(k[1]), session_order.get(k[2], 99), int(k[0]) if str(k[0]).isdigit() else 999)):
-            sem, date, sess = group_key
+        for group_key in sorted(room_groups.keys(), key=lambda k: (str(k[1]), session_order.get(k[2], 99), int(k[0]) if str(k[0]).isdigit() else 999, k[3])):
+            sem, date, sess, exam = group_key
             count = len(room_groups[group_key])
             depts = set(s.get('department') for s in room_groups[group_key])
-            exams = set(s.get('exam_name') for s in room_groups[group_key])
-            print(f"[DEBUG]   Group: Sem={sem}, Date={date}, Session={sess} | Students={count} | Depts={depts} | Exams={exams}")
+            print(f"[DEBUG]   Group: Sem={sem}, Date={date}, Session={sess}, Exam={exam} | Students={count} | Depts={depts}")
         print(f"[DEBUG] ===================================\n")
         
         for group_key in sorted(room_groups.keys(), key=lambda k: (
             str(k[1]),
             session_order.get(k[2], 99),
             int(k[0]) if str(k[0]).isdigit() else 999,
+            k[3],
             k[2],
             k[0]
         )):
             students_in_group = list(room_groups[group_key])
-            semester, exam_date, session = group_key
+            semester, exam_date, session, exam_name = group_key
 
-            print(f"\n[DEBUG] Processing group: Sem={semester}, Date={exam_date}, Session={session}")
+            print(f"\n[DEBUG] Processing group: Sem={semester}, Date={exam_date}, Session={session}, Exam={exam_name}")
             print(f"[DEBUG]   Total students: {len(students_in_group)}")
 
             # Dedup by reg+date+session
@@ -2477,12 +2483,12 @@ def generate_seating(request):
 
             if any(len(q) > 0 for q in dept_queues.values()):
                 unallocated = sum(len(q) for q in dept_queues.values())
-                print(f"[DEBUG] ✗ Group {semester}/{exam_date}/{session}: {unallocated} students NOT allocated - INSUFFICIENT ROOMS!")
+                print(f"[DEBUG] ✗ Group {semester}/{exam_date}/{session}/{exam_name}: {unallocated} students NOT allocated - INSUFFICIENT ROOMS!")
                 return JsonResponse({
                     "status": "error",
-                    "message": f"Some students are not allocated for {exam_date} {session}. Not enough rooms for this date/session."}, status=400)
+                    "message": f"Some students are not allocated for {exam_date} {session} {exam_name}. Not enough rooms for this date/session/exam."}, status=400)
             else:
-                print(f"[DEBUG] ✓ Group {semester}/{exam_date}/{session}: ALL students allocated successfully")
+                print(f"[DEBUG] ✓ Group {semester}/{exam_date}/{session}/{exam_name}: ALL students allocated successfully")
 
         # Final allocation validation
         allocated_students = sum(
@@ -2570,7 +2576,7 @@ def generate_seating(request):
                 print(f"[DEBUG]   ... and {len(skipped_students) - 10} more")
         
         print(f"[DEBUG] Room groups created: {len(room_groups)}")
-        print(f"[DEBUG] Room groups keys (date/session/semester): {sorted(room_groups.keys(), key=lambda k: (str(k[1]), session_order.get(k[2], 99)))}")
+        print(f"[DEBUG] Room groups keys (date/session/semester/exam): {sorted(room_groups.keys(), key=lambda k: (str(k[1]), session_order.get(k[2], 99)))}")
         print(f"[DEBUG] Total rooms with seating: {len(response_rooms)}")
         total_seats = sum(len(r.get('seats', [])) for r in response_rooms)
         print(f"[DEBUG] Total seats allocated: {total_seats}")
