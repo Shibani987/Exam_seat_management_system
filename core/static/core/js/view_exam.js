@@ -19,6 +19,9 @@ document.addEventListener('DOMContentLoaded', function(){
         const seating = data.seating || [];
         const departments = data.departments || [];
 
+        console.log('[VIEW_EXAM] rooms count:', rooms.length, 'seating count:', seating.length, 'departments count:', departments.length);
+        console.log('[VIEW_EXAM] first 5 seating rows:', seating.slice(0,5));
+
         // Build a lookup for department exams (to get start_time/end_time reliably)
         const deptExamMap = {};
         departments.forEach(d => {
@@ -28,8 +31,10 @@ document.addEventListener('DOMContentLoaded', function(){
 
         // Group seating entries by room id/building+number
         const seatingByRoom = {};
+        const normalizeRoomKey = (building, roomNumber) => (String(building||'').trim().toLowerCase() + '|' + String(roomNumber||'').trim().toLowerCase());
+
         seating.forEach(s => {
-            const key = s.room_building + '|' + s.room_number;
+            const key = normalizeRoomKey(s.room_building, s.room_number);
             if (!seatingByRoom[key]) seatingByRoom[key] = [];
             seatingByRoom[key].push(s);
         });
@@ -42,7 +47,7 @@ document.addEventListener('DOMContentLoaded', function(){
         container.innerHTML = '';
 
         rooms.forEach(room => {
-            const key = room.building + '|' + room.room_number;
+            const key = normalizeRoomKey(room.building, room.room_number);
             const seats = seatingByRoom[key] || [];
 
             const roomCard = document.createElement('div');
@@ -62,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function(){
             `;
 
             roomCard.appendChild(header);
+            console.log('[VIEW_EXAM] Rendering room', room.building, room.room_number, 'capacity', room.capacity, 'seats count', seats.length);
 
             // Group seating by department and collect exam + student metadata
             const deptMetadata = {};
