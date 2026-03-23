@@ -30,12 +30,15 @@ document.addEventListener('DOMContentLoaded', function(){
                 const roomCard = document.createElement('div');
                 roomCard.className = 'room-card';
 
+                const semesters = new Set((room.department_details || []).map(d => d.semester).filter(s => s));
+                const semesterText = semesters.size ? Array.from(semesters).join(', ') : 'N/A';
+
                 const header = document.createElement('div');
                 header.className = 'room-header';
                 header.innerHTML = `
                     <div>
                         <strong>${room.building} — ${room.room_number}</strong>
-                        <div class="room-meta">Capacity: ${room.capacity}</div>
+                        <div class="room-meta">Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText}</div>
                     </div>
                 `;
                 roomCard.appendChild(header);
@@ -59,28 +62,29 @@ document.addEventListener('DOMContentLoaded', function(){
         });
 
     function renderDepartmentInfo(room) {
-        const seatSemesters = new Set();
         const seatDepartments = new Set();
+        const seatSemesters = new Set();
 
         (room.seats || []).forEach(seat => {
-            if (seat.department) seatDepartments.add(String(seat.department).trim());
-            if (seat.semester) seatSemesters.add(String(seat.semester).trim());
+            if (seat.department && seat.department.trim() && seat.department.toUpperCase() !== 'EMPTY') {
+                seatDepartments.add(seat.department.trim());
+            }
+            if (seat.semester && seat.semester.trim()) {
+                seatSemesters.add(seat.semester.trim());
+            }
         });
 
-        const details = (room.department_details || []).slice(); // all provided details
-
-        let html = '<strong>Departments in this room:</strong><br/>';
-
-        if (seatDepartments.size) {
-            html += `${Array.from(seatDepartments).join(', ')}<br/>`;
+        if (!room.department_details || !room.department_details.length) {
+            const deptLine = seatDepartments.size ? Array.from(seatDepartments).join(', ') : 'N/A';
+            const semLine = seatSemesters.size ? Array.from(seatSemesters).join(', ') : 'N/A';
+            return `<strong>Departments in this room:</strong><br/>${deptLine}<br/><strong>Semesters in this room:</strong> ${semLine}`;
         }
 
-        if (seatSemesters.size) {
-            html += `Semesters present: ${Array.from(seatSemesters).join(', ')}<br/><br/>`;
-        }
+        let html = `<strong>Departments in this room:</strong><br/>${Array.from(seatDepartments).join(', ') || 'N/A'}<br/>`;
+        html += `<strong>Semesters in this room:</strong> ${Array.from(seatSemesters).join(', ') || 'N/A'}<br/><br/>`;
 
         const groupedBySlot = {};
-        details.forEach(item => {
+        (room.department_details || []).forEach(item => {
             const key = `${item.exam_date}||${item.session}`;
             if (!groupedBySlot[key]) {
                 groupedBySlot[key] = { date: item.exam_date, session: item.session, rows: [] };
@@ -97,10 +101,6 @@ document.addEventListener('DOMContentLoaded', function(){
             });
             html += '<br/>';
         });
-
-        if (!Object.keys(groupedBySlot).length) {
-            html += '<span style="color:#777;">No department exam details (room may have empty seats)</span>';
-        }
 
         return html;
     }

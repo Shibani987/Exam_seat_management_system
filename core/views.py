@@ -2804,14 +2804,15 @@ def get_exam_summary(request):
             print(f"[DEBUG] Error building student eligibility map: {e}")
             student_eligibility = {}
 
-        # Build a quick lookup for department exam start/end times
+        # Build a quick lookup for department exam start/end/semester times
         dept_exam_lookup = {}
         try:
             for de in DepartmentExam.objects.filter(exam=exam):
                 key = (str(de.department or '').strip().upper(), str(de.exam_date or ''), str(de.session or ''))
                 dept_exam_lookup[key] = {
                     'start_time': str(de.start_time) if de.start_time else '',
-                    'end_time': str(de.end_time) if de.end_time else ''
+                    'end_time': str(de.end_time) if de.end_time else '',
+                    'semester': str(de.semester).strip() if de.semester else ''
                 }
         except Exception as e:
             print(f"[DEBUG] Error building department exam lookup: {e}")
@@ -2848,7 +2849,7 @@ def get_exam_summary(request):
                         'exam_name': seat.exam_name or '',
                         'start_time': dept_times.get('start_time', ''),
                         'end_time': dept_times.get('end_time', ''),
-                        'semester': '',
+                        'semester': dept_times.get('semester', ''),
                         'year': '',
                         'is_eligible': is_eligible
                     })
