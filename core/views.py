@@ -2156,6 +2156,7 @@ def save_selected_files(request):
 @admin_required_json
 def generate_seating(request):
     """Generate seat allocations based on exam groups and department distribution"""
+    print("[DEBUG] generate_seating called")
     from collections import defaultdict
     import random
     import math
@@ -2178,10 +2179,10 @@ def generate_seating(request):
         # Try to get exam by name first, then by ID
         try:
             exam = Exam.objects.get(name=exam_id)
-        except Exam.DoesNotExist:
+        except Exception:
             try:
                 exam = Exam.objects.get(id=int(exam_id))
-            except (ValueError, Exam.DoesNotExist):
+            except Exception:
                 return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=400)
 
         # optional global column_map from frontend: list/dict mapping column index (1-5) -> department or null
