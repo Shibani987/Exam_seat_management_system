@@ -88,8 +88,8 @@ document.addEventListener('DOMContentLoaded', function(){
                 }
                 
                 // Collect unique exams for this department, using departments data for times
-                const key = (s.department || '') + '|' + (s.exam_name || '') + '|' + (s.exam_date || '') + '|' + (s.exam_session || '');
-                const times = deptExamMap[key] || {};
+                const deptKey = (s.department || '') + '|' + (s.exam_name || '') + '|' + (s.exam_date || '') + '|' + (s.exam_session || '');
+                const times = deptExamMap[deptKey] || {};
                 const st = times.start_time ? (' ' + times.start_time) : '';
                 const et = times.end_time ? (' - ' + times.end_time) : '';
                 const examStr = (s.exam_name || 'Unknown') + ' (' + (s.exam_date || 'N/A') + ' - ' + (s.exam_session || 'N/A') + ')' + (st || '') + (et || '');
@@ -128,7 +128,7 @@ document.addEventListener('DOMContentLoaded', function(){
             const grid = document.createElement('div');
             grid.className = 'seating-grid';
 
-            // Build a map of seat_code -> seat data
+            // Build a map of seat_code -> seat data FOR THIS ROOM ONLY
             const seatMap = {};
             seats.forEach(s => { 
                 if (s.seat_code) {
