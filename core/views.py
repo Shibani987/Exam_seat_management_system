@@ -2769,10 +2769,12 @@ def get_exam_summary(request):
         if not exam_id:
             return JsonResponse({"status": "error", "message": "exam_id required"}, status=400)
         
-        try:
-            exam = Exam.objects.get(id=exam_id)
-        except Exam.DoesNotExist:
-            return JsonResponse({"status": "error", "message": f"Exam with ID {exam_id} not found"}, status=404)
+        # Get exam by name or ID
+        exam = Exam.objects.filter(name=exam_id).first()
+        if not exam:
+            exam = Exam.objects.filter(id=exam_id).first()
+        if not exam:
+            return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=404)
         
         # 1. Exam details
         exam_data = {
