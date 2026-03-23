@@ -10,6 +10,7 @@ document.addEventListener('DOMContentLoaded', function(){
     fetch(`/get_exam_summary/?exam_id=${examId}`)
     .then(r => r.json())
     .then(data => {
+        console.log('[VIEW_EXAM] Full API response:', data);
         if (data.status !== 'success') {
             container.innerHTML = `<p style="color:red;">Error: ${data.message || 'Failed to load seating'}</p>`;
             return;
@@ -21,8 +22,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
         console.log('[VIEW_EXAM] rooms count:', rooms.length, 'seating count:', seating.length, 'departments count:', departments.length);
         console.log('[VIEW_EXAM] first 5 seating rows:', seating.slice(0,5));
-
-        // Build a lookup for department exams (to get start_time/end_time reliably)
+        console.log('[VIEW_EXAM] seating array empty?', seating.length === 0);
         const deptExamMap = {};
         departments.forEach(d => {
             const key = (d.department || '') + '|' + (d.exam_name || '') + '|' + (d.exam_date || '') + '|' + (d.session || '');
@@ -31,31 +31,21 @@ document.addEventListener('DOMContentLoaded', function(){
 
         // Group seating entries by room id/building+number
         const seatingByRoom = {};
-        const normalizeRoomKey = (building, roomNumber) => (String(building||'').trim().toLowerCase() + '|' + String(roomNumber||'').trim().toLowerCase());
-
         seating.forEach(s => {
-            const key = normalizeRoomKey(s.room_building, s.room_number);
+            const key = s.room_building + '|' + s.room_number;
             if (!seatingByRoom[key]) seatingByRoom[key] = [];
             seatingByRoom[key].push(s);
         });
 
-        // Filter rooms to only those with seating data (like Step 5)
-        const roomsWithSeating = rooms.filter(room => {
-            const key = normalizeRoomKey(room.building, room.room_number);
-            return seatingByRoom[key] && seatingByRoom[key].length > 0;
-        });
-
-        console.log('[VIEW_EXAM] rooms with seating:', roomsWithSeating.length, 'out of', rooms.length);
-
-        if (!roomsWithSeating.length) {
-            container.innerHTML = '<p style="color:#666;">No seating data available for this exam.</p>';
+        if (!rooms.length) {
+            container.innerHTML = '<p style="color:#666;">No rooms configured for this exam.</p>';
             return;
         }
 
         container.innerHTML = '';
 
-        roomsWithSeating.forEach(room => {
-            const key = normalizeRoomKey(room.building, room.room_number);
+        rooms.forEach(room => {
+            const key = room.building + '|' + room.room_number;
             const seats = seatingByRoom[key] || [];
 
             const roomCard = document.createElement('div');
@@ -75,7 +65,6 @@ document.addEventListener('DOMContentLoaded', function(){
             `;
 
             roomCard.appendChild(header);
-            console.log('[VIEW_EXAM] Rendering room', room.building, room.room_number, 'capacity', room.capacity, 'seats count', seats.length);
 
             // Group seating by department and collect exam + student metadata
             const deptMetadata = {};
