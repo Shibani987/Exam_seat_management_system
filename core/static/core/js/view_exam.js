@@ -30,8 +30,19 @@ document.addEventListener('DOMContentLoaded', function(){
                 const roomCard = document.createElement('div');
                 roomCard.className = 'room-card';
 
-                const semesters = new Set((room.department_details || []).map(d => d.semester).filter(s => s));
-                const semesterText = semesters.size ? Array.from(semesters).join(', ') : 'N/A';
+                // Calculate semesters and departments from actual seated students
+                const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
+                const roomSemesters = new Set();
+                const roomDepartments = new Set();
+                roomStudents.forEach(seat => {
+                    if (seat.semester && seat.semester.toString().trim()) {
+                        roomSemesters.add(seat.semester.toString().trim());
+                    }
+                    if (seat.department && seat.department.trim()) {
+                        roomDepartments.add(seat.department.trim().toUpperCase());
+                    }
+                });
+                const semesterText = roomSemesters.size ? Array.from(roomSemesters).sort().join(', ') : 'N/A';
 
                 const header = document.createElement('div');
                 header.className = 'room-header';
@@ -45,7 +56,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
                 const deptDiv = document.createElement('div');
                 deptDiv.className = 'dept-info';
-                deptDiv.innerHTML = renderDepartmentInfo(room);
+                deptDiv.innerHTML = renderDepartmentInfo(room, roomDepartments, roomSemesters);
                 roomCard.appendChild(deptDiv);
 
                 const seatGrid = renderSeatGrid(room);
@@ -61,19 +72,8 @@ document.addEventListener('DOMContentLoaded', function(){
             container.innerHTML = `<p style="color:red;">Error loading seating data: ${err.message || err}</p>`;
         });
 
-    function renderDepartmentInfo(room) {
+    function renderDepartmentInfo(room, roomDepartments, roomSemesters) {
         const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
-        const roomDepartments = new Set();
-        const roomSemesters = new Set();
-
-        roomStudents.forEach(seat => {
-            if (seat.department && seat.department.trim()) {
-                roomDepartments.add(seat.department.trim().toUpperCase());
-            }
-            if (seat.semester && seat.semester.toString().trim()) {
-                roomSemesters.add(seat.semester.toString().trim());
-            }
-        });
 
         const firstSeat = roomStudents.length > 0 ? roomStudents[0] : null;
         const targetDate = firstSeat ? firstSeat.exam_date : '';
