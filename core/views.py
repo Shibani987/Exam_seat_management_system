@@ -2670,38 +2670,59 @@ def lock_seating(request):
         exam_id = data.get('exam_id')
         seating_data = data.get('seating_data', [])
         
+        print(f"[DEBUG lock_seating] exam_id={exam_id}, seating_data items={len(seating_data)}")
+        
         exam = Exam.objects.get(id=exam_id)
+        print(f"[DEBUG lock_seating] Found exam: {exam.name}")
         
         # Clear existing allocations
+        old_count = SeatAllocation.objects.filter(exam=exam).count()
         SeatAllocation.objects.filter(exam=exam).delete()
+        print(f"[DEBUG lock_seating] Cleared {old_count} existing allocations")
         
         # Save all seat allocations
         allocations = []
+        total_seats = 0
         for room_data in seating_data:
             room_id = room_data.get('id')
             try:
-                room = Room.objects.get(id=room_id)
-            except:
+                # Filter by exam to ensure we get the right room
+                room = Room.objects.get(id=room_id, exam=exam)
+            except Exception as e:
+                print(f"[DEBUG lock_seating] Could not find room {room_id} for exam {exam_id}: {e}")
                 continue
             
             seats = room_data.get('seats', [])
+            room_seat_count = 0
             for seat in seats:
-                allocation = SeatAllocation(
-                    exam=exam,
-                    room=room,
-                    registration_number=seat.get('registration', ''),
-                    department=seat.get('department', ''),
-                    seat_code=seat.get('seat', ''),
-                    row=seat.get('row', ''),
-                    column=int(seat.get('column', 0)) if seat.get('column') else 0,
-                    exam_date=seat.get('exam_date') or exam.start_date,
-                    exam_session=seat.get('session', 'First Half'),
-                    exam_name=seat.get('exam_name', exam.name)
-                )
-                allocations.append(allocation)
+                if seat.get('registration') and seat.get('registration') != 'Empty':
+                    allocation = SeatAllocation(
+                        exam=exam,
+                        room=room,
+                        registration_number=seat.get('registration', ''),
+                        department=seat.get('department', ''),
+                        seat_code=seat.get('seat', ''),
+                        row=seat.get('row', ''),
+                        column=int(seat.get('column', 0)) if seat.get('column') else 0,
+                        exam_date=seat.get('exam_date') or exam.start_date,
+                        exam_session=seat.get('session', 'First Half'),
+                        exam_name=seat.get('exam_name', exam.name)
+                    )
+                    allocations.append(allocation)
+                    room_seat_count += 1
+            
+            print(f"[DEBUG lock_seating] Room {room_id}: {room_seat_count} seats")
+            total_seats += room_seat_count
+        
+        print(f"[DEBUG lock_seating] Total allocations to save: {len(allocations)}")
         
         # Bulk create
         SeatAllocation.objects.bulk_create(allocations, ignore_conflicts=True)
+        print(f"[DEBUG lock_seating] Bulk create completed")
+        
+        # Verify what was saved
+        saved_count = SeatAllocation.objects.filter(exam=exam).count()
+        print(f"[DEBUG lock_seating] Verified {saved_count} allocations in database after save")
         
         # DO NOT mark exam as completed here!
         # Exam should only be marked as completed when user clicks "Complete Setup" button
@@ -2714,6 +2735,9 @@ def lock_seating(request):
     except Exam.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
     except Exception as e:
+        print(f"[DEBUG lock_seating] Exception: {e}")
+        import traceback
+        traceback.print_exc()
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
 
 
@@ -2792,7 +2816,22 @@ def get_exam_summary(request):
         # 5. Seating arrangement
         seating_data = []
         try:
-            seating = SeatAllocation.objects.filter(exam=exam).select_related('room').values(
+            print(f"[DEBUG get_exam_summary] Fetching SeatAllocation for exam_id={exam.id}, exam={exam}")
+            
+            seating_qs = SeatAllocation.objects.filter(exam=exam).select_related('room')
+            seating_count = seating_qs.count()
+            print(f"[DEBUG get_exam_summary] Found {seating_count} seat allocations")
+            
+            seating = seating_qs.values(
+                'registration_number', 'department', 'seat_code', 
+                'room__building', 'room__room_number',
+                'exam_date', 'exam_session', 'exam_name'
+            )
+            
+            print(f"[DEBUG get_exam_summary] Values query returned {len(list(seating))} results")
+            
+            # Re-query for iteration since list() consumed the queryset
+            seating = seating_qs.values(
                 'registration_number', 'department', 'seat_code', 
                 'room__building', 'room__room_number',
                 'exam_date', 'exam_session', 'exam_name'
@@ -2819,8 +2858,13 @@ def get_exam_summary(request):
                     'semester': semester,
                     'year': year
                 })
+            
+            print(f"[DEBUG get_exam_summary] Processed {len(seating_data)} seat records")
+            
         except Exception as e:
             print(f"[DEBUG] Error loading seating data: {e}")
+            import traceback
+            traceback.print_exc()
             seating_data = []
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
