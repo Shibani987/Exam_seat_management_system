@@ -2792,34 +2792,72 @@ def get_exam_summary(request):
         # 5. Seating arrangement
         seating_data = []
         allocated_room_ids = set()
+        # Build student eligibility map from ExamStudent/Student to preserve eligibility status
+        student_eligibility = {}
+        try:
+            exam_students = ExamStudent.objects.filter(exam=exam).select_related('student')
+            for es in exam_students:
+                reg = (es.student.registration_number or '').strip().upper()
+                if reg:
+                    student_eligibility[reg] = str(getattr(es.student, 'academic_status', '')).strip().lower() == 'eligible'
+        except Exception as e:
+            print(f"[DEBUG] Error building student eligibility map: {e}")
+            student_eligibility = {}
+
+        # Build a quick lookup for department exam start/end times
+        dept_exam_lookup = {}
+        try:
+            for de in DepartmentExam.objects.filter(exam=exam):
+                key = (str(de.department or '').strip().upper(), str(de.exam_date or ''), str(de.session or ''))
+                dept_exam_lookup[key] = {
+                    'start_time': str(de.start_time) if de.start_time else '',
+                    'end_time': str(de.end_time) if de.end_time else ''
+                }
+        except Exception as e:
+            print(f"[DEBUG] Error building department exam lookup: {e}")
+            dept_exam_lookup = {}
+
         try:
             seating_queryset = SeatAllocation.objects.filter(exam=exam).select_related('room')
             seating_count = seating_queryset.count()
             print(f"[DEBUG] SeatAllocation count for exam {exam.id}: {seating_count}")
-            
-            # Get all seats and process them
+
             for seat in seating_queryset:
                 try:
                     allocated_room_ids.add(seat.room_id)
-                    # Build seat data without student lookup (keeping it simple)
+                    reg = (seat.registration_number or '').strip()
+                    reg_upper = reg.upper()
+                    is_eligible = False
+                    if reg_upper and reg_upper != 'EMPTY':
+                        is_eligible = student_eligibility.get(reg_upper, False)
+
+                    key = (str(seat.department or '').strip().upper(), str(seat.exam_date or ''), str(seat.exam_session or ''))
+                    dept_times = dept_exam_lookup.get(key, {'start_time': '', 'end_time': ''})
+
                     seating_data.append({
-                        'registration_number': seat.registration_number or "",
-                        'department': seat.department or "",
-                        'seat_code': seat.seat_code or "",
+                        'room_id': seat.room_id,
                         'room_building': seat.room.building if seat.room else "",
                         'room_number': seat.room.room_number if seat.room else "",
-                        'exam_date': str(seat.exam_date) if seat.exam_date else "",
-                        'exam_session': seat.exam_session or "First Half",
-                        'exam_name': seat.exam_name or "",
-                        'semester': "",
-                        'year': ""
+                        'row': seat.row or '',
+                        'column': seat.column or 0,
+                        'seat': seat.seat_code or '',
+                        'registration': reg or '',
+                        'department': seat.department or '',
+                        'exam_date': str(seat.exam_date) if seat.exam_date else '',
+                        'session': seat.exam_session or '',
+                        'exam_name': seat.exam_name or '',
+                        'start_time': dept_times.get('start_time', ''),
+                        'end_time': dept_times.get('end_time', ''),
+                        'semester': '',
+                        'year': '',
+                        'is_eligible': is_eligible
                     })
                 except Exception as e:
                     print(f"[DEBUG] Error processing seat {getattr(seat, 'seat_code', '?')}: {e}")
                     continue
-            
+
             print(f"[DEBUG] Processed {len(seating_data)} seats successfully")
-            
+
         except Exception as e:
             print(f"[DEBUG] Error in seating query: {e}")
             import traceback
@@ -2827,8 +2865,56 @@ def get_exam_summary(request):
             seating_data = []
             allocated_room_ids = set()
 
-        # Filter rooms to only those with seating allocations to match Step 5 behavior
-        rooms_data = [r for r in room_data_all if r.get('id') in allocated_room_ids]
+        # Build rooms_data with seats and department details from actual allocated seats.
+        rooms_data = []
+        for r in room_data_all:
+            if r.get('id') not in allocated_room_ids:
+                continue
+
+            room_seats = [s for s in seating_data if s.get('room_id') == r.get('id')]
+            if not room_seats:
+                continue
+
+            # Determine departments with actual students in room
+            room_departments = set()
+            for s in room_seats:
+                if s.get('registration') and s.get('registration') != 'Empty' and s.get('department'):
+                    room_departments.add(str(s.get('department')).strip().upper())
+
+            dept_details = []
+            seen_details = set()
+            for s in room_seats:
+                dept = str(s.get('department') or '').strip()
+                if not dept or dept.upper() == 'EMPTY':
+                    continue
+                dept_key = dept.strip().upper()
+                if dept_key not in room_departments:
+                    continue
+
+                detail_key = f"{dept_key}||{s.get('exam_name','')}||{s.get('exam_date','')}||{s.get('session','')}||{s.get('start_time','')}||{s.get('end_time','')}"
+                if detail_key in seen_details:
+                    continue
+                seen_details.add(detail_key)
+
+                dept_details.append({
+                    'department': dept,
+                    'semester': s.get('semester',''),
+                    'exam_name': s.get('exam_name','N/A'),
+                    'exam_date': s.get('exam_date','N/A'),
+                    'session': s.get('session','N/A'),
+                    'start_time': s.get('start_time','N/A'),
+                    'end_time': s.get('end_time','N/A')
+                })
+
+            rooms_data.append({
+                'id': r.get('id'),
+                'building': r.get('building'),
+                'room_number': r.get('room_number'),
+                'capacity': r.get('capacity'),
+                'departments': sorted(list(room_departments)),
+                'department_details': dept_details,
+                'seats': room_seats
+            })
         print(f"[DEBUG] Returning {len(rooms_data)} rooms with seat allocations (from {len(room_data_all)} total rooms)")
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
