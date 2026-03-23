@@ -2173,14 +2173,16 @@ def generate_seating(request):
         if not exam_id:
             return JsonResponse({"status": "error", "message": "exam_id is required"}, status=400)
 
-        # Try to get exam by ID or name
+        print(f"[DEBUG] Received exam_id: {exam_id} (type: {type(exam_id)})")
+
+        # Try to get exam by name first, then by ID
         try:
-            if isinstance(exam_id, int) or (isinstance(exam_id, str) and exam_id.isdigit()):
-                exam = Exam.objects.get(id=int(exam_id))
-            else:
-                exam = Exam.objects.get(name=exam_id)
+            exam = Exam.objects.get(name=exam_id)
         except Exam.DoesNotExist:
-            return JsonResponse({"status": "error", "message": f"Exam not found with ID or name: {exam_id}"}, status=404)
+            try:
+                exam = Exam.objects.get(id=int(exam_id))
+            except (ValueError, Exam.DoesNotExist):
+                return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=400)
 
         # optional global column_map from frontend: list/dict mapping column index (1-5) -> department or null
         column_map = data.get('column_map')
