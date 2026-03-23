@@ -2670,7 +2670,8 @@ def lock_seating(request):
         exam_id = data.get('exam_id')
         seating_data = data.get('seating_data', [])
         
-        print(f"[DEBUG lock_seating] exam_id={exam_id}, seating_data items={len(seating_data)}")
+        print(f"\n[DEBUG lock_seating] ========== LOCK SEATING START ==========")
+        print(f"[DEBUG lock_seating] exam_id={exam_id}, rooms_data items={len(seating_data)}")
         
         exam = Exam.objects.get(id=exam_id)
         print(f"[DEBUG lock_seating] Found exam: {exam.name}")
@@ -2682,27 +2683,44 @@ def lock_seating(request):
         
         # Save all seat allocations
         allocations = []
-        total_seats = 0
-        for room_data in seating_data:
+        total_seats_in_data = 0
+        total_saved = 0
+        total_empty = 0
+        
+        for room_idx, room_data in enumerate(seating_data):
             room_id = room_data.get('id')
             try:
-                # Filter by exam to ensure we get the right room
                 room = Room.objects.get(id=room_id, exam=exam)
             except Exception as e:
                 print(f"[DEBUG lock_seating] Could not find room {room_id} for exam {exam_id}: {e}")
                 continue
             
             seats = room_data.get('seats', [])
-            room_seat_count = 0
-            for seat in seats:
-                reg = seat.get('registration', '').strip() if seat.get('registration') else ''
+            room_valid_count = 0
+            room_empty_count = 0
+            
+            print(f"[DEBUG lock_seating] Room {room_idx} (id={room_id}): processing {len(seats)} total seats")
+            
+            for seat_idx, seat in enumerate(seats):
+                total_seats_in_data += 1
                 
-                # Only skip if registration is explicitly 'Empty' or truly empty
-                if reg.upper() == 'EMPTY' or not reg:
-                    print(f"[DEBUG lock_seating] Skipping empty/placeholder seat in room {room_id}")
+                # Get registration from seat data
+                reg = seat.get('registration', '')
+                if reg:
+                    reg = str(reg).strip()
+                
+                # Log sample seats
+                if seat_idx < 2 or (len(seats) > 10 and seat_idx % max(1, len(seats) // 2) == 0):
+                    print(f"[DEBUG lock_seating]   Seat {seat_idx}: registration='{reg}' (type={type(seat.get('registration'))}, dept={seat.get('department')})")
+                
+                # Only skip if registration is the literal string 'Empty'
+                if reg == 'Empty':
+                    room_empty_count += 1
+                    total_empty += 1
                     continue
                 
-                print(f"[DEBUG lock_seating] Creating allocation for student: {reg} in seat {seat.get('seat')}")
+                # Save this seat - it's a real student
+                print(f"[DEBUG lock_seating]   ✓ Saving student: {reg} in seat {seat.get('seat')}")
                 
                 allocation = SeatAllocation(
                     exam=exam,
@@ -2717,12 +2735,16 @@ def lock_seating(request):
                     exam_name=seat.get('exam_name', exam.name)
                 )
                 allocations.append(allocation)
-                room_seat_count += 1
+                room_valid_count += 1
+                total_saved += 1
             
-            print(f"[DEBUG lock_seating] Room {room_id}: {room_seat_count} seats saved")
-            total_seats += room_seat_count
+            print(f"[DEBUG lock_seating] Room {room_id} complete: {room_valid_count} student seats, {room_empty_count} empty placeholder seats")
         
-        print(f"[DEBUG lock_seating] Total allocations to save: {len(allocations)}")
+        print(f"[DEBUG lock_seating] ========== SUMMARY ==========")
+        print(f"[DEBUG lock_seating] Total seats in data: {total_seats_in_data}")
+        print(f"[DEBUG lock_seating] Empty placeholder seats: {total_empty}")
+        print(f"[DEBUG lock_seating] Student seats to save: {total_saved}")
+        print(f"[DEBUG lock_seating] Creating {len(allocations)} SeatAllocation objects...")
         
         # Bulk create
         SeatAllocation.objects.bulk_create(allocations, ignore_conflicts=True)
@@ -2730,7 +2752,8 @@ def lock_seating(request):
         
         # Verify what was saved
         saved_count = SeatAllocation.objects.filter(exam=exam).count()
-        print(f"[DEBUG lock_seating] Verified {saved_count} allocations in database after save")
+        print(f"[DEBUG lock_seating] ✓ Verified {saved_count} allocations in database after save")
+        print(f"[DEBUG lock_seating] ========== LOCK SEATING END ==========\n")
         
         # DO NOT mark exam as completed here!
         # Exam should only be marked as completed when user clicks "Complete Setup" button
@@ -2738,12 +2761,12 @@ def lock_seating(request):
         
         return JsonResponse({
             "status": "success",
-            "message": f"{len(allocations)} seats saved to database"
+            "message": f"{len(allocations)} student seats saved to database ({total_empty} empty seats)"
         })
     except Exam.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
     except Exception as e:
-        print(f"[DEBUG lock_seating] Exception: {e}")
+        print(f"[DEBUG lock_seating] ✗ Exception: {e}")
         import traceback
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": str(e)}, status=400)
@@ -2840,10 +2863,14 @@ def get_exam_summary(request):
             print(f"[DEBUG get_exam_summary] Query returned {len(seat_list)} results")
             
             for seat in seat_list:
-                reg = seat.get('registration_number', '').strip() if seat.get('registration_number') else ''
+                reg = seat.get('registration_number', '')
+                if not reg:
+                    reg = ''
+                else:
+                    reg = str(reg).strip()
                 
                 # Skip empty/placeholder seats
-                if reg.upper() == 'EMPTY' or not reg:
+                if not reg or reg.upper() == 'EMPTY':
                     print(f"[DEBUG get_exam_summary] Skipping placeholder seat: registration_number='{reg}'")
                     continue
                 
