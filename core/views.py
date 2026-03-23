@@ -2725,12 +2725,19 @@ def get_exam_summary(request):
     """Fetch complete exam summary for Step 6 verification"""
     try:
         exam_id = request.GET.get('exam_id')
+        print(f"[DEBUG] get_exam_summary called with exam_id: {exam_id} (type: {type(exam_id)})")
         if not exam_id:
             return JsonResponse({"status": "error", "message": "exam_id required"}, status=400)
         
         try:
-            exam = Exam.objects.get(id=exam_id)
+            exam_id_int = int(exam_id)
+            exam = Exam.objects.get(id=exam_id_int)
+            print(f"[DEBUG] Found exam: {exam.id} - {exam.name} - is_completed: {exam.is_completed}, is_temporary: {exam.is_temporary}")
+        except ValueError:
+            print(f"[DEBUG] Invalid exam_id: {exam_id}")
+            return JsonResponse({"status": "error", "message": "Invalid exam_id"}, status=400)
         except Exam.DoesNotExist:
+            print(f"[DEBUG] Exam with ID {exam_id} not found")
             return JsonResponse({"status": "error", "message": f"Exam with ID {exam_id} not found"}, status=404)
         
         # 1. Exam details
@@ -2792,13 +2799,19 @@ def get_exam_summary(request):
         # 5. Seating arrangement
         seating_data = []
         try:
-            seating = SeatAllocation.objects.filter(exam=exam).select_related('room').values(
+            print(f"[DEBUG] About to query SeatAllocation for exam {exam.id} ({exam.name})")
+            seating_queryset = SeatAllocation.objects.filter(exam=exam)
+            print(f"[DEBUG] SeatAllocation queryset created, count: {seating_queryset.count()}")
+            seating = seating_queryset.select_related('room').values(
                 'registration_number', 'department', 'seat_code', 
                 'room__building', 'room__room_number',
                 'exam_date', 'exam_session', 'exam_name'
             )
+            print(f"[DEBUG] Values query executed")
+            seating_list = list(seating)
+            print(f"[DEBUG] Seating list created with {len(seating_list)} items")
             
-            for seat in seating:
+            for seat in seating_list:
                 try:
                     student = Student.objects.get(registration_number=seat['registration_number'])
                     semester = student.semester or ""
@@ -2819,8 +2832,11 @@ def get_exam_summary(request):
                     'semester': semester,
                     'year': year
                 })
+            print(f"[DEBUG] Processed {len(seating_data)} seating records")
         except Exception as e:
             print(f"[DEBUG] Error loading seating data: {e}")
+            import traceback
+            traceback.print_exc()
             seating_data = []
         
         total_students = ExamStudent.objects.filter(exam=exam).count()
