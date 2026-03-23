@@ -2695,23 +2695,31 @@ def lock_seating(request):
             seats = room_data.get('seats', [])
             room_seat_count = 0
             for seat in seats:
-                if seat.get('registration') and seat.get('registration') != 'Empty':
-                    allocation = SeatAllocation(
-                        exam=exam,
-                        room=room,
-                        registration_number=seat.get('registration', ''),
-                        department=seat.get('department', ''),
-                        seat_code=seat.get('seat', ''),
-                        row=seat.get('row', ''),
-                        column=int(seat.get('column', 0)) if seat.get('column') else 0,
-                        exam_date=seat.get('exam_date') or exam.start_date,
-                        exam_session=seat.get('session', 'First Half'),
-                        exam_name=seat.get('exam_name', exam.name)
-                    )
-                    allocations.append(allocation)
-                    room_seat_count += 1
+                reg = seat.get('registration', '').strip() if seat.get('registration') else ''
+                
+                # Only skip if registration is explicitly 'Empty' or truly empty
+                if reg.upper() == 'EMPTY' or not reg:
+                    print(f"[DEBUG lock_seating] Skipping empty/placeholder seat in room {room_id}")
+                    continue
+                
+                print(f"[DEBUG lock_seating] Creating allocation for student: {reg} in seat {seat.get('seat')}")
+                
+                allocation = SeatAllocation(
+                    exam=exam,
+                    room=room,
+                    registration_number=reg,
+                    department=seat.get('department', ''),
+                    seat_code=seat.get('seat', ''),
+                    row=seat.get('row', ''),
+                    column=int(seat.get('column', 0)) if seat.get('column') else 0,
+                    exam_date=seat.get('exam_date') or exam.start_date,
+                    exam_session=seat.get('session', 'First Half'),
+                    exam_name=seat.get('exam_name', exam.name)
+                )
+                allocations.append(allocation)
+                room_seat_count += 1
             
-            print(f"[DEBUG lock_seating] Room {room_id}: {room_seat_count} seats")
+            print(f"[DEBUG lock_seating] Room {room_id}: {room_seat_count} seats saved")
             total_seats += room_seat_count
         
         print(f"[DEBUG lock_seating] Total allocations to save: {len(allocations)}")
@@ -2820,7 +2828,7 @@ def get_exam_summary(request):
             
             seating_qs = SeatAllocation.objects.filter(exam=exam).select_related('room')
             seating_count = seating_qs.count()
-            print(f"[DEBUG get_exam_summary] Found {seating_count} seat allocations")
+            print(f"[DEBUG get_exam_summary] Found {seating_count} total seat allocations")
             
             seating = seating_qs.values(
                 'registration_number', 'department', 'seat_code', 
@@ -2828,18 +2836,19 @@ def get_exam_summary(request):
                 'exam_date', 'exam_session', 'exam_name'
             )
             
-            print(f"[DEBUG get_exam_summary] Values query returned {len(list(seating))} results")
+            seat_list = list(seating)
+            print(f"[DEBUG get_exam_summary] Query returned {len(seat_list)} results")
             
-            # Re-query for iteration since list() consumed the queryset
-            seating = seating_qs.values(
-                'registration_number', 'department', 'seat_code', 
-                'room__building', 'room__room_number',
-                'exam_date', 'exam_session', 'exam_name'
-            )
-            
-            for seat in seating:
+            for seat in seat_list:
+                reg = seat.get('registration_number', '').strip() if seat.get('registration_number') else ''
+                
+                # Skip empty/placeholder seats
+                if reg.upper() == 'EMPTY' or not reg:
+                    print(f"[DEBUG get_exam_summary] Skipping placeholder seat: registration_number='{reg}'")
+                    continue
+                
                 try:
-                    student = Student.objects.get(registration_number=seat['registration_number'])
+                    student = Student.objects.get(registration_number=reg)
                     semester = student.semester or ""
                     year = getattr(student, 'year', "") or ""
                 except Student.DoesNotExist:
@@ -2847,19 +2856,19 @@ def get_exam_summary(request):
                     year = ""
                 
                 seating_data.append({
-                    'registration_number': seat['registration_number'],
-                    'department': seat['department'],
-                    'seat_code': seat['seat_code'],
-                    'room_building': seat['room__building'],
-                    'room_number': seat['room__room_number'],
-                    'exam_date': str(seat['exam_date']) if seat['exam_date'] else "",
-                    'exam_session': seat['exam_session'] or "First Half",
-                    'exam_name': seat['exam_name'] or "",
+                    'registration_number': reg,
+                    'department': seat.get('department'),
+                    'seat_code': seat.get('seat_code'),
+                    'room_building': seat.get('room__building'),
+                    'room_number': seat.get('room__room_number'),
+                    'exam_date': str(seat.get('exam_date')) if seat.get('exam_date') else "",
+                    'exam_session': seat.get('exam_session') or "First Half",
+                    'exam_name': seat.get('exam_name') or "",
                     'semester': semester,
                     'year': year
                 })
             
-            print(f"[DEBUG get_exam_summary] Processed {len(seating_data)} seat records")
+            print(f"[DEBUG get_exam_summary] After filtering, {len(seating_data)} valid seat records")
             
         except Exception as e:
             print(f"[DEBUG] Error loading seating data: {e}")
