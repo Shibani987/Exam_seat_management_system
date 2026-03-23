@@ -25,12 +25,12 @@
     /* Step 5 style */
     .seat-grid { display: flex; flex-direction: column; gap: 4px; }
     .seat-row { display: flex; gap: 4px; }
-    .seat { border: 1px solid #ccc; padding: 4px; min-width: 60px; min-height: 60px; background: #ffffff; transition: all 0.3s ease; font-size: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+    .seat { border: 1px solid #aaa; background: #ffffff; transition: all 0.2s ease; font-size: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; width: 68px; height: 72px; min-width: 68px; min-height: 72px; box-sizing: border-box; padding: 4px; overflow: hidden; }
     .seat.eligible { background: #28a745; color: white; }
     .seat.blocked { background: #ffffff; color: #333; }
     .seat.empty { background: #f1f1f1; color: #888; font-style: italic; }
-    .seat-num { font-weight: 700; font-size: 9px; margin-bottom: 2px; }
-    .seat-info { font-size: 8px; line-height: 1.1; }
+    .seat-num { font-weight: 700; font-size: 9px; margin-bottom: 3px; }
+    .seat-info { font-size: 8px; line-height: 1.1; max-height: 38px; overflow: hidden; }
   </style>
 </head>
 <body>
