@@ -23,19 +23,28 @@ document.addEventListener('DOMContentLoaded', function(){
         console.log('[VIEW_EXAM] rooms count:', rooms.length, 'seating count:', seating.length, 'departments count:', departments.length);
         console.log('[VIEW_EXAM] first 5 seating rows:', seating.slice(0,5));
         console.log('[VIEW_EXAM] seating array empty?', seating.length === 0);
+        
         const deptExamMap = {};
         departments.forEach(d => {
             const key = (d.department || '') + '|' + (d.exam_name || '') + '|' + (d.exam_date || '') + '|' + (d.session || '');
             deptExamMap[key] = { start_time: d.start_time || null, end_time: d.end_time || null };
         });
 
+        // Normalize room key for matching
+        const normalizeRoomKey = (building, roomNumber) => {
+            return (String(building || '').trim().toLowerCase() + '|' + String(roomNumber || '').trim().toLowerCase());
+        };
+
         // Group seating entries by room id/building+number
         const seatingByRoom = {};
         seating.forEach(s => {
-            const key = s.room_building + '|' + s.room_number;
+            const key = normalizeRoomKey(s.room_building, s.room_number);
+            console.log('[VIEW_EXAM] Seating: building=' + s.room_building + ', room=' + s.room_number + ', normalized_key=' + key + ', seat=' + s.seat_code);
             if (!seatingByRoom[key]) seatingByRoom[key] = [];
             seatingByRoom[key].push(s);
         });
+        
+        console.log('[VIEW_EXAM] seatingByRoom keys:', Object.keys(seatingByRoom));
 
         if (!rooms.length) {
             container.innerHTML = '<p style="color:#666;">No rooms configured for this exam.</p>';
@@ -45,8 +54,9 @@ document.addEventListener('DOMContentLoaded', function(){
         container.innerHTML = '';
 
         rooms.forEach(room => {
-            const key = room.building + '|' + room.room_number;
+            const key = normalizeRoomKey(room.building, room.room_number);
             const seats = seatingByRoom[key] || [];
+            console.log('[VIEW_EXAM] Room: building=' + room.building + ', room=' + room.room_number + ', normalized_key=' + key + ', seats_count=' + seats.length);
 
             const roomCard = document.createElement('div');
             roomCard.className = 'room-card';
@@ -120,7 +130,14 @@ document.addEventListener('DOMContentLoaded', function(){
 
             // Build a map of seat_code -> seat data
             const seatMap = {};
-            seats.forEach(s => { if (s.seat_code) seatMap[s.seat_code] = s; });
+            seats.forEach(s => { 
+                if (s.seat_code) {
+                    seatMap[s.seat_code] = s;
+                    console.log('[VIEW_EXAM] Added to seatMap:', s.seat_code, '=', s.registration_number);
+                }
+            });
+            
+            console.log('[VIEW_EXAM] seatMap keys:', Object.keys(seatMap).length, 'keys, total seats for room:', seats.length);
 
             // Determine rows needed from room capacity (5 seats per row)
             const colsPerRow = 5;
@@ -129,6 +146,8 @@ document.addEventListener('DOMContentLoaded', function(){
             for (let i = 0; i < rowsNeeded; i++) {
                 rows.push(String.fromCharCode('A'.charCodeAt(0) + i));
             }
+            
+            console.log('[VIEW_EXAM] Room rendering: capacity=' + room.capacity + ', rowsNeeded=' + rowsNeeded + ', rows=' + rows.join(','));
 
             for (let r = 0; r < rowsNeeded; r++) {
                 for (let c = 1; c <= colsPerRow; c++) {
