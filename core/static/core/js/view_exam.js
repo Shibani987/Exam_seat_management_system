@@ -58,7 +58,10 @@ document.addEventListener('DOMContentLoaded', function(){
             const seats = seatingByRoom[key] || [];
             console.log('[VIEW_EXAM] Room: building=' + room.building + ', room=' + room.room_number + ', normalized_key=' + key + ', seats_count=' + seats.length);
 
-            const roomCard = document.createElement('div');
+            // Only render rooms that have seat allocations (like Step 5)
+            if (seats.length === 0) {
+                return; // Skip rendering this room
+            }
             roomCard.className = 'room-card';
 
             const header = document.createElement('div');
@@ -75,54 +78,6 @@ document.addEventListener('DOMContentLoaded', function(){
             `;
 
             roomCard.appendChild(header);
-
-            // Group seating by department and collect exam + student metadata
-            const deptMetadata = {};
-            seats.forEach(s => {
-                const dept = s.department || 'Unknown';
-                if (!deptMetadata[dept]) {
-                    deptMetadata[dept] = {
-                        exams: new Set(),
-                        students: {}
-                    };
-                }
-                
-                // Collect unique exams for this department, using departments data for times
-                const deptKey = (s.department || '') + '|' + (s.exam_name || '') + '|' + (s.exam_date || '') + '|' + (s.exam_session || '');
-                const times = deptExamMap[deptKey] || {};
-                const st = times.start_time ? (' ' + times.start_time) : '';
-                const et = times.end_time ? (' - ' + times.end_time) : '';
-                const examStr = (s.exam_name || 'Unknown') + ' (' + (s.exam_date || 'N/A') + ' - ' + (s.exam_session || 'N/A') + ')' + (st || '') + (et || '');
-                deptMetadata[dept].exams.add(examStr);
-                
-                // Collect students by semester/year
-                if (s.semester && s.year) {
-                    const semKey = 'Sem ' + s.semester + ' (Year ' + s.year + ')';
-                    deptMetadata[dept].students[semKey] = (deptMetadata[dept].students[semKey] || 0) + 1;
-                }
-            });
-
-            // Render department metadata section
-            Object.keys(deptMetadata).forEach(dept => {
-                const meta = deptMetadata[dept];
-                const metaDiv = document.createElement('div');
-                metaDiv.className = 'dept-meta-section';
-                
-                let metaHTML = '<div class="dept-meta-name">' + dept + '</div>';
-                
-                // Add exams
-                meta.exams.forEach(exam => {
-                    metaHTML += '<div class="dept-meta-exam"><strong>Exam:</strong> ' + exam + '</div>';
-                });
-                
-                // Add students per semester/year
-                Object.keys(meta.students).forEach(sem => {
-                    metaHTML += '<div class="dept-meta-students"><strong>Students:</strong> ' + sem + ' (' + meta.students[sem] + ')</div>';
-                });
-                
-                metaDiv.innerHTML = metaHTML;
-                roomCard.appendChild(metaDiv);
-            });
 
             // Create grid with dynamic rows based on room capacity (5 columns fixed)
             const grid = document.createElement('div');
