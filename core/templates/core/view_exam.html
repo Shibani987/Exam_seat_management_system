@@ -11,12 +11,10 @@
     #back-link:hover { color:#1565c0; border-bottom:2px solid #1976d2; }
     .room-card { margin-bottom: 25px; background:#f9f9f9; border:1px solid #e0e0e0; border-radius:6px; padding:18px; }
     .room-header { display:flex; justify-content:space-between; align-items:center; gap:15px; margin-bottom:12px; padding-bottom:12px; border-bottom:1px solid #ddd; }
-    .dept-meta-section { margin-bottom:12px; padding:10px; background:#fff; border-left:3px solid #1976d2; border-radius:3px; }
-    .dept-meta-name { font-weight:600; color:#1976d2; font-size:0.9rem; margin-bottom:4px; }
-    .dept-meta-exam { font-size:0.85rem; color:#555; margin:3px 0 0 10px; }
-    .dept-meta-students { font-size:0.8rem; color:#666; margin:2px 0 0 10px; }
+    .dept-info { margin-bottom:12px; padding:10px; background:#fff; border-left:3px solid #1976d2; border-radius:3px; }
+    .dept-info strong { color:#1976d2; }
     .seating-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap:6px; margin-top:12px; }
-    .seat-cell { border:1px solid #e0e0e0; border-radius:4px; padding:8px; min-height:48px; background:green; font-size:0.85rem; }
+    .seat-cell { border:1px solid #e0e0e0; border-radius:4px; padding:8px; min-height:48px; background:#fafafa; font-size:0.85rem; }
     .seat-cell.empty { background:#fff; opacity:0.98; }
     .seat-cell .empty-seat { color:#666; font-weight:600; font-style:normal; text-align:center; margin-top:6px; }
     .room-meta { color:#666; font-size:0.9rem; }
@@ -24,6 +22,15 @@
     .room-actions .delete-btn { background:#e53935; color:#fff; border:none; padding:6px 8px; border-radius:4px; cursor:pointer; font-size:0.85rem; }
     .room-actions .delete-btn:hover { background:#d32f2f; }
     .room-actions .delete-btn:disabled { opacity:0.6; cursor:not-allowed; }
+    /* Step 5 style */
+    .seat-grid { display: flex; flex-direction: column; gap: 4px; }
+    .seat-row { display: flex; gap: 4px; }
+    .seat { border: 1px solid #ccc; padding: 4px; min-width: 60px; min-height: 60px; background: #ffffff; transition: all 0.3s ease; font-size: 10px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+    .seat.eligible { background: #28a745; color: white; }
+    .seat.blocked { background: #ffffff; color: #333; }
+    .seat.empty { background: #f1f1f1; color: #888; font-style: italic; }
+    .seat-num { font-weight: 700; font-size: 9px; margin-bottom: 2px; }
+    .seat-info { font-size: 8px; line-height: 1.1; }
   </style>
 </head>
 <body>

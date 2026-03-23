@@ -35,15 +35,21 @@ document.addEventListener('DOMContentLoaded', function(){
             return (String(building || '').trim().toLowerCase() + '|' + String(roomNumber || '').trim().toLowerCase());
         };
 
-        // Group seating entries by room id/building+number
+        // Group seating by room
         const seatingByRoom = {};
         seating.forEach(s => {
             const key = normalizeRoomKey(s.room_building, s.room_number);
-            console.log('[VIEW_EXAM] Seating: building=' + s.room_building + ', room=' + s.room_number + ', normalized_key=' + key + ', seat=' + s.seat_code);
-            if (!seatingByRoom[key]) seatingByRoom[key] = [];
-            seatingByRoom[key].push(s);
+            if (!seatingByRoom[key]) {
+                seatingByRoom[key] = { building: s.room_building, room_number: s.room_number, seats: [] };
+            }
+            const row = s.seat_code.charAt(0);
+            const col = parseInt(s.seat_code.slice(1));
+            const is_eligible = s.registration_number && s.registration_number !== 'Empty';
+            seatingByRoom[key].seats.push({
+                row, column: col, registration: s.registration_number, department: s.department, is_eligible
+            });
         });
-        
+
         console.log('[VIEW_EXAM] seatingByRoom keys:', Object.keys(seatingByRoom));
 
         if (!rooms.length) {
@@ -55,14 +61,13 @@ document.addEventListener('DOMContentLoaded', function(){
 
         rooms.forEach(room => {
             const key = normalizeRoomKey(room.building, room.room_number);
-            const seats = seatingByRoom[key] || [];
-            console.log('[VIEW_EXAM] Room: building=' + room.building + ', room=' + room.room_number + ', normalized_key=' + key + ', seats_count=' + seats.length);
-
-            // Only render rooms that have seat allocations (like Step 5)
-            if (seats.length === 0) {
-                return; // Skip rendering this room
+            const roomData = seatingByRoom[key];
+            if (!roomData || roomData.seats.length === 0) {
+                return; // Skip rooms with no seats
             }
-            roomCard.className = 'room-card';
+
+            const roomDiv = document.createElement('div');
+            roomDiv.className = 'room-card';
 
             const header = document.createElement('div');
             header.className = 'room-header';
@@ -77,61 +82,111 @@ document.addEventListener('DOMContentLoaded', function(){
                 </div>
             `;
 
-            roomCard.appendChild(header);
+            roomDiv.appendChild(header);
 
-            // Create grid with dynamic rows based on room capacity (5 columns fixed)
-            const grid = document.createElement('div');
-            grid.className = 'seating-grid';
+            // Department exams info
+            const deptDiv = document.createElement('div');
+            deptDiv.className = 'dept-info';
 
-            // Build a map of seat_code -> seat data FOR THIS ROOM ONLY
-            const seatMap = {};
-            seats.forEach(s => { 
-                if (s.seat_code) {
-                    seatMap[s.seat_code] = s;
-                    console.log('[VIEW_EXAM] Added to seatMap:', s.seat_code, '=', s.registration_number);
-                }
-            });
-            
-            console.log('[VIEW_EXAM] seatMap keys:', Object.keys(seatMap).length, 'keys, total seats for room:', seats.length);
-
-            if (seats.length === 0) {
-                const noSeatsMessage = document.createElement('div');
-                noSeatsMessage.style = 'padding:10px; color:#777; font-style:italic;';
-                noSeatsMessage.textContent = 'No seats assigned for this room yet.';
-                roomCard.appendChild(noSeatsMessage);
-                container.appendChild(roomCard);
-                return; // skip grid rendering for empty room
-            }
-
-            // Determine rows needed from room capacity (5 seats per row)
-            const colsPerRow = 5;
-            const rowsNeeded = Math.max(1, Math.ceil(Number(room.capacity) / colsPerRow));
-            const rows = [];
-            for (let i = 0; i < rowsNeeded; i++) {
-                rows.push(String.fromCharCode('A'.charCodeAt(0) + i));
-            }
-            
-            console.log('[VIEW_EXAM] Room rendering: capacity=' + room.capacity + ', rowsNeeded=' + rowsNeeded + ', rows=' + rows.join(','));
-
-            for (let r = 0; r < rowsNeeded; r++) {
-                for (let c = 1; c <= colsPerRow; c++) {
-                    const seatCode = rows[r] + c;
-                    const cell = document.createElement('div');
-                    cell.className = 'seat-cell';
-                    const s = seatMap[seatCode];
-                    if (s) {
-                        cell.innerHTML = `<div style="font-weight:700">${seatCode}</div><div style="color:#333;">${s.registration_number || ''}</div><div style="color:#666;font-size:0.8rem">${s.department || ''}</div>`;
-                        cell.classList.remove('empty');
-                    } else {
-                        cell.classList.add('empty');
-                        cell.innerHTML = `<div style="font-weight:700">${seatCode}</div><div class="empty-seat">Empty</div>`;
+            if (departments && departments.length > 0) {
+                // Get unique departments in this room
+                const roomDepartments = new Set();
+                roomData.seats.forEach(seat => {
+                    if (seat.registration && seat.registration !== 'Empty' && seat.department) {
+                        roomDepartments.add(seat.department.trim().toUpperCase());
                     }
-                    grid.appendChild(cell);
-                }
+                });
+
+                // Filter departments to only those in this room
+                let filteredDepts = departments.filter(d => roomDepartments.has(String(d.department || '').trim().toUpperCase()));
+
+                // Group by date/session
+                const groupedBySlot = {};
+                filteredDepts.forEach(item => {
+                    const slotKey = `${item.exam_date}||${item.session}`;
+                    if (!groupedBySlot[slotKey]) {
+                        groupedBySlot[slotKey] = {
+                            date: item.exam_date,
+                            session: item.session,
+                            departments: []
+                        };
+                    }
+                    groupedBySlot[slotKey].departments.push(item);
+                });
+
+                let deptHtml = '<strong>Departments in this room:</strong><br>';
+                Object.values(groupedBySlot).forEach(slot => {
+                    deptHtml += `<strong>${slot.date}, ${slot.session}:</strong><br>`;
+                    slot.departments.forEach(item => {
+                        const semText = item.semester ? ` [Sem ${item.semester}]` : '';
+                        deptHtml += `&nbsp;&nbsp;${item.department}${semText} - ${item.exam_name}<br>`;
+                        deptHtml += `&nbsp;&nbsp;&nbsp;&nbsp;Timing: ${item.start_time} - ${item.end_time}<br>`;
+                    });
+                    deptHtml += '<br>';
+                });
+                deptDiv.innerHTML = deptHtml;
+                roomDiv.appendChild(deptDiv);
             }
 
-            roomCard.appendChild(grid);
-            container.appendChild(roomCard);
+            // Seat grid
+            const grid = document.createElement('div');
+            grid.className = 'seat-grid';
+
+            const capacity = parseInt(room.capacity, 10) || 0;
+            const rowsNeeded = capacity > 0 ? Math.ceil(capacity / 5) : 0;
+            const rows = [];
+            for (let i = 0; i < rowsNeeded; i++) rows.push(String.fromCharCode(65 + i));
+
+            console.log('[VIEW_EXAM] Room rendering: capacity=' + capacity + ', rowsNeeded=' + rowsNeeded + ', rows=' + rows.join(','));
+
+            rows.forEach((row, rowIdx) => {
+                const rowDiv = document.createElement('div');
+                rowDiv.className = 'seat-row';
+
+                let colsToRender = [1,2,3,4,5];
+                if (rowIdx === rows.length - 1) {
+                    const filledBefore = (rows.length - 1) * 5;
+                    const lastRowCols = Math.max(0, capacity - filledBefore);
+                    colsToRender = colsToRender.slice(0, lastRowCols);
+                }
+
+                colsToRender.forEach(col => {
+                    const seatDiv = document.createElement('div');
+                    seatDiv.className = 'seat';
+
+                    const seat = roomData.seats.find(s => s.row === row && s.column === col);
+
+                    if (seat && seat.registration && seat.registration !== 'Empty') {
+                        if (seat.is_eligible) {
+                            // Eligible
+                            seatDiv.classList.add('eligible');
+                            seatDiv.innerHTML = `
+                                <div class="seat-num">${row}${col}</div>
+                                <div class="seat-info">${seat.department} ${seat.registration}</div>
+                            `;
+                        } else {
+                            // Not eligible
+                            seatDiv.classList.add('blocked');
+                            seatDiv.innerHTML = `
+                                <div class="seat-num">${row}${col}</div>
+                            `;
+                        }
+                    } else {
+                        // Empty
+                        seatDiv.classList.add('empty');
+                        seatDiv.innerHTML = `
+                            <div class="seat-num">${row}${col}</div>
+                            <div class="seat-info">EMPTY</div>
+                        `;
+                    }
+                    rowDiv.appendChild(seatDiv);
+                });
+
+                grid.appendChild(rowDiv);
+            });
+
+            roomDiv.appendChild(grid);
+            container.appendChild(roomDiv);
         });
 
         // Attach click handlers for Edit buttons: open modal to edit room seating
