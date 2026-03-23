@@ -2220,7 +2220,6 @@ def generate_seating(request):
                         except Exception:
                             continue
         # Note: column-pattern generation removed — ignore any provided patterns unless column_map provided
-        exam = Exam.objects.get(id=exam_id)
         
         # Include all students; eligibility is shown in seat metadata
         exam_students_all = ExamStudent.objects.filter(exam=exam).select_related('student')
