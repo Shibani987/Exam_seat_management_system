@@ -39,14 +39,22 @@ document.addEventListener('DOMContentLoaded', function(){
             seatingByRoom[key].push(s);
         });
 
-        if (!rooms.length) {
-            container.innerHTML = '<p style="color:#666;">No rooms configured for this exam.</p>';
+        // Filter rooms to only those with seating data (like Step 5)
+        const roomsWithSeating = rooms.filter(room => {
+            const key = normalizeRoomKey(room.building, room.room_number);
+            return seatingByRoom[key] && seatingByRoom[key].length > 0;
+        });
+
+        console.log('[VIEW_EXAM] rooms with seating:', roomsWithSeating.length, 'out of', rooms.length);
+
+        if (!roomsWithSeating.length) {
+            container.innerHTML = '<p style="color:#666;">No seating data available for this exam.</p>';
             return;
         }
 
         container.innerHTML = '';
 
-        rooms.forEach(room => {
+        roomsWithSeating.forEach(room => {
             const key = normalizeRoomKey(room.building, room.room_number);
             const seats = seatingByRoom[key] || [];
 
