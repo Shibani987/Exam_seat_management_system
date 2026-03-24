@@ -90,7 +90,7 @@
    
 }
 .meta-field-group:last-child {
-  width: 115px;
+  width: 100px;
   margin-right: 180px;
 }
 .meta-field {
@@ -156,8 +156,10 @@
 }
 
 .sheet-table th {
-  height: 26px;
-  line-height: 26px;
+  padding: 1px 4px;
+  height: 22px;
+  line-height: 1.1;
+  vertical-align: middle;
 }
 
 
@@ -175,11 +177,11 @@
   text-align: center !important;
 }
 
-.name-col{ width:175px; }
+.name-col{ width:160px; }
 
-.reg-col{ width:160px; }
+.reg-col{ width:145px; }
 
-.roll-col{ width:120px; }
+.roll-col{ width:105px; }
 
 .booklet-col{ width:110px; }
 
@@ -224,15 +226,17 @@
 
 .footer-field {
   border: 0.8px solid #000;
-  height: 14px;
-  padding: 0;
+  min-height: 14px;
+  padding: 2px 6px;
   margin: 0;
+  display: flex;
+  align-items: center;
 }
 
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
-  width: 220px;
+  width: 280px;
   height: 0;
   margin-left: auto;
 }
@@ -279,7 +283,7 @@
 
 .hod-line, .external-line {
   border-top: 1px solid #000;
-  width: 250px;
+  width: 280px;
   margin-bottom: 5px;
 }
 
@@ -355,7 +359,7 @@
     width: 100%;
     max-width: 100%;
     margin: 0;
-    padding: 12px;
+    padding: 6px 12px 12px;
     page-break-after: always;
     page-break-inside: avoid;
     orphans: 0;
@@ -366,7 +370,11 @@
     box-shadow: none; /* Remove shadow for printing */
   }
   
-  .sheet-header { page-break-inside: avoid; }
+  .sheet-header {
+    page-break-inside: avoid;
+    padding-top: 0 !important;
+    margin-bottom: 1px;
+  }
   .sheet-title { page-break-inside: avoid; }
   .sheet-meta-box { page-break-inside: avoid; }
 .sheet-table { page-break-inside: auto; }
@@ -374,7 +382,10 @@
 .sheet-table tr{
   page-break-inside: avoid;
 }
-  .sheet-footer { page-break-inside: avoid; }
+  .sheet-footer {
+    page-break-inside: avoid;
+    margin-top: 8px !important;
+  }
   
   .print-btn-group, .print-btn, .no-print {
     display: none !important;

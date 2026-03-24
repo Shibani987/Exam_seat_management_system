@@ -274,12 +274,10 @@ function showStep3(pages, examName){
       <div class="sheet-footer-row">
         <div class="footer-left">
           <div class="footer-section small">
-            <div class="footer-label">No of Student Present</div>
-            <div class="footer-field"></div>
+            <div class="footer-field">No of Student Present</div>
           </div>
           <div class="footer-section small">
-            <div class="footer-label">No of Student Absent</div>
-            <div class="footer-field"></div>
+            <div class="footer-field">No of Student Absent</div>
           </div>
         </div>
         <div class="footer-right-internal">
