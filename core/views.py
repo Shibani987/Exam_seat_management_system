@@ -2598,8 +2598,14 @@ def generate_seating(request):
                             'end_time': s.get('end_time','N/A')
                         })
 
+                try:
+                    room_id_int = int(room.id)
+                except (ValueError, TypeError):
+                    print(f"[DEBUG] WARNING: Room {room} has invalid id: {room.id} (type: {type(room.id)}). Skipping this room.")
+                    continue
+
                 response_rooms.append({
-                    'id': int(room.id),
+                    'id': room_id_int,
                     'building': room.building,
                     'room_number': room.room_number,
                     'capacity': room.capacity,
