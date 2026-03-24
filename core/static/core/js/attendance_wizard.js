@@ -204,11 +204,11 @@ function showStep3(pages, examName){
     style.id = 'attendance-sheet-layout-fix';
     style.textContent = `
       .sheet-footer-row-primary {
-        margin-top: 40px;
+        margin-top: 80px;
       }
 
       .sheet-footer-row-secondary {
-        margin-top: 80px;
+        margin-top: 160px;
       }
 
       .sheet-footer {
@@ -252,12 +252,12 @@ function showStep3(pages, examName){
         }
 
         .sheet-table + .sheet-footer-row {
-          margin-top: 40px !important;
+          margin-top: 80px !important;
           padding-top: 0 !important;
         }
 
         .sheet-footer-row + .sheet-footer-row {
-          margin-top: 80px !important;
+          margin-top: 160px !important;
         }
 
         .footer-right-internal {
@@ -334,8 +334,8 @@ function showStep3(pages, examName){
         <tbody>
     `;
     
-    // Add rows (16 per sheet) with serial numbers starting from 1 for each sheet
-   for (let i = 0; i < 16; i++) {
+    // Add rows (18 per sheet) with serial numbers starting from 1 for each sheet
+   for (let i = 0; i < 18; i++) {
   const student = (pageMeta.students || [])[i];
   let slText = '';
   if (student && (student.name || student.registration_number || student.roll_number)) {
