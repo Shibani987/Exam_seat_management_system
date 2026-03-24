@@ -164,27 +164,6 @@ def admin_logout(request):
     return redirect('admin_login')
 
 
-def get_exam_by_identifier(exam_id):
-    """Get Exam by name or numeric ID (safe against non-numeric IDs)."""
-    if exam_id is None:
-        return None
-    if isinstance(exam_id, Exam):
-        return exam_id
-
-    exam_id_str = str(exam_id).strip()
-    if not exam_id_str:
-        return None
-
-    # Try as ID first if numeric
-    if exam_id_str.isdigit():
-        exam = Exam.objects.filter(id=int(exam_id_str)).first()
-        if exam:
-            return exam
-
-    # Otherwise treat as name
-    return Exam.objects.filter(name__iexact=exam_id_str).first()
-
-
 # =========================
 # Forgot Password
 # =========================
@@ -811,11 +790,7 @@ def complete_exam_setup(request):
             
             logger.info(f'Received complete setup request for exam_id: {exam_id}')
             
-            exam = get_exam_by_identifier(exam_id)
-            if not exam:
-                logger.warning(f'Complete setup: Exam not found with name or ID: {exam_id}')
-                return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=404)
-            
+            exam = Exam.objects.get(id=exam_id)
             logger.info(f'Found exam: {exam.name} (ID: {exam.id})')
             logger.debug(f'Before: is_temporary={exam.is_temporary}, is_completed={exam.is_completed}')
             
@@ -872,9 +847,7 @@ def add_room_single(request):
         if not exam_id or not building or not room_number or capacity <= 0:
             return JsonResponse({"status": "error", "message": "exam_id, building, room_number and positive capacity are required"}, status=400)
 
-        exam = get_exam_by_identifier(exam_id)
-        if not exam:
-            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
+        exam = Exam.objects.get(id=exam_id)
 
         # Prevent duplicate building+room_number for same exam
         if Room.objects.filter(exam=exam, building__iexact=building, room_number__iexact=room_number).exists():
@@ -2082,8 +2055,8 @@ def save_selected_files(request):
         if not selected_files:
             return JsonResponse({"status": "error", "message": "No files selected"}, status=400)
 
-        # Fetch exam safely by name or ID
-        exam = get_exam_by_identifier(exam_id)
+        # Fetch exam safely
+        exam = Exam.objects.filter(id=exam_id).first()
         if not exam:
             return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
 
@@ -2183,7 +2156,6 @@ def save_selected_files(request):
 @admin_required_json
 def generate_seating(request):
     """Generate seat allocations based on exam groups and department distribution"""
-    print("[DEBUG] generate_seating called")
     from collections import defaultdict
     import random
     import math
@@ -2201,27 +2173,9 @@ def generate_seating(request):
         if not exam_id:
             return JsonResponse({"status": "error", "message": "exam_id is required"}, status=400)
 
-        print(f"[DEBUG] Received exam_id: {exam_id} (type: {type(exam_id)})")
-
-        # Ensure exam_id is valid
-        if isinstance(exam_id, str) and not exam_id.isdigit():
-            # If it's a string but not numeric, assume it's an exam name
-            print(f"[DEBUG] Treating exam_id '{exam_id}' as exam name")
-        elif isinstance(exam_id, str) and exam_id.isdigit():
-            exam_id = int(exam_id)
-            print(f"[DEBUG] Converted exam_id to int: {exam_id}")
-        elif isinstance(exam_id, int):
-            print(f"[DEBUG] exam_id is already int: {exam_id}")
-        else:
-            return JsonResponse({"status": "error", "message": f"Invalid exam_id format: {exam_id}"}, status=400)
-
-        # Find exam by name or id safely
-        exam = get_exam_by_identifier(exam_id)
+        exam = Exam.objects.filter(id=exam_id).first()
         if not exam:
-            print(f"[DEBUG] Exam not found with identifier: {exam_id}")
-            return JsonResponse({"status": "error", "message": f"Exam not found with identifier: {exam_id}"}, status=400)
-
-        print(f"[DEBUG] Found exam: ID={exam.id}, Name='{exam.name}'")
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
 
         # optional global column_map from frontend: list/dict mapping column index (1-5) -> department or null
         column_map = data.get('column_map')
@@ -2261,6 +2215,7 @@ def generate_seating(request):
                         except Exception:
                             continue
         # Note: column-pattern generation removed — ignore any provided patterns unless column_map provided
+        exam = Exam.objects.get(id=exam_id)
         
         # Include all students; eligibility is shown in seat metadata
         exam_students_all = ExamStudent.objects.filter(exam=exam).select_related('student')
@@ -2313,21 +2268,12 @@ def generate_seating(request):
             })
         
         print(f"[DEBUG] DepartmentExam map departments: {list(dept_exam_map.keys())}")
-        print(f"[DEBUG] DepartmentExam details:")
-        for dept, exams in dept_exam_map.items():
-            print(f"[DEBUG]   Dept '{dept}': {len(exams)} exams")
-            for exam in exams:
-                print(f"[DEBUG]     - {exam['name']} on {exam['date']} {exam['session']}")
-        print(f"[DEBUG] Total DepartmentExam records: {dept_exams.count()}")
         
         # Group students by (semester, exam_date, session)
         room_groups = defaultdict(list)
         skipped_students = []
         seen_by_slot = defaultdict(set)
         total_group_students = 0
-
-        # ensure fixed ordering by date/session/semester in generator
-        session_order = { '1st Half': 1, '2nd Half': 2, 'Morning': 1, 'Afternoon': 2, 'Evening': 3 }
 
         for exam_student in exam_students:
             student = exam_student.student
@@ -2347,8 +2293,8 @@ def generate_seating(request):
                 start_time = dept_exam_info.get('start_time')
                 end_time = dept_exam_info.get('end_time')
 
-                group_key = (semester, exam_date, session, exam_name)
-                slot_key = (student.registration_number, exam_date, session, exam_name)
+                group_key = (semester, exam_date, session)
+                slot_key = (student.registration_number, exam_date, session)
 
                 if slot_key in seen_by_slot[group_key]:
                     # already assigned once for this date/session
@@ -2397,28 +2343,9 @@ def generate_seating(request):
 
         from collections import deque
 
-        print(f"\n[DEBUG] ===== ROOM GROUPS CREATED =====")
-        print(f"[DEBUG] Total groups: {len(room_groups)}")
-        for group_key in sorted(room_groups.keys(), key=lambda k: (str(k[1]), session_order.get(k[2], 99), int(k[0]) if str(k[0]).isdigit() else 999, k[3])):
-            sem, date, sess, exam = group_key
-            count = len(room_groups[group_key])
-            depts = set(s.get('department') for s in room_groups[group_key])
-            print(f"[DEBUG]   Group: Sem={sem}, Date={date}, Session={sess}, Exam={exam} | Students={count} | Depts={depts}")
-        print(f"[DEBUG] ===================================\n")
-        
-        for group_key in sorted(room_groups.keys(), key=lambda k: (
-            str(k[1]),
-            session_order.get(k[2], 99),
-            int(k[0]) if str(k[0]).isdigit() else 999,
-            k[3],
-            k[2],
-            k[0]
-        )):
+        for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], str(k[1]), k[2])):
             students_in_group = list(room_groups[group_key])
-            semester, exam_date, session, exam_name = group_key
-
-            print(f"\n[DEBUG] Processing group: Sem={semester}, Date={exam_date}, Session={session}, Exam={exam_name}")
-            print(f"[DEBUG]   Total students: {len(students_in_group)}")
+            semester, exam_date, session = group_key
 
             # Dedup by reg+date+session
             deduped = []
@@ -2527,13 +2454,9 @@ def generate_seating(request):
                     break
 
             if any(len(q) > 0 for q in dept_queues.values()):
-                unallocated = sum(len(q) for q in dept_queues.values())
-                print(f"[DEBUG] ✗ Group {semester}/{exam_date}/{session}/{exam_name}: {unallocated} students NOT allocated - INSUFFICIENT ROOMS!")
                 return JsonResponse({
                     "status": "error",
-                    "message": f"Some students are not allocated for {exam_date} {session} {exam_name}. Not enough rooms for this date/session/exam."}, status=400)
-            else:
-                print(f"[DEBUG] ✓ Group {semester}/{exam_date}/{session}/{exam_name}: ALL students allocated successfully")
+                    "message": "Some students are not allocated. Not enough rooms for this date/session."}, status=400)
 
         # Final allocation validation
         allocated_students = sum(
@@ -2598,14 +2521,8 @@ def generate_seating(request):
                             'end_time': s.get('end_time','N/A')
                         })
 
-                try:
-                    room_id_int = int(room.id)
-                except (ValueError, TypeError):
-                    print(f"[DEBUG] WARNING: Room {room} has invalid id: {room.id} (type: {type(room.id)}). Skipping this room.")
-                    continue
-
                 response_rooms.append({
-                    'id': room_id_int,
+                    'id': room.id,
                     'building': room.building,
                     'room_number': room.room_number,
                     'capacity': room.capacity,
@@ -2627,12 +2544,9 @@ def generate_seating(request):
                 print(f"[DEBUG]   ... and {len(skipped_students) - 10} more")
         
         print(f"[DEBUG] Room groups created: {len(room_groups)}")
-        print(f"[DEBUG] Room groups keys (date/session/semester/exam): {sorted(room_groups.keys(), key=lambda k: (str(k[1]), session_order.get(k[2], 99)))}")
         print(f"[DEBUG] Total rooms with seating: {len(response_rooms)}")
         total_seats = sum(len(r.get('seats', [])) for r in response_rooms)
         print(f"[DEBUG] Total seats allocated: {total_seats}")
-        print(f"[DEBUG] Used room-sessions: {sorted(list(used_room_sessions))}")
-        print(f"[DEBUG] ==========================================\n")
         
         # CRITICAL: If ALL students were skipped, return error
         if len(skipped_students) == exam_students.count():
@@ -2679,19 +2593,7 @@ def generate_seating(request):
                 exam_session = seat.get('session', '')
                 exam_name = seat.get('exam_name', '')
 
-                # Ensure room_id is valid before using it
-                room_id_value = room.get('id')
-                if not room_id_value:
-                    print(f"[DEBUG] Skipping seat: room has no valid ID")
-                    continue
-                
-                try:
-                    room_id_value = int(room_id_value)
-                except (ValueError, TypeError):
-                    print(f"[DEBUG] Skipping seat: room_id={room_id_value} is not a valid integer")
-                    continue
-
-                duplicate_key = (room_id_value, reg, exam_date, exam_session, exam_name)
+                duplicate_key = (room['id'], reg, exam_date, exam_session, exam_name)
                 if duplicate_key in seen_allocations:
                     print(f"[DEBUG] Skipping duplicate allocation: {duplicate_key}")
                     continue
@@ -2699,33 +2601,14 @@ def generate_seating(request):
 
                 print(f"[DEBUG] Creating SeatAllocation: reg={reg}, row={row}, column={column}, seat_code={seat.get('seat')}")
                 
-                # Get the room instance to avoid type errors
-                room_id_value = room.get('id')
-                if room_id_value is None:
-                    print(f"[DEBUG] WARNING: room has no id. Skipping this seat allocation.")
-                    continue
-                
-                if not isinstance(room_id_value, int) or room_id_value <= 0:
-                    print(f"[DEBUG] WARNING: Invalid room_id_value: {room_id_value} (type: {type(room_id_value)}). Skipping this seat allocation.")
-                    continue
-                
-                try:
-                    room_instance = Room.objects.get(id=room_id_value)
-                except Room.DoesNotExist:
-                    print(f"[DEBUG] WARNING: Room with id={room_id_value} does not exist. Skipping this seat allocation.")
-                    continue
-                except Exception as e:
-                    print(f"[DEBUG] WARNING: Error getting room with id={room_id_value}: {e}. Skipping this seat allocation.")
-                    continue
-                
                 sa = SeatAllocation(
                     exam=exam,
-                    room=room_instance,
+                    room_id=room['id'],
                     registration_number=reg,
                     department=seat.get('department', ''),
                     seat_code=seat.get('seat', ''),
                     row=row,
-                    column=int(column) if column else 0,
+                    column=column,
                     exam_date=exam_date,
                     exam_session=exam_session,
                     exam_name=exam_name
@@ -2846,10 +2729,10 @@ def get_exam_summary(request):
         if not exam_id:
             return JsonResponse({"status": "error", "message": "exam_id required"}, status=400)
         
-        # Find exam by name or id safely
-        exam = get_exam_by_identifier(exam_id)
-        if not exam:
-            return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=404)
+        try:
+            exam = Exam.objects.get(id=exam_id)
+        except Exam.DoesNotExist:
+            return JsonResponse({"status": "error", "message": f"Exam with ID {exam_id} not found"}, status=404)
         
         # 1. Exam details
         exam_data = {
@@ -3539,6 +3422,10 @@ def get_all_exams(request):
     
     except Exception as e:
         logger.error(f"Exception in get_all_exams: {str(e)}", exc_info=True)
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=400)
         return JsonResponse({
             'status': 'error',
             'message': str(e)

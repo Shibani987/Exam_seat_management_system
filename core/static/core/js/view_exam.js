@@ -27,97 +27,41 @@ document.addEventListener('DOMContentLoaded', function(){
             container.innerHTML = '';
 
             rooms.forEach(room => {
+                const roomCard = document.createElement('div');
+                roomCard.className = 'room-card';
+
                 const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
-
-                if (!roomStudents.length) {
-                    const roomCard = document.createElement('div');
-                    roomCard.className = 'room-card';
-                    const header = document.createElement('div');
-                    header.className = 'room-header';
-                    header.innerHTML = `
-                        <div>
-                            <strong>${room.building} — ${room.room_number}</strong>
-                            <div class="room-meta">Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: N/A</div>
-                        </div>
-                    `;
-                    roomCard.appendChild(header);
-                    roomCard.appendChild(document.createElement('div'));
-                    container.appendChild(roomCard);
-                    return;
-                }
-
-                const sessionOrder = { '1st Half': 1, '2nd Half': 2, 'Morning': 1, 'Afternoon': 2, 'Evening': 3 };
-                const sortedStudents = roomStudents.slice().sort((a, b) => {
-                    if (a.exam_date < b.exam_date) return -1;
-                    if (a.exam_date > b.exam_date) return 1;
-                    const aSessionOrder = sessionOrder[a.session] || 99;
-                    const bSessionOrder = sessionOrder[b.session] || 99;
-                    if (aSessionOrder < bSessionOrder) return -1;
-                    if (aSessionOrder > bSessionOrder) return 1;
-                    const aSem = parseInt(a.student_semester || a.semester || '0', 10) || 0;
-                    const bSem = parseInt(b.student_semester || b.semester || '0', 10) || 0;
-                    if (aSem < bSem) return -1;
-                    if (aSem > bSem) return 1;
-                    return 0;
+                const roomSemesters = new Set();
+                const roomDepartments = new Set();
+                roomStudents.forEach(seat => {
+                    if (seat.student_semester && seat.student_semester.toString().trim()) {
+                        roomSemesters.add(seat.student_semester.toString().trim());
+                    }
+                    if (seat.department && seat.department.trim()) {
+                        roomDepartments.add(seat.department.trim().toUpperCase());
+                    }
                 });
+                const semesterText = roomSemesters.size ? Array.from(roomSemesters).sort().join(', ') : 'N/A';
 
-                // Group by slot (date/session/semester), to show a separate view for each allocated slot in this room:
-                const slotMap = new Map();
-                roomStudents.forEach(s => {
-                    const semVal = (s.student_semester || s.semester || '').toString().trim();
-                    const key = `${s.exam_date}||${s.session}||${semVal}`;
-                    if (!slotMap.has(key)) slotMap.set(key, { date: s.exam_date, session: s.session, semester: semVal, seats: [] });
-                    slotMap.get(key).seats.push(s);
-                });
+                const header = document.createElement('div');
+                header.className = 'room-header';
+                header.innerHTML = `
+                    <div>
+                        <strong>${room.building} — ${room.room_number}</strong>
+                        <div class="room-meta">Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText}</div>
+                    </div>
+                `;
+                roomCard.appendChild(header);
 
-                // Sort slots deterministically
-                const slotEntries = Array.from(slotMap.values()).sort((a, b) => {
-                    if (a.date < b.date) return -1;
-                    if (a.date > b.date) return 1;
-                    const aOrder = sessionOrder[a.session] || 99;
-                    const bOrder = sessionOrder[b.session] || 99;
-                    if (aOrder < bOrder) return -1;
-                    if (aOrder > bOrder) return 1;
-                    return (parseInt(a.semester || '0', 10) || 0) - (parseInt(b.semester || '0', 10) || 0);
-                });
+                const deptDiv = document.createElement('div');
+                deptDiv.className = 'dept-info';
+                deptDiv.innerHTML = renderDepartmentInfo(room, roomDepartments, roomSemesters);
+                roomCard.appendChild(deptDiv);
 
-                slotEntries.forEach(slot => {
-                    const roomCard = document.createElement('div');
-                    roomCard.className = 'room-card';
+                const seatGrid = renderSeatGrid(room);
+                roomCard.appendChild(seatGrid);
 
-                    const roomSemesters = new Set();
-                    const roomDepartments = new Set();
-                    slot.seats.forEach(seat => {
-                        const semValue = seat.student_semester || seat.semester || '';
-                        if (semValue && semValue.toString().trim()) {
-                            roomSemesters.add(semValue.toString().trim());
-                        }
-                        if (seat.department && seat.department.trim()) {
-                            roomDepartments.add(seat.department.trim().toUpperCase());
-                        }
-                    });
-
-                    const semesterText = roomSemesters.size ? Array.from(roomSemesters).sort().join(', ') : 'N/A';
-                    const header = document.createElement('div');
-                    header.className = 'room-header';
-                    header.innerHTML = `
-                        <div>
-                            <strong>${room.building} — ${room.room_number}</strong>
-                            <div class="room-meta">Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText} &nbsp; | &nbsp; ${slot.date}, ${slot.session}</div>
-                        </div>
-                    `;
-                    roomCard.appendChild(header);
-
-                    const deptDiv = document.createElement('div');
-                    deptDiv.className = 'dept-info';
-                    deptDiv.innerHTML = renderDepartmentInfo(room, roomDepartments, roomSemesters, slot.date, slot.session);
-                    roomCard.appendChild(deptDiv);
-
-                    const seatGrid = renderSeatGrid(room, slot.date, slot.session);
-                    roomCard.appendChild(seatGrid);
-
-                    container.appendChild(roomCard);
-                });
+                container.appendChild(roomCard);
             });
 
             console.log('[VIEW_EXAM] Rendered', rooms.length, 'rooms');
@@ -127,25 +71,27 @@ document.addEventListener('DOMContentLoaded', function(){
             container.innerHTML = `<p style="color:red;">Error loading seating data: ${err.message || err}</p>`;
         });
 
-    function renderDepartmentInfo(room, roomDepartments, roomSemesters, slotDate, slotSession) {
+    function renderDepartmentInfo(room, roomDepartments, roomSemesters) {
+        const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
+
+        const firstSeat = roomStudents.length > 0 ? roomStudents[0] : null;
+        const targetDate = firstSeat ? firstSeat.exam_date : '';
+        const targetSession = firstSeat ? firstSeat.session : '';
+
         let filteredDetails = (room.department_details || []).filter(item => {
             const dept = (item.department || '').trim().toUpperCase();
             if (!dept || !roomDepartments.has(dept)) return false;
             if (item.semester && !roomSemesters.has(item.semester.toString().trim())) return false;
-            if (slotDate && item.exam_date !== slotDate) return false;
-            if (slotSession && item.session !== slotSession) return false;
+            if (targetDate && item.exam_date !== targetDate) return false;
+            if (targetSession && item.session !== targetSession) return false;
             return true;
         });
 
         const deptLine = roomDepartments.size ? Array.from(roomDepartments).join(', ') : 'N/A';
-        const semLine = roomSemesters.size ? Array.from(roomSemesters).sort().join(', ') : 'N/A';
+        const semLine = roomSemesters.size ? Array.from(roomSemesters).join(', ') : 'N/A';
 
         let html = `<strong>Departments in this room:</strong> ${deptLine}<br>`;
-        if (roomSemesters.size === 1) {
-            html += `<strong>Students in this room are from Semester ${Array.from(roomSemesters)[0]}</strong><br><br>`;
-        } else {
-            html += `<strong>Semesters in this room:</strong> ${semLine}<br><br>`;
-        }
+        html += `<strong>Semesters in this room:</strong> ${semLine}<br><br>`;
 
         if (filteredDetails.length > 0) {
             const groupedBySlot = {};
@@ -173,7 +119,7 @@ document.addEventListener('DOMContentLoaded', function(){
         return html;
     }
 
-    function renderSeatGrid(room, slotDate, slotSession) {
+    function renderSeatGrid(room) {
         const capacity = parseInt(room.capacity, 10) || 0;
         const rowsNeeded = capacity > 0 ? Math.ceil(capacity / 5) : 0;
         const rows = [];
@@ -202,9 +148,9 @@ document.addEventListener('DOMContentLoaded', function(){
                 const seatDiv = document.createElement('div');
                 seatDiv.className = 'seat';
 
-                const seat = (room.seats || []).find(s => s.row === row && Number(s.column) === col && s.exam_date === slotDate && s.session === slotSession);
+                const seat = (room.seats || []).find(s => s.row === row && Number(s.column) === col);
 
-                if (seat && seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY') {
+                if (seat && seat.registration && seat.registration !== 'Empty') {
                     const isEligible = seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true';
 
                     if (isEligible) {
@@ -212,7 +158,7 @@ document.addEventListener('DOMContentLoaded', function(){
                         seatDiv.classList.remove('blocked', 'empty');
                         const reg = seat.registration || '';
                         const dept = (seat.department || '').trim();
-                        const sem = seat.student_semester || seat.semester || '';
+                        const sem = seat.student_semester || '';
                         const semText = sem ? ` (Sem ${sem})` : '';
                         seatDiv.innerHTML = `
                             <div class="seat-num">${row}${col}</div>
