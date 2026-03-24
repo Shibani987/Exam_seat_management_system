@@ -2680,18 +2680,21 @@ def generate_seating(request):
 
                 print(f"[DEBUG] Creating SeatAllocation: reg={reg}, row={row}, column={column}, seat_code={seat.get('seat')}")
                 
-                # Ensure room_id is an integer to prevent "Field 'id' expected a number" errors
+                # Get the room instance to avoid type errors
                 room_id_value = room.get('id')
-                if room_id_value is not None:
-                    try:
-                        room_id_value = int(room_id_value)
-                    except (ValueError, TypeError):
-                        print(f"[DEBUG] WARNING: room_id={room_id_value} is not a valid integer. Skipping this seat allocation.")
-                        continue
+                if room_id_value is None:
+                    print(f"[DEBUG] WARNING: room has no id. Skipping this seat allocation.")
+                    continue
+                
+                try:
+                    room_instance = Room.objects.get(id=room_id_value)
+                except (Room.DoesNotExist, ValueError, TypeError) as e:
+                    print(f"[DEBUG] WARNING: Cannot get room with id={room_id_value}: {e}. Skipping this seat allocation.")
+                    continue
                 
                 sa = SeatAllocation(
                     exam=exam,
-                    room_id=room_id_value,
+                    room=room_instance,
                     registration_number=reg,
                     department=seat.get('department', ''),
                     seat_code=seat.get('seat', ''),
