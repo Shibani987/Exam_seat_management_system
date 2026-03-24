@@ -207,7 +207,7 @@
 .sheet-footer {
   display: flex;
   gap: 2px;   /* আগে 20px ছিল */
-  margin-top: 1px;
+  margin-top: 10px;
   margin-bottom: 0;
   font-size: 9px;
 }
@@ -227,7 +227,7 @@
 .footer-field {
   border: 0.8px solid #000;
   min-height: 14px;
-  padding: 2px 6px;
+  padding: 4px 6px 2px;
   margin: 0;
   display: flex;
   align-items: center;
@@ -236,7 +236,7 @@
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
-  width: 280px;
+  width: 310px;
   height: 0;
   margin-left: auto;
 }
@@ -283,11 +283,15 @@
 
 .hod-line, .external-line {
   border-top: 1px solid #000;
-  width: 280px;
   margin-bottom: 5px;
 }
 
+.hod-line {
+  width: 220px;
+}
+
 .external-line {
+  width: 310px;
   margin-left: auto;
 }
 
@@ -360,6 +364,9 @@
     max-width: 100%;
     margin: 0;
     padding: 6px 12px 12px;
+    display: flex;
+    flex-direction: column;
+    min-height: calc(100vh - 12px);
     page-break-after: always;
     page-break-inside: avoid;
     orphans: 0;
@@ -373,9 +380,31 @@
   .sheet-header {
     page-break-inside: avoid;
     padding-top: 0 !important;
-    margin-bottom: 1px;
+    margin-bottom: 0;
+    min-height: 52px;
   }
-  .sheet-title { page-break-inside: avoid; }
+  .header-logo {
+    width: 56px;
+    height: 56px;
+  }
+  .header-logo img {
+    height: 48px;
+  }
+  .sheet-header h2 {
+    font-size: 16px;
+    line-height: 1.05;
+  }
+  .sheet-header p {
+    font-size: 9px;
+    line-height: 1.05;
+  }
+  .header-text p:first-of-type {
+    font-size: 10px;
+  }
+  .sheet-title {
+    page-break-inside: avoid;
+    margin: 1px 0 6px 0;
+  }
   .sheet-meta-box { page-break-inside: avoid; }
 .sheet-table { page-break-inside: auto; }
 
@@ -384,7 +413,8 @@
 }
   .sheet-footer {
     page-break-inside: avoid;
-    margin-top: 8px !important;
+    margin-top: auto !important;
+    padding-top: 10px;
   }
   
   .print-btn-group, .print-btn, .no-print {
