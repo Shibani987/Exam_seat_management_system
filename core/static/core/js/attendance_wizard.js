@@ -220,8 +220,8 @@ function showStep3(pages, examName){
 
       @media print {
         .attendance-sheet {
-          padding-bottom: 6px !important;
-          min-height: calc(100vh - 6px) !important;
+          padding-bottom: 2px !important;
+          min-height: calc(100vh - 2px) !important;
         }
 
         .sheet-header {
@@ -253,11 +253,11 @@ function showStep3(pages, examName){
 
         .sheet-table + .sheet-footer-row {
           margin-top: auto !important;
-          padding-top: 6px !important;
+          padding-top: 2px !important;
         }
 
         .sheet-footer-row + .sheet-footer-row {
-          margin-top: 8px !important;
+          margin-top: 4px !important;
         }
 
         .footer-right-internal {
@@ -270,8 +270,8 @@ function showStep3(pages, examName){
         }
 
         .sheet-footer {
-          margin-top: auto !important;
-          padding-top: 1px !important;
+          margin-top: 2px !important;
+          padding-top: 0 !important;
           font-size: 8px !important;
         }
       }
