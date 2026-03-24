@@ -175,16 +175,14 @@ def get_exam_by_identifier(exam_id):
     if not exam_id_str:
         return None
 
-    # Prefer exact name match first
-    exam = Exam.objects.filter(name__iexact=exam_id_str).first()
-    if exam:
-        return exam
-
-    # if numeric, match by id
+    # Try as ID first if numeric
     if exam_id_str.isdigit():
-        return Exam.objects.filter(id=int(exam_id_str)).first()
+        exam = Exam.objects.filter(id=int(exam_id_str)).first()
+        if exam:
+            return exam
 
-    return None
+    # Otherwise treat as name
+    return Exam.objects.filter(name__iexact=exam_id_str).first()
 
 
 # =========================
@@ -2205,10 +2203,25 @@ def generate_seating(request):
 
         print(f"[DEBUG] Received exam_id: {exam_id} (type: {type(exam_id)})")
 
+        # Ensure exam_id is valid
+        if isinstance(exam_id, str) and not exam_id.isdigit():
+            # If it's a string but not numeric, assume it's an exam name
+            print(f"[DEBUG] Treating exam_id '{exam_id}' as exam name")
+        elif isinstance(exam_id, str) and exam_id.isdigit():
+            exam_id = int(exam_id)
+            print(f"[DEBUG] Converted exam_id to int: {exam_id}")
+        elif isinstance(exam_id, int):
+            print(f"[DEBUG] exam_id is already int: {exam_id}")
+        else:
+            return JsonResponse({"status": "error", "message": f"Invalid exam_id format: {exam_id}"}, status=400)
+
         # Find exam by name or id safely
         exam = get_exam_by_identifier(exam_id)
         if not exam:
-            return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=400)
+            print(f"[DEBUG] Exam not found with identifier: {exam_id}")
+            return JsonResponse({"status": "error", "message": f"Exam not found with identifier: {exam_id}"}, status=400)
+
+        print(f"[DEBUG] Found exam: ID={exam.id}, Name='{exam.name}'")
 
         # optional global column_map from frontend: list/dict mapping column index (1-5) -> department or null
         column_map = data.get('column_map')
@@ -3520,10 +3533,6 @@ def get_all_exams(request):
     
     except Exception as e:
         logger.error(f"Exception in get_all_exams: {str(e)}", exc_info=True)
-        return JsonResponse({
-            'status': 'error',
-            'message': str(e)
-        }, status=400)
         return JsonResponse({
             'status': 'error',
             'message': str(e)
