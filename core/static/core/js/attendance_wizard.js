@@ -224,6 +224,33 @@ function showStep3(pages, examName){
           min-height: calc(100vh - 6px) !important;
         }
 
+        .sheet-header {
+          min-height: 88px !important;
+        }
+
+        .sheet-title {
+          margin: 1px 0 4px 0 !important;
+        }
+
+        .sheet-meta-box {
+          margin: 0 0 6px 0 !important;
+          padding: 4px 0 !important;
+        }
+
+        .sheet-table {
+          margin-bottom: 4px !important;
+        }
+
+        .sheet-table tbody tr,
+        .sheet-table td {
+          height: 28px !important;
+          line-height: 28px !important;
+        }
+
+        .sheet-table th {
+          height: 20px !important;
+        }
+
         .sheet-table + .sheet-footer-row {
           margin-top: auto !important;
           padding-top: 6px !important;
