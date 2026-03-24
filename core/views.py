@@ -164,6 +164,29 @@ def admin_logout(request):
     return redirect('admin_login')
 
 
+def get_exam_by_identifier(exam_id):
+    """Get Exam by name or numeric ID (safe against non-numeric IDs)."""
+    if exam_id is None:
+        return None
+    if isinstance(exam_id, Exam):
+        return exam_id
+
+    exam_id_str = str(exam_id).strip()
+    if not exam_id_str:
+        return None
+
+    # Prefer exact name match first
+    exam = Exam.objects.filter(name__iexact=exam_id_str).first()
+    if exam:
+        return exam
+
+    # if numeric, match by id
+    if exam_id_str.isdigit():
+        return Exam.objects.filter(id=int(exam_id_str)).first()
+
+    return None
+
+
 # =========================
 # Forgot Password
 # =========================
@@ -790,7 +813,11 @@ def complete_exam_setup(request):
             
             logger.info(f'Received complete setup request for exam_id: {exam_id}')
             
-            exam = Exam.objects.get(id=exam_id)
+            exam = get_exam_by_identifier(exam_id)
+            if not exam:
+                logger.warning(f'Complete setup: Exam not found with name or ID: {exam_id}')
+                return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=404)
+            
             logger.info(f'Found exam: {exam.name} (ID: {exam.id})')
             logger.debug(f'Before: is_temporary={exam.is_temporary}, is_completed={exam.is_completed}')
             
@@ -847,7 +874,9 @@ def add_room_single(request):
         if not exam_id or not building or not room_number or capacity <= 0:
             return JsonResponse({"status": "error", "message": "exam_id, building, room_number and positive capacity are required"}, status=400)
 
-        exam = Exam.objects.get(id=exam_id)
+        exam = get_exam_by_identifier(exam_id)
+        if not exam:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
 
         # Prevent duplicate building+room_number for same exam
         if Room.objects.filter(exam=exam, building__iexact=building, room_number__iexact=room_number).exists():
@@ -2055,8 +2084,8 @@ def save_selected_files(request):
         if not selected_files:
             return JsonResponse({"status": "error", "message": "No files selected"}, status=400)
 
-        # Fetch exam safely
-        exam = Exam.objects.filter(id=exam_id).first()
+        # Fetch exam safely by name or ID
+        exam = get_exam_by_identifier(exam_id)
         if not exam:
             return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
 
@@ -2176,10 +2205,8 @@ def generate_seating(request):
 
         print(f"[DEBUG] Received exam_id: {exam_id} (type: {type(exam_id)})")
 
-        # Get exam by name or ID
-        exam = Exam.objects.filter(name=exam_id).first()
-        if not exam:
-            exam = Exam.objects.filter(id=exam_id).first()
+        # Find exam by name or id safely
+        exam = get_exam_by_identifier(exam_id)
         if not exam:
             return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=400)
 
@@ -2769,10 +2796,8 @@ def get_exam_summary(request):
         if not exam_id:
             return JsonResponse({"status": "error", "message": "exam_id required"}, status=400)
         
-        # Get exam by name or ID
-        exam = Exam.objects.filter(name=exam_id).first()
-        if not exam:
-            exam = Exam.objects.filter(id=exam_id).first()
+        # Find exam by name or id safely
+        exam = get_exam_by_identifier(exam_id)
         if not exam:
             return JsonResponse({"status": "error", "message": f"Exam not found with name or ID: {exam_id}"}, status=404)
         
