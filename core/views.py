@@ -2686,10 +2686,17 @@ def generate_seating(request):
                     print(f"[DEBUG] WARNING: room has no id. Skipping this seat allocation.")
                     continue
                 
+                if not isinstance(room_id_value, int) or room_id_value <= 0:
+                    print(f"[DEBUG] WARNING: Invalid room_id_value: {room_id_value} (type: {type(room_id_value)}). Skipping this seat allocation.")
+                    continue
+                
                 try:
                     room_instance = Room.objects.get(id=room_id_value)
-                except (Room.DoesNotExist, ValueError, TypeError) as e:
-                    print(f"[DEBUG] WARNING: Cannot get room with id={room_id_value}: {e}. Skipping this seat allocation.")
+                except Room.DoesNotExist:
+                    print(f"[DEBUG] WARNING: Room with id={room_id_value} does not exist. Skipping this seat allocation.")
+                    continue
+                except Exception as e:
+                    print(f"[DEBUG] WARNING: Error getting room with id={room_id_value}: {e}. Skipping this seat allocation.")
                     continue
                 
                 sa = SeatAllocation(
