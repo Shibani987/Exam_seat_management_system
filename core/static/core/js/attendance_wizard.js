@@ -220,12 +220,12 @@ function showStep3(pages, examName){
 
       @media print {
         .attendance-sheet {
-          padding-bottom: 8px !important;
-          min-height: calc(100vh - 8px) !important;
+          padding-bottom: 6px !important;
+          min-height: calc(100vh - 6px) !important;
         }
 
         .sheet-table + .sheet-footer-row {
-          margin-top: 12px !important;
+          margin-top: auto !important;
           padding-top: 6px !important;
         }
 
@@ -245,6 +245,7 @@ function showStep3(pages, examName){
         .sheet-footer {
           margin-top: auto !important;
           padding-top: 1px !important;
+          font-size: 8px !important;
         }
       }
     `;
