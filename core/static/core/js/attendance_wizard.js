@@ -208,7 +208,7 @@ function showStep3(pages, examName){
       }
 
       .sheet-footer-row-secondary {
-        margin-top: 70px;
+        margin-top: 60px;
       }
 
       .sheet-footer {
@@ -257,7 +257,7 @@ function showStep3(pages, examName){
         }
 
         .sheet-footer-row + .sheet-footer-row {
-          margin-top: 70px !important;
+          margin-top: 60px !important;
         }
 
         .footer-right-internal {
