@@ -4,6 +4,9 @@
   max-width: 900px;
   margin: 20px 0; /* Add margin between sheets */
   padding: 10px; /* moderate padding around edges */
+  display: flex;
+  flex-direction: column;
+  min-height: 1180px;
   orphans: 0;
   widows: 0;
   height: auto;
@@ -15,7 +18,8 @@
   text-align: center;
   margin-bottom: 2px; /* reduce gap below header further */
   page-break-inside: avoid;
-  padding-top: 1px; /* keep print header tighter to the top */
+  padding-top: 8px;
+  min-height: 98px;
 }
 
 /* logo container remains absolute inside header */
@@ -23,9 +27,9 @@
 .header-logo {
   position: absolute;
   left: 50px;
-  top: 0;
-  width: 100px;
-  height: 100px;
+  top: -6px;
+  width: 112px;
+  height: 112px;
   border: none;
   border-radius: 50%;
   display: flex;
@@ -35,35 +39,39 @@
 
 .header-logo img {
   display: block;
-  height: 86px;
+  height: 96px;
 }
 
 .header-text {
   display: inline-block;
-  padding-top: 4px;
+  padding-top: 10px;
 }
 
 .sheet-header h2 {
   margin: 0;
-  font-size: 20px; /* restore larger header text */
+  font-size: 24px;
   font-weight: bold;
   color: #333;
+  line-height: 1.08;
 }
 
 .sheet-header p {
-  margin: 0px 0;
-  font-size: 10px; /* normal subtitle size */
+  margin: 2px 0 0;
+  font-size: 12px;
   color: #555;
+  line-height: 1.1;
 }
 
 .header-text p:first-of-type {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 600;
   color: #333;
+  margin-top: 4px;
 }
 
 .header-text p:last-of-type {
-  margin-top: 2px;
+  font-size: 13px;
+  margin-top: 6px;
 }
 
 
@@ -215,9 +223,10 @@
 .sheet-footer {
   display: flex;
   gap: 2px;   /* আগে 20px ছিল */
-  margin-top: 10px;
+  margin-top: auto;
   margin-bottom: 0;
   font-size: 9px;
+  padding-top: 4px;
 }
 .footer-section {
   flex: 1;
@@ -406,28 +415,34 @@
   
   .sheet-header {
     page-break-inside: avoid;
-    padding-top: 0 !important;
+    padding-top: 6px !important;
     margin-bottom: 0;
-    min-height: 52px;
+    min-height: 94px;
   }
   .header-logo {
     left: 50px;
-    width: 78px;
-    height: 78px;
+    top: -8px;
+    width: 92px;
+    height: 92px;
   }
   .header-logo img {
-    height: 68px;
+    height: 80px;
   }
   .sheet-header h2 {
-    font-size: 18px;
-    line-height: 1.05;
+    font-size: 22px;
+    line-height: 1.08;
   }
   .sheet-header p {
-    font-size: 9px;
-    line-height: 1.05;
+    font-size: 11px;
+    line-height: 1.08;
   }
   .header-text p:first-of-type {
-    font-size: 11px;
+    font-size: 14px;
+    margin-top: 4px;
+  }
+  .header-text p:last-of-type {
+    font-size: 12px;
+    margin-top: 5px;
   }
   .sheet-title {
     page-break-inside: avoid;
@@ -442,7 +457,7 @@
   .sheet-footer {
     page-break-inside: avoid;
     margin-top: auto !important;
-    padding-top: 10px;
+    padding-top: 2px;
   }
   
   .print-btn-group, .print-btn, .no-print {
