@@ -290,7 +290,7 @@ function showStep3(pages, examName){
       </div>
       
       <!-- second footer row: HOD left, external right -->
-      <div class="sheet-footer-row" style="margin-top:5px;">
+      <div class="sheet-footer-row" style="margin-top:2px;">
         <div class="footer-left-hod">
           <div class="hod-line"></div>
           <div>Signature of HoD</div>
@@ -302,7 +302,7 @@ function showStep3(pages, examName){
         </div>
       </div>
       
-      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
+      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:1px;">
         <div style="font-size:12px; text-align:left; line-height:1.2;">
           ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
         </div>
