@@ -22,10 +22,10 @@
 
 .header-logo {
   position: absolute;
-  left: 0;
+  left: 30px;
   top: 0;
-  width: 70px;
-  height: 70px;
+  width: 88px;
+  height: 88px;
   border: none;
   border-radius: 50%;
   display: flex;
@@ -35,16 +35,17 @@
 
 .header-logo img {
   display: block;
-  height: 60px;
+  height: 76px;
 }
 
 .header-text {
   display: inline-block;
+  padding-top: 4px;
 }
 
 .sheet-header h2 {
   margin: 0;
-  font-size: 18px; /* restore larger header text */
+  font-size: 20px; /* restore larger header text */
   font-weight: bold;
   color: #333;
 }
@@ -56,9 +57,13 @@
 }
 
 .header-text p:first-of-type {
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #333;
+}
+
+.header-text p:last-of-type {
+  margin-top: 2px;
 }
 
 
@@ -325,7 +330,7 @@
 
 .name-caption {
   display: inline-block;
-  font-size: 10px;
+  font-size: 11px;
   margin-top: 4px;
   width: 250px;
   text-align: left;
@@ -406,14 +411,15 @@
     min-height: 52px;
   }
   .header-logo {
-    width: 56px;
-    height: 56px;
+    left: 30px;
+    width: 68px;
+    height: 68px;
   }
   .header-logo img {
-    height: 48px;
+    height: 60px;
   }
   .sheet-header h2 {
-    font-size: 16px;
+    font-size: 18px;
     line-height: 1.05;
   }
   .sheet-header p {
@@ -421,7 +427,7 @@
     line-height: 1.05;
   }
   .header-text p:first-of-type {
-    font-size: 10px;
+    font-size: 11px;
   }
   .sheet-title {
     page-break-inside: avoid;
