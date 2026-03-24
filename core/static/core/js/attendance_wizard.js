@@ -291,7 +291,7 @@ function showStep3(pages, examName){
       <div class="sheet-footer-row" style="margin-top:2px;">
         <div class="footer-left-hod">
           <div class="hod-line"></div>
-          <div>Signature of HoD</div>
+          <div class="hod-label">Signature of HoD</div>
         </div>
         <div class="footer-right-external">
           <div class="external-line"></div>

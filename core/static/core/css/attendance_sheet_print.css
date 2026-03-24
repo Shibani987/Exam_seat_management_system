@@ -105,6 +105,10 @@
   position: relative;
   width: 100%;   /* group width follow করবে */
 }
+.meta-field-group:first-child .meta-field {
+  justify-content: flex-start;
+  padding-left: 10px;
+}
 .meta-field .meta-label {
   position: absolute;
   top: -0.8em;
@@ -231,12 +235,13 @@
   margin: 0;
   display: flex;
   align-items: center;
+  justify-content: center;
 }
 
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
-  width: 310px;
+  width: 340px;
   height: 0;
   margin-left: auto;
 }
@@ -253,6 +258,11 @@
   justify-content: space-between;
   align-items: flex-start;
   margin: 0; /* eliminate extra spacing between rows */
+  padding-top: 4px;
+}
+
+.footer-left {
+  padding-left: 10px;
 }
 
 
@@ -268,7 +278,7 @@
   flex: 0 0 auto;
   margin: 0;
   padding: 0;
-  
+  width: 150px;
 }
 .footer-right-internal {
   flex: 1;
@@ -276,9 +286,19 @@
   margin-top: 14px;
 }
 
+.footer-right-internal .footer-label,
+.footer-right-external .footer-label {
+  position: relative;
+  right: 18px;
+}
+
 .footer-left-hod {
   flex: 0 0 260px;
   margin-top: 28px;
+}
+
+.hod-label {
+  margin-left: 18px;
 }
 
 .hod-line, .external-line {
@@ -291,7 +311,7 @@
 }
 
 .external-line {
-  width: 310px;
+  width: 340px;
   margin-left: auto;
 }
 
