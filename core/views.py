@@ -2586,7 +2586,7 @@ def generate_seating(request):
                         })
 
                 response_rooms.append({
-                    'id': room.id,
+                    'id': int(room.id),
                     'building': room.building,
                     'room_number': room.room_number,
                     'capacity': room.capacity,
@@ -2660,7 +2660,19 @@ def generate_seating(request):
                 exam_session = seat.get('session', '')
                 exam_name = seat.get('exam_name', '')
 
-                duplicate_key = (room['id'], reg, exam_date, exam_session, exam_name)
+                # Ensure room_id is valid before using it
+                room_id_value = room.get('id')
+                if not room_id_value:
+                    print(f"[DEBUG] Skipping seat: room has no valid ID")
+                    continue
+                
+                try:
+                    room_id_value = int(room_id_value)
+                except (ValueError, TypeError):
+                    print(f"[DEBUG] Skipping seat: room_id={room_id_value} is not a valid integer")
+                    continue
+
+                duplicate_key = (room_id_value, reg, exam_date, exam_session, exam_name)
                 if duplicate_key in seen_allocations:
                     print(f"[DEBUG] Skipping duplicate allocation: {duplicate_key}")
                     continue
@@ -2668,14 +2680,23 @@ def generate_seating(request):
 
                 print(f"[DEBUG] Creating SeatAllocation: reg={reg}, row={row}, column={column}, seat_code={seat.get('seat')}")
                 
+                # Ensure room_id is an integer to prevent "Field 'id' expected a number" errors
+                room_id_value = room.get('id')
+                if room_id_value is not None:
+                    try:
+                        room_id_value = int(room_id_value)
+                    except (ValueError, TypeError):
+                        print(f"[DEBUG] WARNING: room_id={room_id_value} is not a valid integer. Skipping this seat allocation.")
+                        continue
+                
                 sa = SeatAllocation(
                     exam=exam,
-                    room_id=room['id'],
+                    room_id=room_id_value,
                     registration_number=reg,
                     department=seat.get('department', ''),
                     seat_code=seat.get('seat', ''),
                     row=row,
-                    column=column,
+                    column=int(column) if column else 0,
                     exam_date=exam_date,
                     exam_session=exam_session,
                     exam_name=exam_name
