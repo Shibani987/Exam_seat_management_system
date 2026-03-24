@@ -198,6 +198,58 @@ function showStep3(pages, examName){
     link.href = '/static/core/css/attendance_sheet_print.css';
     document.head.appendChild(link);
   }
+
+  if (!document.getElementById('attendance-sheet-layout-fix')) {
+    const style = document.createElement('style');
+    style.id = 'attendance-sheet-layout-fix';
+    style.textContent = `
+      .sheet-footer-row-primary {
+        margin-top: 10px;
+      }
+
+      .sheet-footer-row-secondary {
+        margin-top: 6px;
+      }
+
+      .sheet-footer {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 2px;
+      }
+
+      @media print {
+        .attendance-sheet {
+          padding-bottom: 8px !important;
+          min-height: calc(100vh - 8px) !important;
+        }
+
+        .sheet-table + .sheet-footer-row {
+          margin-top: 12px !important;
+          padding-top: 6px !important;
+        }
+
+        .sheet-footer-row + .sheet-footer-row {
+          margin-top: 8px !important;
+        }
+
+        .footer-right-internal {
+          margin-top: 10px !important;
+        }
+
+        .footer-left-hod,
+        .footer-right-external {
+          margin-top: 18px !important;
+        }
+
+        .sheet-footer {
+          margin-top: auto !important;
+          padding-top: 1px !important;
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
   
   pages.forEach((pageMeta, pageIdx) => {
     const sheetDiv = document.createElement('div');
@@ -247,8 +299,8 @@ function showStep3(pages, examName){
         <tbody>
     `;
     
-    // Add rows (15 per sheet as per image) with serial numbers starting from 1 for each sheet
-   for (let i = 0; i < 15; i++) {
+    // Add rows (16 per sheet) with serial numbers starting from 1 for each sheet
+   for (let i = 0; i < 16; i++) {
   const student = (pageMeta.students || [])[i];
   let slText = '';
   if (student && (student.name || student.registration_number || student.roll_number)) {
@@ -271,7 +323,7 @@ function showStep3(pages, examName){
       </table>
       
       <!-- first footer row: present/absent on left, internal signature on right -->
-      <div class="sheet-footer-row" style="margin-top:20px;">
+      <div class="sheet-footer-row sheet-footer-row-primary">
         <div class="footer-left">
           <div class="footer-section small">
             <div class="footer-field">No of Student Present</div>
@@ -288,7 +340,7 @@ function showStep3(pages, examName){
       </div>
       
       <!-- second footer row: HOD left, external right -->
-      <div class="sheet-footer-row" style="margin-top:10px;">
+      <div class="sheet-footer-row sheet-footer-row-secondary">
         <div class="footer-left-hod">
           <div class="hod-line"></div>
           <div class="hod-label">Signature of HoD</div>
@@ -300,7 +352,7 @@ function showStep3(pages, examName){
         </div>
       </div>
       
-      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center;">
+      <div class="sheet-footer">
         <div style="font-size:12px; text-align:left; line-height:1.2;">
           ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
         </div>
