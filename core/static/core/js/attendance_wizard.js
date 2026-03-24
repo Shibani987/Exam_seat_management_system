@@ -257,16 +257,16 @@ function showStep3(pages, examName){
         }
 
         .sheet-footer-row + .sheet-footer-row {
-          margin-top: 1px !important;
+          margin-top: 8px !important;
         }
 
         .footer-right-internal {
-          margin-top: 4px !important;
+          margin-top: 10px !important;
         }
 
         .footer-left-hod,
         .footer-right-external {
-          margin-top: 8px !important;
+          margin-top: 18px !important;
         }
 
         .sheet-footer {
