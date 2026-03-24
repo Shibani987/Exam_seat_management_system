@@ -215,7 +215,7 @@ function showStep3(pages, examName){
         display: flex;
         justify-content: space-between;
         align-items: center;
-        padding-top: 2px;
+        padding-top: 0;
       }
 
       @media print {
@@ -253,26 +253,33 @@ function showStep3(pages, examName){
 
         .sheet-table + .sheet-footer-row {
           margin-top: auto !important;
-          padding-top: 2px !important;
+          padding-top: 0 !important;
         }
 
         .sheet-footer-row + .sheet-footer-row {
-          margin-top: 4px !important;
+          margin-top: 1px !important;
         }
 
         .footer-right-internal {
-          margin-top: 10px !important;
+          margin-top: 4px !important;
         }
 
         .footer-left-hod,
         .footer-right-external {
-          margin-top: 18px !important;
+          margin-top: 8px !important;
         }
 
         .sheet-footer {
-          margin-top: 2px !important;
+          margin-top: 0 !important;
           padding-top: 0 !important;
           font-size: 8px !important;
+        }
+
+        .sheet-footer-meta {
+          font-size: 10px !important;
+          line-height: 1 !important;
+          margin: 0 !important;
+          padding: 0 !important;
         }
       }
     `;
@@ -381,10 +388,10 @@ function showStep3(pages, examName){
       </div>
       
       <div class="sheet-footer">
-        <div style="font-size:12px; text-align:left; line-height:1.2;">
+        <div class="sheet-footer-meta sheet-footer-meta-left">
           ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
         </div>
-        <div style="font-size:12px; text-align:right; line-height:1.2;">
+        <div class="sheet-footer-meta sheet-footer-meta-right">
           Page ${pageMeta.page_index} of ${pageMeta.total_pages}
         </div>
       </div>
