@@ -3,7 +3,7 @@
   width: 100%;
   max-width: 900px;
   margin: 20px 0; /* Add margin between sheets */
-  padding: 6px 10px; /* moderate padding around edges */
+  padding: 10px; /* moderate padding around edges */
   orphans: 0;
   widows: 0;
   height: auto;
@@ -12,9 +12,10 @@
 .sheet-header {
   position: relative;
   text-align: center;
+  text-align: center;
   margin-bottom: 2px; /* reduce gap below header further */
   page-break-inside: avoid;
-  padding-top: 5px; /* restore a bit of gap from top border */
+  padding-top: 1px; /* keep print header tighter to the top */
 }
 
 /* logo container remains absolute inside header */
@@ -54,6 +55,11 @@
   color: #555;
 }
 
+.header-text p:first-of-type {
+  font-weight: 600;
+  color: #333;
+}
+
 
 .sheet-title {
   text-align: center;
@@ -83,6 +89,7 @@
    
 }
 .meta-field-group:last-child {
+  width: 130px;
   margin-right: 180px;
 }
 .meta-field {
@@ -91,7 +98,7 @@
   min-height: 25px;
   display: flex;
   align-items: center;
-  justify-content: flex-start;
+  justify-content: center;
   font-size: 12px;
   font-weight: 500;
   position: relative;
