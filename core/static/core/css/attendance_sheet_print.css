@@ -467,12 +467,12 @@
   }
 
   .sheet-table + .sheet-footer-row {
-    margin-top: 8px !important;
-    padding-top: 8px !important;
+    margin-top: 28px !important;
+    padding-top: 20px !important;
   }
 
   .sheet-footer-row + .sheet-footer-row {
-    margin-top: 6px !important;
+    margin-top: 18px !important;
   }
 }
 
