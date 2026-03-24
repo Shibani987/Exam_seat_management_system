@@ -545,7 +545,7 @@
   }
 
   .sheet-table {
-    margin-bottom: 4px !important;
+    margin-bottom: 0 !important;
   }
 
   .sheet-table tbody tr,
@@ -559,25 +559,25 @@
   }
 
   .sheet-table + .sheet-footer-row {
-    margin-top: auto !important;
+    margin-top: 0 !important;
     padding-top: 0 !important;
   }
 
   .sheet-footer-row + .sheet-footer-row {
-    margin-top: 3px !important;
+    margin-top: 0 !important;
   }
 
   .footer-right-internal {
-    margin-top: 6px !important;
+    margin-top: 2px !important;
   }
 
   .footer-left-hod,
   .footer-right-external {
-    margin-top: 10px !important;
+    margin-top: 4px !important;
   }
 
   .sheet-footer {
-    margin-top: 0 !important;
+    margin-top: auto !important;
     padding-top: 0 !important;
     font-size: 8px !important;
   }
