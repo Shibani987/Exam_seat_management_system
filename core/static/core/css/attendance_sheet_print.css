@@ -564,12 +564,15 @@
   }
 
   .sheet-meta-box {
-    margin: 0 0 6px 0 !important;
+    margin: 0 0 6px -10px !important;
     padding: 4px 0 !important;
+    width: calc(100% + 10px) !important;
   }
 
   .sheet-table {
+    margin-left: -10px !important;
     margin-bottom: 0 !important;
+    width: calc(100% + 10px) !important;
   }
 
   .sheet-table tbody tr,
@@ -585,6 +588,12 @@
   .sheet-table + .sheet-footer-row {
     margin-top: 10px !important;
     padding-top: 0 !important;
+  }
+
+  .sheet-footer-row,
+  .sheet-footer {
+    margin-left: -10px !important;
+    width: calc(100% + 10px) !important;
   }
 
   .sheet-footer-row + .sheet-footer-row {
