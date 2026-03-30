@@ -208,7 +208,7 @@ function showStep3(pages, examName){
       }
 
       .sheet-footer-row-secondary {
-        margin-top: 60px;
+        margin-top: 40px;
       }
 
       .sheet-footer {
@@ -257,7 +257,7 @@ function showStep3(pages, examName){
         }
 
         .sheet-footer-row + .sheet-footer-row {
-          margin-top: 60px !important;
+          margin-top: 40px !important;
         }
 
         .footer-right-internal {
@@ -361,10 +361,16 @@ function showStep3(pages, examName){
       <div class="sheet-footer-row sheet-footer-row-primary">
         <div class="footer-left">
           <div class="footer-section small">
-            <div class="footer-field">No of Student Present</div>
+            <div class="footer-field-row">
+              <div class="footer-field">No of Student Present</div>
+              <div class="footer-mini-box"></div>
+            </div>
           </div>
           <div class="footer-section small">
-            <div class="footer-field">No of Student Absent</div>
+            <div class="footer-field-row">
+              <div class="footer-field">No of Student Absent</div>
+              <div class="footer-mini-box"></div>
+            </div>
           </div>
         </div>
         <div class="footer-right-internal">

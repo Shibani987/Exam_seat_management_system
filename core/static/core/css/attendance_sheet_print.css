@@ -109,7 +109,7 @@
 }
 .meta-field-group:last-child {
   width: 100px;
-  margin-right: 180px;
+  margin-right: 160px;
 }
 .meta-field {
   border: 0.8px solid #000;
@@ -200,9 +200,9 @@
 
 .name-col{ width:160px; }
 
-.reg-col{ width:137px; }
+.reg-col{ width:142px; }
 
-.roll-col{ width:110px; }
+.roll-col{ width:115px; }
 
 .booklet-col{ width:110px; }
 
@@ -260,6 +260,18 @@
   text-align: center;
 }
 
+.footer-field-row {
+  display: flex;
+  align-items: stretch;
+}
+
+.footer-mini-box {
+  width: 20px;
+  min-width: 20px;
+  border: 0.8px solid #000;
+  border-left: none;
+}
+
 .signature-box {
   margin: 8px 0;
   border-top: 1px solid #000;
@@ -300,7 +312,7 @@
   flex: 0 0 auto;
   margin: 0;
   padding: 0;
-  width: 170px;
+  width: 190px;
 }
 .footer-right-internal {
   flex: 1;
@@ -511,7 +523,7 @@
 }
 
 .sheet-footer-row-secondary {
-  margin-top: 80px;
+  margin-top: 40px;
 }
 
 .sheet-footer {
@@ -572,7 +584,7 @@
   }
 
   .sheet-footer-row + .sheet-footer-row {
-    margin-top: 80px !important;
+    margin-top: 40px !important;
   }
 
   .footer-right-internal {
