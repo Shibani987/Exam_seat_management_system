@@ -12,6 +12,7 @@
   display: flex;
   flex-direction: column;
   min-height: 297mm;
+  font-family: "Times New Roman", Times, serif;
   orphans: 0;
   widows: 0;
   height: auto;
@@ -178,7 +179,7 @@
 
 .sheet-table th {
   padding: 1px 4px;
-  height: 27px;
+  height: 32px;
   line-height: 1.1;
   vertical-align: middle;
 }
@@ -253,6 +254,7 @@
   min-height: 14px;
   padding: 4px 6px 2px;
   margin: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -263,6 +265,7 @@
 .footer-field-row {
   display: flex;
   align-items: stretch;
+  width: 100%;
 }
 
 .footer-mini-box {
@@ -519,7 +522,7 @@
 }
 
 .sheet-footer-row-primary {
-  margin-top: 40px;
+  margin-top: 60px;
 }
 
 .sheet-footer-row-secondary {
@@ -575,11 +578,11 @@
   }
 
   .sheet-table th {
-    height: 25px !important;
+    height: 30px !important;
   }
 
   .sheet-table + .sheet-footer-row {
-    margin-top: 40px !important;
+    margin-top: 60px !important;
     padding-top: 0 !important;
   }
 

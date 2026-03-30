@@ -204,7 +204,7 @@ function showStep3(pages, examName){
     style.id = 'attendance-sheet-layout-fix';
     style.textContent = `
       .sheet-footer-row-primary {
-        margin-top: 40px;
+        margin-top: 60px;
       }
 
       .sheet-footer-row-secondary {
@@ -252,7 +252,7 @@ function showStep3(pages, examName){
         }
 
         .sheet-table + .sheet-footer-row {
-          margin-top: 40px !important;
+          margin-top: 60px !important;
           padding-top: 0 !important;
         }
 
