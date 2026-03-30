@@ -23,7 +23,7 @@ from pathlib import Path
 # Setup logging for security events
 logger = logging.getLogger('exam_system')
 
-ATTENDANCE_SHEET_STUDENTS_PER_PAGE = 18
+ATTENDANCE_SHEET_STUDENTS_PER_PAGE = 20
 
 from .forms import StudentDataUploadForm, ForgotPasswordForm, ResetPasswordForm, AdminEmailUploadForm
 from .models import (
@@ -893,11 +893,11 @@ def update_temp_exam(request):
 @csrf_exempt
 @admin_required_json
 def generate_sheets(request):
-    """Given an exam_id and file_id, return paginated sheet data (18 students per sheet).
+    """Given an exam_id and file_id, return paginated sheet data (20 students per sheet).
 
     Preserves original file order (DB insertion order), filters by eligible academic_status,
     groups students by (branch, semester) preserving encounter order, and paginates each group
-    into pages of 18. Each page returned as a dict with metadata so the frontend can render
+    into pages of 20. Each page returned as a dict with metadata so the frontend can render
     branch/semester and page numbering.
     """
     if request.method == "POST":

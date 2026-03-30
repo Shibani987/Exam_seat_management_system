@@ -334,8 +334,8 @@ function showStep3(pages, examName){
         <tbody>
     `;
     
-    // Add rows (18 per sheet) with serial numbers starting from 1 for each sheet
-   for (let i = 0; i < 18; i++) {
+    // Add rows (20 per sheet) with serial numbers starting from 1 for each sheet
+   for (let i = 0; i < 20; i++) {
   const student = (pageMeta.students || [])[i];
   let slText = '';
   if (student && (student.name || student.registration_number || student.roll_number)) {

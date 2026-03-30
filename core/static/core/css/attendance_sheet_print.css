@@ -32,7 +32,7 @@
 .header-logo {
   position: absolute;
   left: 50px;
-  top: -6px;
+  top: 2px;
   width: 112px;
   height: 112px;
   border: none;
@@ -124,7 +124,7 @@
   width: 100%;   /* group width follow করবে */
 }
 .meta-field-group:first-child {
-  padding-left: 30px;
+  padding-left: 20px;
 }
 .meta-field .meta-label {
   position: absolute;
@@ -282,7 +282,7 @@
 }
 
 .footer-left {
-  padding-left: 30px;
+  padding-left: 20px;
 }
 
 
@@ -427,7 +427,7 @@
   }
   .header-logo {
     left: 50px;
-    top: -8px;
+    top: 0;
     width: 92px;
     height: 92px;
   }
