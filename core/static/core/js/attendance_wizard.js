@@ -204,7 +204,7 @@ function showStep3(pages, examName){
     style.id = 'attendance-sheet-layout-fix';
     style.textContent = `
       .sheet-footer-row-primary {
-        margin-top: 60px;
+        margin-top: 80px;
       }
 
       .sheet-footer-row-secondary {
@@ -243,8 +243,8 @@ function showStep3(pages, examName){
 
         .sheet-table tbody tr,
         .sheet-table td {
-          height: 28px !important;
-          line-height: 28px !important;
+          height: 33px !important;
+          line-height: 33px !important;
         }
 
         .sheet-table th {
@@ -252,7 +252,7 @@ function showStep3(pages, examName){
         }
 
         .sheet-table + .sheet-footer-row {
-          margin-top: 60px !important;
+          margin-top: 80px !important;
           padding-top: 0 !important;
         }
 
