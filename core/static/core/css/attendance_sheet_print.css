@@ -423,7 +423,7 @@
     width: 203.5mm;
     max-width: 203.5mm;
     margin: 0;
-    padding: 2mm 4mm 5mm 0;
+    padding: 2mm 4mm 5mm 5px;
     display: flex;
     flex-direction: column;
     min-height: 286mm;
