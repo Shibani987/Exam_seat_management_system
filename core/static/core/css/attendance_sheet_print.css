@@ -522,7 +522,7 @@
 }
 
 .sheet-footer-row-primary {
-  margin-top: 80px;
+  margin-top: 10px;
 }
 
 .sheet-footer-row-secondary {
@@ -582,7 +582,7 @@
   }
 
   .sheet-table + .sheet-footer-row {
-    margin-top: 80px !important;
+    margin-top: 10px !important;
     padding-top: 0 !important;
   }
 
