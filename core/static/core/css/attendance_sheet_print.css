@@ -32,7 +32,7 @@
 .header-logo {
   position: absolute;
   left: 50px;
-  top: 2px;
+  top: 12px;
   width: 112px;
   height: 112px;
   border: none;
@@ -282,7 +282,7 @@
 }
 
 .footer-left {
-  padding-left: 20px;
+  padding-left: 0;
 }
 
 
@@ -315,7 +315,7 @@
 .footer-left-hod {
   flex: 0 0 260px;
   margin-top: 28px;
-  padding-left: 30px;
+  padding-left: 0;
 }
 
 .hod-label {
@@ -427,7 +427,7 @@
   }
   .header-logo {
     left: 50px;
-    top: 0;
+    top: 10px;
     width: 92px;
     height: 92px;
   }

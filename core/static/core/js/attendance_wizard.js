@@ -323,11 +323,11 @@ function showStep3(pages, examName){
         </colgroup>
         <thead>
           <tr>
-            <th class="sl-col">SL</th>
-            <th class="name-col">NAME</th>
-            <th class="reg-col">REGISTRATION NO</th>
-            <th class="roll-col">ROLL NO</th>
-            <th class="booklet-col">ANSWER<br>BOOKLET NO</th>
+            <th class="sl-col">SL.</th>
+            <th class="name-col">STUDENT NAME</th>
+            <th class="reg-col">UNIVERSITY REG.<br>NUMBER</th>
+            <th class="roll-col">COLLEGE ROLL<br>NUMBER</th>
+            <th class="booklet-col">ANSWER BOOKLET<br>NUMBER</th>
             <th class="signature-col">CANDIDATE<br>SIGNATURE</th>
           </tr>
         </thead>
@@ -339,7 +339,7 @@ function showStep3(pages, examName){
   const student = (pageMeta.students || [])[i];
   let slText = '';
   if (student && (student.name || student.registration_number || student.roll_number)) {
-    slText = i + 1; // Start from 1 for each sheet
+    slText = `${i + 1}.`; // Start from 1 for each sheet
   }
   html += `
       <tr>
