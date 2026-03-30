@@ -32,7 +32,7 @@
 .header-logo {
   position: absolute;
   left: 50px;
-  top: 12px;
+  top: 7px;
   width: 112px;
   height: 112px;
   border: none;
@@ -124,7 +124,7 @@
   width: 100%;   /* group width follow করবে */
 }
 .meta-field-group:first-child {
-  padding-left: 20px;
+  padding-left: 0;
 }
 .meta-field .meta-label {
   position: absolute;
@@ -200,9 +200,9 @@
 
 .name-col{ width:160px; }
 
-.reg-col{ width:132px; }
+.reg-col{ width:137px; }
 
-.roll-col{ width:105px; }
+.roll-col{ width:110px; }
 
 .booklet-col{ width:110px; }
 
@@ -212,9 +212,11 @@
 }
 
 .reg-col {
+  text-align: center;
 }
 
 .roll-col {
+  text-align: center;
 }
 
 .booklet-col {
@@ -427,7 +429,7 @@
   }
   .header-logo {
     left: 50px;
-    top: 10px;
+    top: 5px;
     width: 92px;
     height: 92px;
   }
