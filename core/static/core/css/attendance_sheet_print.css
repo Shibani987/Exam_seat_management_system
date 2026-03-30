@@ -158,8 +158,8 @@
   border: 0.8px solid #000;
   padding: 0 4px;
 
-  height: 32px;
-  line-height: 32px;
+  height: 37px;
+  line-height: 37px;
 
   font-size: 12px;
 
@@ -170,7 +170,7 @@
   box-sizing: border-box;
 }
 .sheet-table tbody tr{
-  height:32px;
+  height:37px;
 }
 .sheet-table td{
   vertical-align: middle;
@@ -178,7 +178,7 @@
 
 .sheet-table th {
   padding: 1px 4px;
-  height: 22px;
+  height: 27px;
   line-height: 1.1;
   vertical-align: middle;
 }
@@ -266,8 +266,8 @@
 }
 
 .footer-mini-box {
-  width: 20px;
-  min-width: 20px;
+  width: 40px;
+  min-width: 40px;
   border: 0.8px solid #000;
   border-left: none;
 }
@@ -312,7 +312,7 @@
   flex: 0 0 auto;
   margin: 0;
   padding: 0;
-  width: 190px;
+  width: 210px;
 }
 .footer-right-internal {
   flex: 1;
@@ -570,12 +570,12 @@
 
   .sheet-table tbody tr,
   .sheet-table td {
-    height: 28px !important;
-    line-height: 28px !important;
+    height: 33px !important;
+    line-height: 33px !important;
   }
 
   .sheet-table th {
-    height: 20px !important;
+    height: 25px !important;
   }
 
   .sheet-table + .sheet-footer-row {
