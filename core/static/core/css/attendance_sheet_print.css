@@ -1,7 +1,7 @@
 /* Attendance Sheet Print Styling */
 @page {
   size: A4 portrait;
-  margin: 5mm 6mm 6mm 6mm;
+  margin: 5mm 6mm 6mm 0.5mm;
 }
 
 .attendance-sheet {
@@ -420,10 +420,10 @@
   }
   
   .attendance-sheet {
-    width: 198mm;
-    max-width: 198mm;
-    margin: 0 auto;
-    padding: 2mm 4mm 5mm 4mm;
+    width: 203.5mm;
+    max-width: 203.5mm;
+    margin: 0;
+    padding: 2mm 4mm 5mm 0;
     display: flex;
     flex-direction: column;
     min-height: 286mm;
