@@ -1,7 +1,7 @@
 /* Attendance Sheet Print Styling */
 @page {
   size: A4 portrait;
-  margin: 5mm 6mm 6mm 0.5mm;
+  margin: 0;
 }
 
 .attendance-sheet {
@@ -433,21 +433,22 @@
   }
   
   .attendance-sheet {
-    width: 203.5mm;
-    max-width: 203.5mm;
+    width: 210mm;
+    max-width: 210mm;
     margin: 0;
-    padding: 2mm 4mm 5mm 45px;
+    padding: 5mm 6mm 6mm 6mm;
     display: flex;
     flex-direction: column;
-    min-height: 286mm;
+    min-height: 297mm;
     page-break-after: always;
     page-break-inside: avoid;
     orphans: 0;
     widows: 0;
-    height: auto;
+    height: 297mm;
     border: none; /* Remove border for printing */
     border-radius: 0; /* Remove rounded corners for printing */
     box-shadow: none; /* Remove shadow for printing */
+    box-sizing: border-box;
   }
   
   .sheet-header {
@@ -564,8 +565,13 @@
 
 @media print {
   .attendance-sheet {
-    padding-bottom: 2px !important;
-    min-height: 286mm !important;
+    width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
+    margin: 0 !important;
+    padding: 5mm 6mm 6mm 6mm !important;
+    padding-bottom: 6mm !important;
   }
 
   .sheet-header {
@@ -577,15 +583,14 @@
   }
 
   .sheet-meta-box {
-    margin: 0 0 6px -10px !important;
+    margin: 0 0 6px 0 !important;
     padding: 4px 0 !important;
-    width: calc(100% + 10px) !important;
+    width: 100% !important;
   }
 
   .sheet-table {
-    margin-left: -10px !important;
     margin-bottom: 0 !important;
-    width: calc(100% + 10px) !important;
+    width: 100% !important;
   }
 
   .sheet-table tbody tr,
@@ -605,8 +610,8 @@
 
   .sheet-footer-row,
   .sheet-footer {
-    margin-left: -10px !important;
-    width: calc(100% + 10px) !important;
+    margin-left: 0 !important;
+    width: 100% !important;
   }
 
   .sheet-footer-row + .sheet-footer-row {

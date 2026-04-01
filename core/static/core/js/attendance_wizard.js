@@ -237,8 +237,12 @@ function showStep3(pages, examName) {
       }
       @media print {
         .attendance-sheet {
-          padding-bottom: 2px !important;
-          min-height: calc(100vh - 2px) !important;
+          width: 210mm !important;
+          max-width: 210mm !important;
+          min-height: 297mm !important;
+          height: 297mm !important;
+          margin: 0 !important;
+          padding: 5mm 6mm 6mm 6mm !important;
         }
         .sheet-header {
           min-height: 88px !important;
