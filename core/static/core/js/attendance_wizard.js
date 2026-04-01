@@ -296,6 +296,7 @@ function showStep3(pages, examName) {
     sheetDiv.className = 'attendance-sheet';
     let html = `
       <div class="sheet-header">
+        ${pageMeta.room_number ? `<div class="sheet-room-number">Room ${pageMeta.room_number.toUpperCase()}</div>` : ''}
         <div class="header-logo"><img src="/static/core/img/logo.png" alt="logo" /></div>
         <div class="header-text">
           <h2>CONTROLLER OF EXAMINATIONS</h2>
@@ -393,7 +394,7 @@ function showStep3(pages, examName) {
       </div>
       <div class="sheet-footer">
         <div class="sheet-footer-meta sheet-footer-meta-left">
-          ${pageMeta.room_number ? ('ROOM ' + pageMeta.room_number.toUpperCase()) : (pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : '')}
+          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
         </div>
         <div class="sheet-footer-meta sheet-footer-meta-right">
           Page ${pageMeta.page_index} of ${pageMeta.total_pages}

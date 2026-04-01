@@ -28,6 +28,19 @@
   min-height: 98px;
 }
 
+.sheet-room-number {
+  position: absolute;
+  top: 6px;
+  right: 10px;
+  font-size: 12px;
+  font-weight: bold;
+  color: #222;
+  border: 0.8px solid #000;
+  padding: 3px 10px;
+  background: #fff;
+  line-height: 1.2;
+}
+
 /* logo container remains absolute inside header */
 
 .header-logo {
