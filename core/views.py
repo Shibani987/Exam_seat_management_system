@@ -1060,12 +1060,9 @@ def generate_sheets(request):
 
                 if key[0] == 'room':
                     room_number = key[1]
-                    branches = {str(student.get('branch') or '').strip() for student in group_students if str(student.get('branch') or '').strip()}
-                    semesters = {str(student.get('semester') or '').strip() for student in group_students if str(student.get('semester') or '').strip()}
-                    if len(branches) == 1:
-                        branch = next(iter(branches))
-                    if len(semesters) == 1:
-                        semester = next(iter(semesters))
+                    first_student = group_students[0] if group_students else {}
+                    branch = str(first_student.get('branch') or '').strip()
+                    semester = str(first_student.get('semester') or '').strip()
                 else:
                     branch = key[1]
                     semester = key[2]
