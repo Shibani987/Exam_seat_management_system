@@ -29,7 +29,7 @@ logger = logging.getLogger('exam_system')
 
 ATTENDANCE_SHEET_STUDENTS_PER_PAGE = 20
 
-PDF_DPI = 300
+PDF_DPI = 150
 MM_TO_PX = PDF_DPI / 25.4
 A4_WIDTH_PX = int(round(210 * MM_TO_PX))
 A4_HEIGHT_PX = int(round(297 * MM_TO_PX))
