@@ -39,11 +39,15 @@ LOGO_PATH_CANDIDATES = (
 )
 FONT_CANDIDATES = {
     "regular": (
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif.ttf"),
+        Path("/usr/share/fonts/truetype/liberation2/LiberationSerif-Regular.ttf"),
         Path("C:/Windows/Fonts/times.ttf"),
         Path("C:/Windows/Fonts/georgia.ttf"),
         Path("C:/Windows/Fonts/arial.ttf"),
     ),
     "bold": (
+        Path("/usr/share/fonts/truetype/dejavu/DejaVuSerif-Bold.ttf"),
+        Path("/usr/share/fonts/truetype/liberation2/LiberationSerif-Bold.ttf"),
         Path("C:/Windows/Fonts/timesbd.ttf"),
         Path("C:/Windows/Fonts/georgiab.ttf"),
         Path("C:/Windows/Fonts/arialbd.ttf"),
@@ -103,7 +107,12 @@ def _attendance_logo_image():
 
 def _draw_centered_text(draw, box, text, font, fill="black"):
     left, top, right, bottom = box
-    bbox = draw.textbbox((0, 0), text, font=font)
+    try:
+        bbox = draw.textbbox((0, 0), text, font=font)
+    except Exception:
+        width = draw.textlength(text, font=font)
+        height = getattr(font, "size", 16)
+        bbox = (0, 0, width, height)
     text_width = bbox[2] - bbox[0]
     text_height = bbox[3] - bbox[1]
     x = left + ((right - left) - text_width) / 2
@@ -113,9 +122,12 @@ def _draw_centered_text(draw, box, text, font, fill="black"):
 
 def _draw_text(draw, xy, text, font, fill="black", anchor=None):
     kwargs = {"font": font, "fill": fill}
-    if anchor:
-        kwargs["anchor"] = anchor
-    draw.text(xy, text, **kwargs)
+    try:
+        if anchor:
+            kwargs["anchor"] = anchor
+        draw.text(xy, text, **kwargs)
+    except Exception:
+        draw.text(xy, text, font=font, fill=fill)
 
 
 def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
