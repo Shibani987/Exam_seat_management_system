@@ -1,11 +1,19 @@
 /* Attendance Sheet Print Styling */
 @page {
-  size: A4 portrait;
+  size: 210mm 297mm;
   margin: 0;
 }
 
+html,
+body {
+  width: 210mm;
+  min-height: 297mm;
+  margin: 0;
+  padding: 0;
+}
+
 .attendance-sheet {
-  width: 100%;
+  width: 210mm;
   max-width: 210mm;
   margin: 20px auto; /* center sheet on screen */
   padding: 10px; /* moderate padding around edges */
@@ -418,6 +426,11 @@
 }
 
 @media print {
+  @page {
+    size: 210mm 297mm;
+    margin: 0;
+  }
+
   * {
     margin: 0;
     padding: 0;
@@ -425,11 +438,13 @@
   }
   
   html, body {
-    margin: 0;
-    padding: 0;
-    width: 100%;
-    height: 100%;
+    width: 210mm !important;
+    min-width: 210mm !important;
+    max-width: 210mm !important;
+    min-height: 297mm !important;
+    height: 297mm !important;
     background: #fff;
+    overflow: visible !important;
   }
   
   .attendance-sheet {
@@ -567,6 +582,7 @@
   .attendance-sheet {
     width: 210mm !important;
     max-width: 210mm !important;
+    min-width: 210mm !important;
     min-height: 297mm !important;
     height: 297mm !important;
     margin: 0 !important;

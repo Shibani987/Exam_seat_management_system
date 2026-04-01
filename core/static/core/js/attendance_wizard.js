@@ -223,6 +223,16 @@ function showStep3(pages, examName) {
     const style = document.createElement('style');
     style.id = 'attendance-sheet-layout-fix';
     style.textContent = `
+      @page {
+        size: 210mm 297mm;
+        margin: 0;
+      }
+      html, body {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0;
+        padding: 0;
+      }
       .sheet-footer-row-primary {
         margin-top: 30px;
       }
@@ -236,8 +246,22 @@ function showStep3(pages, examName) {
         padding-top: 0;
       }
       @media print {
+        @page {
+          size: 210mm 297mm;
+          margin: 0;
+        }
+        html, body {
+          width: 210mm !important;
+          min-width: 210mm !important;
+          max-width: 210mm !important;
+          min-height: 297mm !important;
+          height: 297mm !important;
+          margin: 0 !important;
+          padding: 0 !important;
+        }
         .attendance-sheet {
           width: 210mm !important;
+          min-width: 210mm !important;
           max-width: 210mm !important;
           min-height: 297mm !important;
           height: 297mm !important;
