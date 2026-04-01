@@ -123,7 +123,7 @@
 }
 .meta-field-group:last-child {
   width: 100px;
-  margin-right: 170px;
+  margin-right: 180px;
 }
 .meta-field {
   border: 0.8px solid #000;
@@ -204,19 +204,19 @@
 /* column width rules removed so empty cells shrink and table auto-fits */
 
 .sl-col {
-  width: 34px !important;
-  min-width: 34px !important;
-  max-width: 34px !important;
+  width: 30px !important;
+  min-width: 30px !important;
+  max-width: 30px !important;
   white-space: nowrap !important;
   overflow: visible !important;
   text-align: center !important;
 }
 
-.name-col{ width:160px; }
+.name-col{ width:145px; }
 
-.reg-col{ width:142px; }
+.reg-col{ width:132px; }
 
-.roll-col{ width:115px; }
+.roll-col{ width:105px; }
 
 .booklet-col{ width:110px; }
 
@@ -505,9 +505,9 @@
 /* For print specifically */
 @media print {
   .sl-col {
-    width: 34px !important;
-    min-width: 34px !important;
-    max-width: 34px !important;
+    width: 30px !important;
+    min-width: 30px !important;
+    max-width: 30px !important;
     white-space: nowrap !important;
     overflow: visible !important;
     text-align: center !important;
