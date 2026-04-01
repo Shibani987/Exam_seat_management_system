@@ -1060,9 +1060,6 @@ def generate_sheets(request):
 
                 if key[0] == 'room':
                     room_number = key[1]
-                    first_student = group_students[0] if group_students else {}
-                    branch = str(first_student.get('branch') or '').strip()
-                    semester = str(first_student.get('semester') or '').strip()
                 else:
                     branch = key[1]
                     semester = key[2]
@@ -1072,11 +1069,30 @@ def generate_sheets(request):
                     start = p * ATTENDANCE_SHEET_STUDENTS_PER_PAGE
                     end = (p + 1) * ATTENDANCE_SHEET_STUDENTS_PER_PAGE
                     chunk = group_students[start:end]
+
+                    chunk_labels = []
+                    seen_labels = set()
+                    for student in chunk:
+                        chunk_branch = str(student.get('branch') or '').strip()
+                        chunk_semester = str(student.get('semester') or '').strip()
+                        if chunk_branch and chunk_semester:
+                            label = f"{chunk_branch.upper()}_Sem {chunk_semester}"
+                        elif chunk_branch:
+                            label = chunk_branch.upper()
+                        elif chunk_semester:
+                            label = f"Sem {chunk_semester}"
+                        else:
+                            label = ''
+                        if label and label not in seen_labels:
+                            seen_labels.add(label)
+                            chunk_labels.append(label)
+
                     pages.append({
                         'students': chunk,
                         'room_number': room_number,
                         'branch': branch,
                         'semester': semester,
+                        'footer_label': ', '.join(chunk_labels),
                         'page_index': p + 1,
                         'total_pages': total_pages,
                     })

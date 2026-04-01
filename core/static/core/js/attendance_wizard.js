@@ -394,7 +394,7 @@ function showStep3(pages, examName) {
       </div>
       <div class="sheet-footer">
         <div class="sheet-footer-meta sheet-footer-meta-left">
-          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
+          ${pageMeta.footer_label || (pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : '')}
         </div>
         <div class="sheet-footer-meta sheet-footer-meta-right">
           Page ${pageMeta.page_index} of ${pageMeta.total_pages}
