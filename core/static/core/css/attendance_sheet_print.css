@@ -118,12 +118,12 @@
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 160px;
+  width: 150px;
    
 }
 .meta-field-group:last-child {
   width: 100px;
-  margin-right: 160px;
+  margin-right: 170px;
 }
 .meta-field {
   border: 0.8px solid #000;
@@ -204,9 +204,9 @@
 /* column width rules removed so empty cells shrink and table auto-fits */
 
 .sl-col {
-  width: 40px !important;
-  min-width: 40px !important;
-  max-width: 40px !important;
+  width: 34px !important;
+  min-width: 34px !important;
+  max-width: 34px !important;
   white-space: nowrap !important;
   overflow: visible !important;
   text-align: center !important;
@@ -505,9 +505,9 @@
 /* For print specifically */
 @media print {
   .sl-col {
-    width: 40px !important;
-    min-width: 40px !important;
-    max-width: 40px !important;
+    width: 34px !important;
+    min-width: 34px !important;
+    max-width: 34px !important;
     white-space: nowrap !important;
     overflow: visible !important;
     text-align: center !important;
