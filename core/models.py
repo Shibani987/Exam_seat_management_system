@@ -28,6 +28,7 @@ class Student(models.Model):
     course = models.CharField(max_length=50)
     semester = models.CharField(max_length=10)
     branch = models.CharField(max_length=50)
+    room_number = models.CharField(max_length=50, blank=True, default="")
     academic_status = models.CharField(max_length=50)
 
     def __str__(self):

@@ -19,6 +19,7 @@ import json
 from django.contrib.auth.hashers import make_password, check_password
 import traceback
 from pathlib import Path
+from django.db import transaction, IntegrityError
 
 # Setup logging for security events
 logger = logging.getLogger('exam_system')
@@ -57,6 +58,157 @@ def _get_client_ip(request):
     if xff:
         return xff.split(',')[0].strip()
     return request.META.get('REMOTE_ADDR')
+
+
+def _read_student_dataframe(uploaded_file):
+    """Parse a CSV/XLS/XLSX student upload into a dataframe."""
+    print(f"[DEBUG] Reading file: {uploaded_file.name}")
+    try:
+        df = pd.read_csv(uploaded_file, dtype=str)
+        print(f"[DEBUG] Parsed as CSV (default engine), shape: {df.shape}")
+    except Exception as csv_err:
+        print(f"[DEBUG] CSV parse error {csv_err}, trying python engine")
+        try:
+            uploaded_file.seek(0)
+            df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
+            print(f"[DEBUG] Parsed as CSV (python engine), shape: {df.shape}")
+        except Exception as csv_err2:
+            print(f"[DEBUG] second CSV attempt failed {csv_err2}, falling back to Excel")
+            try:
+                uploaded_file.seek(0)
+                xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
+                sheets = xls.sheet_names
+                print(f"[DEBUG] Excel contains sheets: {sheets}")
+                df_list = []
+                for sn in sheets:
+                    part = pd.read_excel(xls, sheet_name=sn, dtype=str)
+                    print(f"[DEBUG] sheet {sn} shape {part.shape}")
+                    df_list.append(part)
+                df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
+                print(f"[DEBUG] Combined Excel shape: {df.shape}")
+            except Exception as excel_err:
+                print(f"[DEBUG] multi-sheet Excel failed {excel_err}, single-sheet read")
+                uploaded_file.seek(0)
+                df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
+                print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
+    return df
+
+
+def _extract_student_records_from_dataframe(df):
+    df = df.dropna(how='all').reset_index(drop=True)
+    if df.empty:
+        raise ValueError("File is empty. Please check your file.")
+
+    df.columns = df.columns.str.strip().str.lower()
+    print(f"[DEBUG] Columns: {list(df.columns)}")
+    print(f"[DEBUG] Total rows: {len(df)}")
+
+    avail = set(df.columns)
+    has_roll = any(c in avail for c in ['rollno', 'roll_no', 'roll number', 'roll no'])
+    has_reg = any(c in avail for c in ['reg no', 'registration number', 'reg_no'])
+    has_std_id = any(c in avail for c in ['std id', 'student id', 'student_id'])
+    if not (has_roll and has_reg and has_std_id):
+        raise ValueError("File missing required columns: ROLL NO, REG NO, STD ID")
+
+    col_map = {
+        "course": ["course"],
+        "semester": ["sem", "semester"],
+        "branch": ["branch"],
+        "room_number": ["room number", "room_number", "room no", "roomno"],
+        "name": ["student name", "name"],
+        "roll_number": ["rollno", "roll_no", "roll number", "roll no"],
+        "registration_number": ["reg no", "registration number", "reg_no"],
+        "student_id": ["std id", "student id", "student_id"],
+        "academic_status": ["academic_status", "academic status", "status"],
+    }
+
+    def get_value(row, keys, default=""):
+        for key in keys:
+            if key in row and pd.notna(row[key]):
+                return str(row[key]).strip()
+        return default
+
+    records = df.to_dict(orient='records')
+    students = []
+    skipped = 0
+
+    for row in records:
+        roll = get_value(row, col_map["roll_number"])
+        reg = get_value(row, col_map["registration_number"])
+        std_id = get_value(row, col_map["student_id"])
+
+        if not roll or not reg or not std_id:
+            skipped += 1
+            continue
+
+        students.append({
+            "roll_number": roll,
+            "registration_number": reg,
+            "student_id": std_id,
+            "course": get_value(row, col_map["course"]),
+            "semester": get_value(row, col_map["semester"]),
+            "branch": get_value(row, col_map["branch"]),
+            "room_number": get_value(row, col_map["room_number"]),
+            "name": get_value(row, col_map["name"]),
+            "academic_status": get_value(row, col_map["academic_status"]),
+        })
+
+    return {
+        "records": students,
+        "total": len(records),
+        "inserted": len(students),
+        "skipped": skipped,
+    }
+
+
+def _create_student_file_with_students(file_name, student_records):
+    student_file_obj = StudentDataFile.objects.create(file_name=file_name)
+    print(f"[DEBUG] StudentDataFile created id={student_file_obj.id}")
+
+    objects_to_create = [
+        Student(
+            student_file=student_file_obj,
+            roll_number=row["roll_number"],
+            registration_number=row["registration_number"],
+            student_id=row["student_id"],
+            course=row.get("course", ""),
+            semester=row.get("semester", ""),
+            branch=row.get("branch", ""),
+            room_number=row.get("room_number", ""),
+            name=row.get("name", ""),
+            academic_status=row.get("academic_status", ""),
+        )
+        for row in student_records
+    ]
+
+    with transaction.atomic():
+        if objects_to_create:
+            Student.objects.bulk_create(objects_to_create, batch_size=500)
+
+    return student_file_obj
+
+
+def _get_temp_attendance_uploads(request):
+    return request.session.setdefault("attendance_wizard_uploads", {})
+
+
+def _set_temp_attendance_upload(request, exam_id, payload):
+    uploads = _get_temp_attendance_uploads(request)
+    uploads[str(exam_id)] = payload
+    request.session["attendance_wizard_uploads"] = uploads
+    request.session.modified = True
+
+
+def _pop_temp_attendance_upload(request, exam_id):
+    uploads = _get_temp_attendance_uploads(request)
+    payload = uploads.pop(str(exam_id), None)
+    request.session["attendance_wizard_uploads"] = uploads
+    request.session.modified = True
+    return payload
+
+
+def _get_temp_attendance_upload(request, exam_id):
+    return _get_temp_attendance_uploads(request).get(str(exam_id))
 
 
 
@@ -444,7 +596,6 @@ def block_admin_email(request):
 def upload_student_data(request):
     if request.method == "POST":
         from django.urls import reverse
-        from django.db import transaction, IntegrityError
 
         try:
             form = StudentDataUploadForm(request.POST, request.FILES)
@@ -462,113 +613,13 @@ def upload_student_data(request):
                 messages.error(request, "File size too large. Maximum allowed is 10MB.")
                 return redirect(reverse('dashboard') + '?tab=upload-data')
 
-            print(f"[DEBUG] Reading file: {uploaded_file.name}")
-            # try csv, then excel with sheets
-            try:
-                df = pd.read_csv(uploaded_file, dtype=str)
-                print(f"[DEBUG] Parsed as CSV (default engine), shape: {df.shape}")
-            except Exception as csv_err:
-                print(f"[DEBUG] CSV parse error {csv_err}, trying python engine")
-                try:
-                    df = pd.read_csv(uploaded_file, dtype=str, on_bad_lines='skip', engine='python')
-                    print(f"[DEBUG] Parsed as CSV (python engine), shape: {df.shape}")
-                except Exception as csv_err2:
-                    print(f"[DEBUG] second CSV attempt failed {csv_err2}, falling back to Excel")
-                    try:
-                        xls = pd.ExcelFile(uploaded_file, engine='openpyxl')
-                        sheets = xls.sheet_names
-                        print(f"[DEBUG] Excel contains sheets: {sheets}")
-                        df_list = []
-                        for sn in sheets:
-                            part = pd.read_excel(xls, sheet_name=sn, dtype=str)
-                            print(f"[DEBUG] sheet {sn} shape {part.shape}")
-                            df_list.append(part)
-                        df = pd.concat(df_list, ignore_index=True) if df_list else pd.DataFrame()
-                        print(f"[DEBUG] Combined Excel shape: {df.shape}")
-                    except Exception as excel_err:
-                        print(f"[DEBUG] multi-sheet Excel failed {excel_err}, single-sheet read")
-                        df = pd.read_excel(uploaded_file, dtype=str, engine='openpyxl')
-                        print(f"[DEBUG] Parsed as Excel single sheet, shape: {df.shape}")
+            df = _read_student_dataframe(uploaded_file)
+            parse_result = _extract_student_records_from_dataframe(df)
+            total = parse_result["total"]
+            inserted = parse_result["inserted"]
+            skipped = parse_result["skipped"]
 
-            df = df.dropna(how='all').reset_index(drop=True)
-            if df.empty:
-                print("[ERROR] File empty after cleaning")
-                messages.error(request, "File is empty. Please check your file.")
-                return redirect(reverse('dashboard') + '?tab=upload-data')
-
-            df.columns = df.columns.str.strip().str.lower()
-            print(f"[DEBUG] Columns: {list(df.columns)}")
-            print(f"[DEBUG] Total rows: {len(df)}")
-            if df.empty:
-                messages.error(request, "File is empty. Please check your file.")
-                return redirect(reverse('dashboard') + '?tab=upload-data')
-
-            avail = set(df.columns)
-            has_roll = any(c in avail for c in ['rollno','roll_no','roll number','roll no'])
-            has_reg = any(c in avail for c in ['reg no','registration number','reg_no'])
-            has_std_id = any(c in avail for c in ['std id','student id','student_id'])
-            if not (has_roll and has_reg and has_std_id):
-                messages.error(request, "File missing required columns: ROLL NO, REG NO, STD ID")
-                return redirect(reverse('dashboard') + '?tab=upload-data')
-
-            student_file_obj = StudentDataFile.objects.create(file_name=uploaded_file.name)
-            print(f"[DEBUG] StudentDataFile created id={student_file_obj.id}")
-
-            col_map = {
-                "course":["course"],
-                "semester":["sem","semester"],
-                "branch":["branch"],
-                "name":["student name","name"],
-                "roll_number":["rollno","roll_no","roll number","roll no"],
-                "registration_number":["reg no","registration number","reg_no"],
-                "student_id":["std id","student id","student_id"],
-                "academic_status":["academic_status","academic status","status"],
-            }
-            def get_value(row, keys, default=""):
-                for key in keys:
-                    if key in row and pd.notna(row[key]):
-                        return str(row[key]).strip()
-                return default
-
-            # convert dataframe into list of plain dicts for faster iteration
-            records = df.to_dict(orient='records')
-
-            skipped = 0
-            objects_to_create = []
-
-            for row in records:
-                roll = get_value(row, col_map["roll_number"])
-                reg = get_value(row, col_map["registration_number"])
-                std_id = get_value(row, col_map["student_id"])
-
-                if not roll or not reg or not std_id:
-                    skipped += 1
-                    continue
-
-                # build Student instance but don't hit the DB yet
-                objects_to_create.append(Student(
-                    student_file=student_file_obj,
-                    roll_number=roll,
-                    registration_number=reg,
-                    student_id=std_id,
-                    course=get_value(row, col_map["course"]),
-                    semester=get_value(row, col_map["semester"]),
-                    branch=get_value(row, col_map["branch"]),
-                    name=get_value(row, col_map["name"]),
-                    academic_status=get_value(row, col_map["academic_status"]),
-                ))
-
-            total = len(records)
-            inserted = 0
-            # insert within transaction
-            try:
-                with transaction.atomic():
-                    if objects_to_create:
-                        Student.objects.bulk_create(objects_to_create, batch_size=500)
-                    inserted = len(objects_to_create)
-            except Exception as db_exc:
-                print(f"[ERROR] bulk_create/transaction failed: {db_exc}")
-                raise
+            _create_student_file_with_students(uploaded_file.name, parse_result["records"])
 
             print(f"[DEBUG] total rows {total}, inserted {inserted}, skipped {skipped}")
 
@@ -611,6 +662,57 @@ def upload_student_data(request):
     })
 
 
+@csrf_exempt
+@admin_required_json
+def upload_attendance_wizard_file(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+    try:
+        exam_id = request.POST.get("exam_id")
+        if not exam_id:
+            return JsonResponse({"status": "error", "message": "exam_id is required"}, status=400)
+
+        exam = Exam.objects.get(id=exam_id, is_temporary=True, is_completed=False)
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
+
+        max_size = 10 * 1024 * 1024
+        if uploaded_file.size > max_size:
+            return JsonResponse({"status": "error", "message": "File size too large. Maximum allowed is 10MB."}, status=400)
+
+        df = _read_student_dataframe(uploaded_file)
+        parse_result = _extract_student_records_from_dataframe(df)
+
+        _set_temp_attendance_upload(request, exam.id, {
+            "file_name": uploaded_file.name,
+            "students": parse_result["records"],
+            "total": parse_result["total"],
+            "inserted": parse_result["inserted"],
+            "skipped": parse_result["skipped"],
+            "uploaded_at": timezone.now().strftime('%Y-%m-%d %H:%M'),
+        })
+
+        return JsonResponse({
+            "status": "success",
+            "file": {
+                "file_name": uploaded_file.name,
+                "student_count": parse_result["inserted"],
+                "uploaded_at": timezone.now().strftime('%Y-%m-%d %H:%M'),
+                "total": parse_result["total"],
+                "skipped": parse_result["skipped"],
+            }
+        })
+    except Exam.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Temporary exam not found"}, status=404)
+    except ValueError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Exception as exc:
+        logger.error(f"upload_attendance_wizard_file unexpected: {exc}\n{traceback.format_exc()}")
+        return JsonResponse({"status": "error", "message": "Internal server error during upload. Please try again."}, status=500)
+
+
 # =========================
 # Delete Student File (DB only)
 # =========================
@@ -631,7 +733,7 @@ def get_file_students(request):
             return JsonResponse({'status': 'error', 'message': 'file_id required'}, status=400)
         file_obj = StudentDataFile.objects.get(id=file_id)
         students = list(Student.objects.filter(student_file=file_obj).values(
-            'id', 'name', 'roll_number', 'registration_number', 'student_id', 'course', 'semester', 'branch', 'academic_status'
+            'id', 'name', 'roll_number', 'registration_number', 'student_id', 'course', 'semester', 'branch', 'room_number', 'academic_status'
         ))
         return JsonResponse({
             'status': 'success',
@@ -651,7 +753,7 @@ def get_file_students(request):
 
 @admin_required_json
 def update_students(request):
-    """Update multiple students. POST JSON: { students: [ {id, name, roll_number, registration_number, student_id, course, semester, branch, academic_status}, ... ] }"""
+    """Update multiple students. POST JSON: { students: [ {id, name, roll_number, registration_number, student_id, course, semester, branch, room_number, academic_status}, ... ] }"""
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'POST required'}, status=400)
     try:
@@ -664,7 +766,7 @@ def update_students(request):
                 continue
             try:
                 st = Student.objects.get(id=sid)
-                for field in ['name', 'roll_number', 'registration_number', 'student_id', 'course', 'semester', 'branch', 'academic_status']:
+                for field in ['name', 'roll_number', 'registration_number', 'student_id', 'course', 'semester', 'branch', 'room_number', 'academic_status']:
                     if field in s:
                         setattr(st, field, s.get(field))
                 st.save()
@@ -679,7 +781,7 @@ def update_students(request):
 
 @admin_required_json
 def add_file_students(request):
-    """Add new students to a StudentDataFile. POST JSON: { file_id: int, students: [ {name, roll_number, registration_number, student_id, course, semester, branch, academic_status}, ... ] }"""
+    """Add new students to a StudentDataFile. POST JSON: { file_id: int, students: [ {name, roll_number, registration_number, student_id, course, semester, branch, room_number, academic_status}, ... ] }"""
     if request.method != 'POST':
         return JsonResponse({'status': 'error', 'message': 'POST required'}, status=400)
     try:
@@ -698,6 +800,7 @@ def add_file_students(request):
             course = s.get('course') or ''
             semester = s.get('semester') or ''
             branch = s.get('branch') or ''
+            room_number = s.get('room_number') or ''
             academic_status = s.get('academic_status') or ''
             
             to_create.append(Student(
@@ -709,6 +812,7 @@ def add_file_students(request):
                 course=course,
                 semester=semester,
                 branch=branch,
+                room_number=room_number,
                 academic_status=academic_status
             ))
 
@@ -896,9 +1000,8 @@ def generate_sheets(request):
     """Given an exam_id and file_id, return paginated sheet data (20 students per sheet).
 
     Preserves original file order (DB insertion order), filters by eligible academic_status,
-    groups students by (branch, semester) preserving encounter order, and paginates each group
-    into pages of 20. Each page returned as a dict with metadata so the frontend can render
-    branch/semester and page numbering.
+    groups students by room number when available (falling back to branch/semester),
+    and paginates each group into pages of 20.
     """
     if request.method == "POST":
         try:
@@ -906,16 +1009,32 @@ def generate_sheets(request):
             exam_id = data.get("exam_id")
             file_id = data.get("file_id")
             exam = Exam.objects.get(id=exam_id)
-            student_file = StudentDataFile.objects.get(id=file_id)
+            student_file = None
 
-            # fetch students in DB insertion order (by PK)
-            qs = Student.objects.filter(student_file=student_file).values(
-                'id', 'name', 'roll_number', 'registration_number', 'semester', 'branch', 'academic_status'
-            ).order_by('id')
+            if file_id:
+                student_file = StudentDataFile.objects.get(id=file_id)
+                qs = Student.objects.filter(student_file=student_file).values(
+                    'id', 'name', 'roll_number', 'registration_number', 'semester', 'branch', 'room_number', 'academic_status'
+                ).order_by('id')
+                students = list(qs)
+            else:
+                temp_upload = _get_temp_attendance_upload(request, exam_id)
+                if not temp_upload:
+                    return JsonResponse({"status": "error", "message": "No temporary student file uploaded"}, status=400)
+                students = [
+                    {
+                        'id': index + 1,
+                        'name': row.get('name', ''),
+                        'roll_number': row.get('roll_number', ''),
+                        'registration_number': row.get('registration_number', ''),
+                        'semester': row.get('semester', ''),
+                        'branch': row.get('branch', ''),
+                        'room_number': row.get('room_number', ''),
+                        'academic_status': row.get('academic_status', ''),
+                    }
+                    for index, row in enumerate(temp_upload.get("students", []))
+                ]
 
-            students = list(qs)
-
-            # Group by (branch, semester) while preserving encounter order
             from collections import OrderedDict
             groups = OrderedDict()
 
@@ -927,13 +1046,30 @@ def generate_sheets(request):
             for s in students:
                 if not is_eligible(s.get('academic_status')):
                     continue
+                room_number = str(s.get('room_number') or '').strip()
                 branch = (s.get('branch') or '').strip()
                 semester = str(s.get('semester') or '')
-                key = (branch, semester)
+                key = ('room', room_number) if room_number else ('branch_sem', branch, semester)
                 groups.setdefault(key, []).append(s)
 
             pages = []
-            for (branch, semester), group_students in groups.items():
+            for key, group_students in groups.items():
+                room_number = ''
+                branch = ''
+                semester = ''
+
+                if key[0] == 'room':
+                    room_number = key[1]
+                    branches = {str(student.get('branch') or '').strip() for student in group_students if str(student.get('branch') or '').strip()}
+                    semesters = {str(student.get('semester') or '').strip() for student in group_students if str(student.get('semester') or '').strip()}
+                    if len(branches) == 1:
+                        branch = next(iter(branches))
+                    if len(semesters) == 1:
+                        semester = next(iter(semesters))
+                else:
+                    branch = key[1]
+                    semester = key[2]
+
                 total_pages = (len(group_students) + ATTENDANCE_SHEET_STUDENTS_PER_PAGE - 1) // ATTENDANCE_SHEET_STUDENTS_PER_PAGE
                 for p in range(total_pages):
                     start = p * ATTENDANCE_SHEET_STUDENTS_PER_PAGE
@@ -941,13 +1077,12 @@ def generate_sheets(request):
                     chunk = group_students[start:end]
                     pages.append({
                         'students': chunk,
+                        'room_number': room_number,
                         'branch': branch,
                         'semester': semester,
                         'page_index': p + 1,
                         'total_pages': total_pages,
                     })
-
-            # pagination is handled per branch/semester; frontend will use page_index/total_pages
 
             return JsonResponse({
                 "status": "success",
@@ -978,7 +1113,18 @@ def save_generated_sheets(request):
             file_id = data.get("file_id")
             sheets = data.get("sheets")
             exam = Exam.objects.get(id=exam_id)
-            student_file = StudentDataFile.objects.get(id=file_id)
+            student_file = None
+
+            if file_id:
+                student_file = StudentDataFile.objects.get(id=file_id)
+            else:
+                temp_upload = _pop_temp_attendance_upload(request, exam_id)
+                if not temp_upload:
+                    return JsonResponse({"status": "error", "message": "No temporary student file available to save"}, status=400)
+                student_file = _create_student_file_with_students(
+                    temp_upload.get("file_name") or "attendance_wizard_upload.xlsx",
+                    temp_upload.get("students", []),
+                )
             # record in AttendanceSheet model
             AttendanceSheet.objects.create(
                 exam=exam,
@@ -1324,6 +1470,7 @@ def delete_temp_exam(request):
         try:
             data = json.loads(request.body)
             exam_id = data.get("exam_id")
+            _pop_temp_attendance_upload(request, exam_id)
             
             exam = Exam.objects.get(id=exam_id)
             
@@ -2752,7 +2899,7 @@ def get_exam_summary(request):
         departments_data = []
         try:
             departments = exam.departments.all().values(
-                'department', 'exam_name', 'paper_code', 'exam_date', 'session', 'start_time', 'end_time'
+                'department', 'exam_name', 'paper_code', 'exam_date', 'session', 'start_time', 'end_time', 'semester'
             )
             departments_data = list(departments)
         except Exception as e:
@@ -3477,6 +3624,7 @@ def debug_department_exams(request):
                 'department': d.department,
                 'exam_name': d.exam_name,
                 'paper_code': d.paper_code,
+                'semester': d.semester,
                 'exam_date': str(d.exam_date) if d.exam_date else '',
                 'session': d.session,
                 'start_time': d.start_time.strftime('%H:%M:%S') if d.start_time else None,
