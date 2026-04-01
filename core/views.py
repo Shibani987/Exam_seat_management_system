@@ -16,15 +16,39 @@ from django.shortcuts import render, redirect
 
 import pandas as pd
 import json
+import re
 from django.contrib.auth.hashers import make_password, check_password
 import traceback
 from pathlib import Path
 from django.db import transaction, IntegrityError
+from io import BytesIO
+from PIL import Image, ImageDraw, ImageFont
 
 # Setup logging for security events
 logger = logging.getLogger('exam_system')
 
 ATTENDANCE_SHEET_STUDENTS_PER_PAGE = 20
+
+PDF_DPI = 300
+MM_TO_PX = PDF_DPI / 25.4
+A4_WIDTH_PX = int(round(210 * MM_TO_PX))
+A4_HEIGHT_PX = int(round(297 * MM_TO_PX))
+LOGO_PATH_CANDIDATES = (
+    settings.BASE_DIR / "static" / "core" / "img" / "logo.png",
+    settings.BASE_DIR / "staticfiles" / "core" / "img" / "logo.png",
+)
+FONT_CANDIDATES = {
+    "regular": (
+        Path("C:/Windows/Fonts/times.ttf"),
+        Path("C:/Windows/Fonts/georgia.ttf"),
+        Path("C:/Windows/Fonts/arial.ttf"),
+    ),
+    "bold": (
+        Path("C:/Windows/Fonts/timesbd.ttf"),
+        Path("C:/Windows/Fonts/georgiab.ttf"),
+        Path("C:/Windows/Fonts/arialbd.ttf"),
+    ),
+}
 
 from .forms import StudentDataUploadForm, ForgotPasswordForm, ResetPasswordForm, AdminEmailUploadForm
 from .models import (
@@ -51,6 +75,236 @@ from .config import AppConfig
 _admin_creds = AppConfig.get_admin_credentials()
 ENV_ADMIN_USERNAME = _admin_creds.username
 ENV_ADMIN_PASSWORD = _admin_creds.password
+
+
+def _mm(value):
+    return int(round(value * MM_TO_PX))
+
+
+def _sanitize_download_filename(value, fallback="attendance-sheet"):
+    cleaned = re.sub(r"[^A-Za-z0-9._-]+", "_", (value or "").strip()).strip("._-")
+    return cleaned or fallback
+
+
+def _load_attendance_font(size, bold=False):
+    key = "bold" if bold else "regular"
+    for font_path in FONT_CANDIDATES[key]:
+        if font_path.exists():
+            return ImageFont.truetype(str(font_path), size=size)
+    return ImageFont.load_default()
+
+
+def _attendance_logo_image():
+    for logo_path in LOGO_PATH_CANDIDATES:
+        if logo_path.exists():
+            return Image.open(logo_path).convert("RGBA")
+    return None
+
+
+def _draw_centered_text(draw, box, text, font, fill="black"):
+    left, top, right, bottom = box
+    bbox = draw.textbbox((0, 0), text, font=font)
+    text_width = bbox[2] - bbox[0]
+    text_height = bbox[3] - bbox[1]
+    x = left + ((right - left) - text_width) / 2
+    y = top + ((bottom - top) - text_height) / 2
+    draw.text((x, y), text, font=font, fill=fill)
+
+
+def _draw_text(draw, xy, text, font, fill="black", anchor=None):
+    kwargs = {"font": font, "fill": fill}
+    if anchor:
+        kwargs["anchor"] = anchor
+    draw.text(xy, text, **kwargs)
+
+
+def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
+    image = Image.new("RGB", (A4_WIDTH_PX, A4_HEIGHT_PX), "white")
+    draw = ImageDraw.Draw(image)
+
+    margin_x = _mm(6)
+    top_margin = _mm(5)
+    content_left = margin_x
+    content_right = A4_WIDTH_PX - margin_x
+
+    regular_30 = fonts["regular_30"]
+    regular_34 = fonts["regular_34"]
+    regular_36 = fonts["regular_36"]
+    regular_40 = fonts["regular_40"]
+    bold_34 = fonts["bold_34"]
+    bold_38 = fonts["bold_38"]
+    bold_42 = fonts["bold_42"]
+    bold_46 = fonts["bold_46"]
+    bold_48 = fonts["bold_48"]
+    bold_54 = fonts["bold_54"]
+    bold_64 = fonts["bold_64"]
+
+    if page_meta.get("room_number"):
+        room_box = (content_right - _mm(36), top_margin + _mm(1), content_right, top_margin + _mm(13))
+        draw.rectangle(room_box, outline="black", width=2)
+        _draw_centered_text(draw, room_box, f"Room {str(page_meta['room_number']).upper()}", bold_38)
+
+    if logo:
+        logo_size = _mm(24)
+        logo_left = content_left + _mm(8)
+        logo_top = top_margin + _mm(2)
+        logo_resized = logo.resize((logo_size, logo_size))
+        image.paste(logo_resized, (logo_left, logo_top), logo_resized)
+
+    header_center_x = (content_left + content_right) // 2
+    _draw_text(draw, (header_center_x, top_margin + _mm(6)), "CONTROLLER OF EXAMINATIONS", bold_64, anchor="ma")
+    _draw_text(draw, (header_center_x, top_margin + _mm(14)), "JIS COLLEGE OF ENGINEERING", bold_46, anchor="ma")
+    _draw_text(draw, (header_center_x, top_margin + _mm(20)), "AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", regular_34, anchor="ma")
+    _draw_text(draw, (header_center_x, top_margin + _mm(29)), f"Attendance Sheet for {exam_name}", bold_42, anchor="ma")
+
+    meta_top = top_margin + _mm(33)
+    meta_height = _mm(11)
+    left_meta_width = _mm(58)
+    right_meta_width = _mm(48)
+    right_meta_right = content_right - _mm(26)
+    right_meta_left = right_meta_right - right_meta_width
+
+    left_boxes = [
+        (content_left, meta_top, content_left + left_meta_width, meta_top + meta_height, "Date of Examination"),
+        (content_left, meta_top + meta_height + _mm(1.5), content_left + left_meta_width, meta_top + (meta_height * 2) + _mm(1.5), "Paper Name"),
+    ]
+    right_boxes = [
+        (right_meta_left, meta_top, right_meta_right, meta_top + meta_height, "Time"),
+        (right_meta_left, meta_top + meta_height + _mm(1.5), right_meta_right, meta_top + (meta_height * 2) + _mm(1.5), "Paper Code"),
+    ]
+    for left, top, right, bottom, label in left_boxes + right_boxes:
+        draw.rectangle((left, top, right, bottom), outline="black", width=2)
+        _draw_centered_text(draw, (left, top, right, bottom), label, regular_30)
+
+    table_top = top_margin + _mm(58)
+    table_bottom = top_margin + _mm(235)
+    table_width = content_right - content_left
+    col_widths = [_mm(9), _mm(46), _mm(39), _mm(31), _mm(33)]
+    remaining = table_width - sum(col_widths)
+    col_widths.append(remaining)
+    col_lefts = [content_left]
+    for width in col_widths[:-1]:
+        col_lefts.append(col_lefts[-1] + width)
+    col_rights = [left + width for left, width in zip(col_lefts, col_widths)]
+
+    header_height = _mm(11)
+    row_height = int((table_bottom - table_top - header_height) / ATTENDANCE_SHEET_STUDENTS_PER_PAGE)
+
+    draw.rectangle((content_left, table_top, content_right, table_bottom), outline="black", width=2)
+    headers = [
+        "SL.",
+        "STUDENT NAME",
+        "UNIVERSITY REG.\nNUMBER",
+        "COLLEGE ROLL\nNUMBER",
+        "ANSWER BOOKLET\nNUMBER",
+        "CANDIDATE\nSIGNATURE",
+    ]
+
+    for idx, header in enumerate(headers):
+        left = col_lefts[idx]
+        right = col_rights[idx]
+        if idx > 0:
+            draw.line((left, table_top, left, table_bottom), fill="black", width=2)
+        header_box = (left, table_top, right, table_top + header_height)
+        lines = header.split("\n")
+        if len(lines) == 1:
+            _draw_centered_text(draw, header_box, lines[0], bold_34)
+        else:
+            midpoint_y = (header_box[1] + header_box[3]) / 2
+            _draw_text(draw, ((left + right) / 2, midpoint_y - _mm(2.5)), lines[0], bold_34, anchor="ma")
+            _draw_text(draw, ((left + right) / 2, midpoint_y + _mm(2.5)), lines[1], bold_34, anchor="ma")
+
+    draw.line((content_left, table_top + header_height, content_right, table_top + header_height), fill="black", width=2)
+
+    students = (page_meta.get("students") or [])[:ATTENDANCE_SHEET_STUDENTS_PER_PAGE]
+    cell_padding = _mm(2)
+    for row_index in range(ATTENDANCE_SHEET_STUDENTS_PER_PAGE):
+        row_top = table_top + header_height + (row_index * row_height)
+        row_bottom = row_top + row_height
+        draw.line((content_left, row_bottom, content_right, row_bottom), fill="black", width=2)
+
+        student = students[row_index] if row_index < len(students) else {}
+        values = [
+            f"{row_index + 1}." if any((student or {}).get(key) for key in ("name", "registration_number", "roll_number")) else "",
+            (student.get("name") or "").upper(),
+            (student.get("registration_number") or "").upper(),
+            (student.get("roll_number") or "").upper(),
+            "",
+            "",
+        ]
+        aligns = ["center", "left", "center", "center", "center", "center"]
+
+        for col_index, value in enumerate(values):
+            left = col_lefts[col_index]
+            right = col_rights[col_index]
+            if not value:
+                continue
+            if aligns[col_index] == "left":
+                _draw_text(draw, (left + cell_padding, (row_top + row_bottom) / 2), value, regular_30, anchor="lm")
+            else:
+                _draw_text(draw, ((left + right) / 2, (row_top + row_bottom) / 2), value, regular_30, anchor="mm")
+
+    primary_top = table_bottom + _mm(10)
+    mini_box_size = _mm(7.5)
+    _draw_text(draw, (content_left, primary_top), "No of Student Present", regular_34)
+    draw.rectangle((content_left + _mm(43), primary_top - _mm(1), content_left + _mm(43) + mini_box_size, primary_top - _mm(1) + mini_box_size), outline="black", width=2)
+    _draw_text(draw, (content_left, primary_top + _mm(11)), "No of Student Absent", regular_34)
+    draw.rectangle((content_left + _mm(43), primary_top + _mm(10), content_left + _mm(43) + mini_box_size, primary_top + _mm(10) + mini_box_size), outline="black", width=2)
+
+    internal_x = content_right - _mm(58)
+    internal_sig_top = primary_top - _mm(2)
+    draw.rectangle((internal_x, internal_sig_top, internal_x + _mm(36), internal_sig_top + _mm(14)), outline="black", width=2)
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(18)), "Signature of Examiner (Internal)", regular_30, anchor="ma")
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(24)), "Name (in CAPITAL):", regular_30, anchor="ma")
+
+    secondary_y = A4_HEIGHT_PX - _mm(28)
+    hod_left = content_left + _mm(10)
+    hod_right = hod_left + _mm(48)
+    draw.line((hod_left, secondary_y, hod_right, secondary_y), fill="black", width=2)
+    _draw_text(draw, ((hod_left + hod_right) / 2, secondary_y + _mm(4)), "Signature of HoD", regular_34, anchor="ma")
+
+    ext_left = content_right - _mm(58)
+    ext_right = content_right - _mm(8)
+    draw.line((ext_left, secondary_y, ext_right, secondary_y), fill="black", width=2)
+    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(4)), "Signature of Examiner (External)", regular_30, anchor="ma")
+    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(10)), "Name (in CAPITAL):", regular_30, anchor="ma")
+
+    footer_label = page_meta.get("footer_label") or (
+        f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
+    )
+    footer_page = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
+    _draw_text(draw, (content_left, A4_HEIGHT_PX - _mm(9)), footer_label, regular_30)
+    _draw_text(draw, (content_right, A4_HEIGHT_PX - _mm(9)), footer_page, regular_30, anchor="ra")
+
+    return image
+
+
+def _build_attendance_pdf_response(sheets, exam_name):
+    fonts = {
+        "regular_30": _load_attendance_font(30),
+        "regular_34": _load_attendance_font(34),
+        "regular_36": _load_attendance_font(36),
+        "regular_40": _load_attendance_font(40),
+        "bold_34": _load_attendance_font(34, bold=True),
+        "bold_38": _load_attendance_font(38, bold=True),
+        "bold_42": _load_attendance_font(42, bold=True),
+        "bold_46": _load_attendance_font(46, bold=True),
+        "bold_48": _load_attendance_font(48, bold=True),
+        "bold_54": _load_attendance_font(54, bold=True),
+        "bold_64": _load_attendance_font(64, bold=True),
+    }
+    logo = _attendance_logo_image()
+    pages = [_draw_attendance_sheet_page(page, exam_name, fonts, logo).convert("RGB") for page in (sheets or [{}])]
+
+    pdf_buffer = BytesIO()
+    first_page, rest_pages = pages[0], pages[1:]
+    first_page.save(pdf_buffer, format="PDF", resolution=PDF_DPI, save_all=True, append_images=rest_pages)
+    pdf_buffer.seek(0)
+
+    filename = f"{_sanitize_download_filename(exam_name)}.pdf"
+    response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
 
 
 def _get_client_ip(request):
@@ -1254,6 +1508,31 @@ def view_generated_sheet(request):
         'sheets': sheet.sheet_data or []
     }
     return render(request, 'core/generated_sheet_view.html', context)
+
+
+@csrf_exempt
+@admin_required
+def download_attendance_sheet_pdf(request):
+    try:
+        if request.method == "GET":
+            sheet_id = request.GET.get("id")
+            if not sheet_id:
+                return HttpResponse("Missing id", status=400)
+            sheet = AttendanceSheet.objects.select_related("exam").get(id=sheet_id)
+            return _build_attendance_pdf_response(sheet.sheet_data or [], sheet.exam.name or "attendance-sheet")
+
+        if request.method == "POST":
+            data = json.loads(request.body or "{}")
+            exam_name = data.get("exam_name") or "attendance-sheet"
+            sheets = data.get("sheets") or []
+            return _build_attendance_pdf_response(sheets, exam_name)
+
+        return HttpResponse("Method not allowed", status=405)
+    except AttendanceSheet.DoesNotExist:
+        return HttpResponse("Sheet not found", status=404)
+    except Exception as exc:
+        logger.error(f"download_attendance_sheet_pdf error: {exc}\n{traceback.format_exc()}")
+        return HttpResponse("Unable to generate PDF", status=500)
 
 
 # =========================

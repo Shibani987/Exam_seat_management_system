@@ -27,9 +27,12 @@ const wizardUploadStatus = document.getElementById('wizardUploadStatus');
 
 let currentExamId = null;
 let generatedSheets = [];
+let generatedExamName = '';
 let tempUploadedFile = null;
 
 window.addEventListener('DOMContentLoaded', () => {
+  if (!examNameInput) return;
+
   fetch('/init-temp-exam/?t=' + Date.now())
     .then(r => r.json())
     .then(d => {
@@ -46,43 +49,47 @@ window.addEventListener('DOMContentLoaded', () => {
     });
 });
 
-examNameInput.addEventListener('input', () => {
-  nextBtn.disabled = examNameInput.value.trim().length === 0;
-});
+if (examNameInput && nextBtn) {
+  examNameInput.addEventListener('input', () => {
+    nextBtn.disabled = examNameInput.value.trim().length === 0;
+  });
 
-nextBtn.addEventListener('click', () => {
-  const name = examNameInput.value.trim();
-  if (!currentExamId) {
-    alert('Temporary exam ID missing, please reload the page.');
-    return;
-  }
+  nextBtn.addEventListener('click', () => {
+    const name = examNameInput.value.trim();
+    if (!currentExamId) {
+      alert('Temporary exam ID missing, please reload the page.');
+      return;
+    }
 
-  fetch('/update-temp-exam/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCsrfToken()
-    },
-    body: JSON.stringify({ exam_id: currentExamId, name })
-  })
-    .then(r => r.json())
-    .then(d => {
-      if (d.status !== 'success') {
-        console.error('Name update failed', d);
-      }
-      document.getElementById('step1Content').style.display = 'none';
-      document.getElementById('step2Content').style.display = 'block';
-      document.getElementById('stepIndicator1').classList.remove('active');
-      document.getElementById('stepIndicator2').classList.add('active');
-    });
-});
+    fetch('/update-temp-exam/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ exam_id: currentExamId, name })
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.status !== 'success') {
+          console.error('Name update failed', d);
+        }
+        document.getElementById('step1Content').style.display = 'none';
+        document.getElementById('step2Content').style.display = 'block';
+        document.getElementById('stepIndicator1').classList.remove('active');
+        document.getElementById('stepIndicator2').classList.add('active');
+      });
+  });
+}
 
-backBtn.addEventListener('click', () => {
-  document.getElementById('step2Content').style.display = 'none';
-  document.getElementById('step1Content').style.display = 'block';
-  document.getElementById('stepIndicator2').classList.remove('active');
-  document.getElementById('stepIndicator1').classList.add('active');
-});
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    document.getElementById('step2Content').style.display = 'none';
+    document.getElementById('step1Content').style.display = 'block';
+    document.getElementById('stepIndicator2').classList.remove('active');
+    document.getElementById('stepIndicator1').classList.add('active');
+  });
+}
 
 if (wizardFileInput) {
   wizardFileInput.addEventListener('change', () => {
@@ -167,34 +174,36 @@ function renderTempFileTable() {
   `;
 }
 
-generateBtn.addEventListener('click', () => {
-  if (!currentExamId) {
-    alert('Temporary exam missing');
-    return;
-  }
-  if (!tempUploadedFile) {
-    alert('Please upload a student data file first.');
-    return;
-  }
+if (generateBtn) {
+  generateBtn.addEventListener('click', () => {
+    if (!currentExamId) {
+      alert('Temporary exam missing');
+      return;
+    }
+    if (!tempUploadedFile) {
+      alert('Please upload a student data file first.');
+      return;
+    }
 
-  fetch('/generate-sheets/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCsrfToken()
-    },
-    body: JSON.stringify({ exam_id: currentExamId })
-  })
-    .then(r => r.json())
-    .then(data => {
-      if (data.status === 'success') {
-        generatedSheets = data.sheets;
-        showStep3(data.sheets, data.exam_name);
-      } else {
-        alert('Error generating sheets: ' + data.message);
-      }
-    });
-});
+    fetch('/generate-sheets/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ exam_id: currentExamId })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          generatedSheets = data.sheets;
+          showStep3(data.sheets, data.exam_name);
+        } else {
+          alert('Error generating sheets: ' + data.message);
+        }
+      });
+  });
+}
 
 function showStep3(pages, examName) {
   const step2Elem = document.getElementById('step2Content');
@@ -210,6 +219,7 @@ function showStep3(pages, examName) {
   container.innerHTML = '';
 
   generatedSheets = pages;
+  generatedExamName = examName || '';
 
   if (!document.getElementById('attendance-sheet-css')) {
     const link = document.createElement('link');
@@ -437,6 +447,58 @@ function showStep3(pages, examName) {
 
 const saveBtn = document.getElementById('saveBtn');
 const backToStep2Btn = document.getElementById('backToStep2Btn');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+
+async function downloadAttendancePdf(examName, sheets, triggerButton) {
+  if (!Array.isArray(sheets) || sheets.length === 0) {
+    alert('No attendance sheets available for PDF download yet.');
+    return;
+  }
+
+  const button = triggerButton || downloadPdfBtn;
+  const originalLabel = button ? button.textContent : '';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Preparing PDF...';
+  }
+
+  try {
+    const response = await fetch('/download-attendance-sheet-pdf/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({
+        exam_name: examName || 'attendance-sheet',
+        sheets
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('PDF generation failed');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const safeName = (examName || 'attendance-sheet').trim().replace(/[^a-z0-9._-]+/gi, '_');
+    anchor.href = url;
+    anchor.download = `${safeName || 'attendance-sheet'}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('downloadAttendancePdf failed', error);
+    alert('Unable to generate PDF right now.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
+}
 
 if (backToStep2Btn) {
   backToStep2Btn.addEventListener('click', () => {
@@ -448,31 +510,39 @@ if (backToStep2Btn) {
   });
 }
 
-saveBtn.addEventListener('click', () => {
-  if (!currentExamId) return;
-  fetch('/save-generated-sheets/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCsrfToken()
-    },
-    body: JSON.stringify({ exam_id: currentExamId, sheets: generatedSheets })
-  })
-    .then(r => r.json())
-    .then(d => {
-      if (d.status === 'success') {
-        alert('Attendance sheets saved');
-        currentExamId = null;
-        window.location.href = '/';
-      } else {
-        alert('Save failed: ' + d.message);
-      }
+if (downloadPdfBtn) {
+  downloadPdfBtn.addEventListener('click', () => {
+    downloadAttendancePdf(generatedExamName, generatedSheets, downloadPdfBtn);
+  });
+}
+
+if (saveBtn) {
+  saveBtn.addEventListener('click', () => {
+    if (!currentExamId) return;
+    fetch('/save-generated-sheets/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ exam_id: currentExamId, sheets: generatedSheets })
     })
-    .catch(err => {
-      console.error('Save sheets error', err);
-      alert('Save failed');
-    });
-});
+      .then(r => r.json())
+      .then(d => {
+        if (d.status === 'success') {
+          alert('Attendance sheets saved');
+          currentExamId = null;
+          window.location.href = '/';
+        } else {
+          alert('Save failed: ' + d.message);
+        }
+      })
+      .catch(err => {
+        console.error('Save sheets error', err);
+        alert('Save failed');
+      });
+  });
+}
 
 window.addEventListener('beforeunload', () => {
   if (currentExamId) {

@@ -365,22 +365,18 @@ body {
   border-top: 1px solid #000;
   margin-bottom: 5px;
 }
-
 .hod-line {
   width: 220px;
 }
-
 .external-line {
   width: 380px;
   margin-left: auto;
 }
-
 .footer-right-external {
   flex: 0 0 260px;
   text-align: right;
   margin-top: 28px;
 }
-
 .name-caption {
   display: inline-block;
   font-size: 11px;
@@ -388,7 +384,6 @@ body {
   width: 250px;
   text-align: left;
 }
-
 .print-btn-group {
   text-align: center;
   margin: 20px 0;
