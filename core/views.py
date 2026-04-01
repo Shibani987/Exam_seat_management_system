@@ -23,6 +23,14 @@ from pathlib import Path
 from django.db import transaction, IntegrityError
 from io import BytesIO
 from PIL import Image, ImageDraw, ImageFont
+try:
+    from reportlab.lib.pagesizes import A4
+    from reportlab.pdfgen import canvas as reportlab_canvas
+    REPORTLAB_AVAILABLE = True
+except Exception:
+    A4 = None
+    reportlab_canvas = None
+    REPORTLAB_AVAILABLE = False
 
 # Setup logging for security events
 logger = logging.getLogger('exam_system')
@@ -292,6 +300,9 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
 
 
 def _build_attendance_pdf_response(sheets, exam_name):
+    if REPORTLAB_AVAILABLE:
+        return _build_attendance_pdf_response_reportlab(sheets, exam_name)
+
     fonts = {
         "regular_30": _load_attendance_font(30),
         "regular_34": _load_attendance_font(34),
@@ -315,6 +326,156 @@ def _build_attendance_pdf_response(sheets, exam_name):
 
     filename = f"{_sanitize_download_filename(exam_name)}.pdf"
     response = HttpResponse(pdf_buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _build_attendance_pdf_response_reportlab(sheets, exam_name):
+    page_width, page_height = A4
+    left_margin = 18
+    right_margin = 18
+    top_margin = 20
+    bottom_margin = 18
+    content_width = page_width - left_margin - right_margin
+    col_widths = [22, 132, 112, 88, 96]
+    col_widths.append(content_width - sum(col_widths))
+    row_height = 28
+    header_height = 34
+
+    buffer = BytesIO()
+    pdf = reportlab_canvas.Canvas(buffer, pagesize=A4)
+    filename = f"{_sanitize_download_filename(exam_name)}.pdf"
+
+    def draw_center(text, x, y, font_name="Times-Roman", font_size=10):
+        pdf.setFont(font_name, font_size)
+        pdf.drawCentredString(x, y, text)
+
+    def draw_box(x, y, width, height, label, font_size=9):
+        pdf.rect(x, y, width, height, stroke=1, fill=0)
+        draw_center(label, x + (width / 2), y + (height / 2) - 3, "Times-Roman", font_size)
+
+    for page_meta in (sheets or [{}]):
+        pdf.setLineWidth(1)
+        y_top = page_height - top_margin
+
+        room_number = page_meta.get("room_number")
+        if room_number:
+            room_w = 100
+            room_h = 24
+            room_x = page_width - right_margin - room_w
+            room_y = y_top - room_h
+            pdf.rect(room_x, room_y, room_w, room_h, stroke=1, fill=0)
+            draw_center(f"Room {str(room_number).upper()}", room_x + (room_w / 2), room_y + 8, "Times-Bold", 10)
+
+        draw_center("CONTROLLER OF EXAMINATIONS", page_width / 2, y_top - 18, "Times-Bold", 18)
+        draw_center("JIS COLLEGE OF ENGINEERING", page_width / 2, y_top - 36, "Times-Bold", 13)
+        draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 50, "Times-Roman", 10)
+        draw_center(f"Attendance Sheet for {exam_name}", page_width / 2, y_top - 72, "Times-Bold", 12)
+
+        meta_y_top = y_top - 90
+        box_h = 24
+        left_box_w = 140
+        right_box_w = 110
+        draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
+        draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
+        right_x = page_width - right_margin - right_box_w - 55
+        draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
+        draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
+
+        table_top = meta_y_top - 72
+        table_bottom = table_top - header_height - (ATTENDANCE_SHEET_STUDENTS_PER_PAGE * row_height)
+        pdf.rect(left_margin, table_bottom, content_width, table_top - table_bottom, stroke=1, fill=0)
+
+        x_positions = [left_margin]
+        for width in col_widths:
+            x_positions.append(x_positions[-1] + width)
+        for x in x_positions[1:-1]:
+            pdf.line(x, table_bottom, x, table_top)
+
+        header_y = table_top - header_height
+        pdf.line(left_margin, header_y, left_margin + content_width, header_y)
+
+        headers = [
+            "SL.",
+            "STUDENT NAME",
+            "UNIVERSITY REG.\nNUMBER",
+            "COLLEGE ROLL\nNUMBER",
+            "ANSWER BOOKLET\nNUMBER",
+            "CANDIDATE\nSIGNATURE",
+        ]
+        for idx, header in enumerate(headers):
+            center_x = (x_positions[idx] + x_positions[idx + 1]) / 2
+            lines = header.split("\n")
+            if len(lines) == 1:
+                draw_center(lines[0], center_x, table_top - 22, "Times-Bold", 8)
+            else:
+                draw_center(lines[0], center_x, table_top - 18, "Times-Bold", 8)
+                draw_center(lines[1], center_x, table_top - 28, "Times-Bold", 8)
+
+        students = (page_meta.get("students") or [])[:ATTENDANCE_SHEET_STUDENTS_PER_PAGE]
+        current_y = header_y
+        for row_index in range(ATTENDANCE_SHEET_STUDENTS_PER_PAGE):
+            next_y = current_y - row_height
+            pdf.line(left_margin, next_y, left_margin + content_width, next_y)
+
+            student = students[row_index] if row_index < len(students) else {}
+            has_student = any((student or {}).get(key) for key in ("name", "registration_number", "roll_number"))
+            values = [
+                f"{row_index + 1}." if has_student else "",
+                (student.get("name") or "").upper(),
+                (student.get("registration_number") or "").upper(),
+                (student.get("roll_number") or "").upper(),
+                "",
+                "",
+            ]
+
+            for col_index, value in enumerate(values):
+                if not value:
+                    continue
+                cell_left = x_positions[col_index]
+                cell_right = x_positions[col_index + 1]
+                cell_mid_y = next_y + 10
+                pdf.setFont("Times-Roman", 8)
+                if col_index == 1:
+                    pdf.drawString(cell_left + 4, cell_mid_y, value[:28])
+                else:
+                    pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:24])
+            current_y = next_y
+
+        footer_y = table_bottom - 22
+        pdf.setFont("Times-Roman", 10)
+        pdf.drawString(left_margin, footer_y, "No of Student Present")
+        pdf.rect(left_margin + 105, footer_y - 6, 16, 16, stroke=1, fill=0)
+        pdf.drawString(left_margin, footer_y - 22, "No of Student Absent")
+        pdf.rect(left_margin + 105, footer_y - 28, 16, 16, stroke=1, fill=0)
+
+        internal_x = page_width - right_margin - 150
+        pdf.rect(internal_x, footer_y - 6, 95, 30, stroke=1, fill=0)
+        draw_center("Signature of Examiner (Internal)", internal_x + 47.5, footer_y - 20, "Times-Roman", 8)
+        draw_center("Name (in CAPITAL):", internal_x + 47.5, footer_y - 31, "Times-Roman", 8)
+
+        bottom_line_y = bottom_margin + 24
+        pdf.line(left_margin + 25, bottom_line_y, left_margin + 120, bottom_line_y)
+        draw_center("Signature of HoD", left_margin + 72, bottom_line_y - 12, "Times-Roman", 9)
+
+        ext_left = page_width - right_margin - 155
+        pdf.line(ext_left, bottom_line_y, page_width - right_margin - 15, bottom_line_y)
+        draw_center("Signature of Examiner (External)", ext_left + 70, bottom_line_y - 12, "Times-Roman", 8)
+        draw_center("Name (in CAPITAL):", ext_left + 70, bottom_line_y - 24, "Times-Roman", 8)
+
+        footer_label = page_meta.get("footer_label") or (
+            f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
+        )
+        page_label = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
+        pdf.setFont("Times-Roman", 8)
+        pdf.drawString(left_margin, bottom_margin + 4, footer_label)
+        pdf.drawRightString(page_width - right_margin, bottom_margin + 4, page_label)
+
+        pdf.showPage()
+
+    pdf.save()
+    buffer.seek(0)
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
     response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
 
