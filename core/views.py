@@ -339,7 +339,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [22, 138, 104, 88, 92]
+    col_widths = [22, 128, 96, 80, 92]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
     header_height = 34
@@ -398,7 +398,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         right_box_w = 90
         draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
         draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 52
+        right_x = page_width - right_margin - right_box_w - 102
         draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
         draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
 
@@ -464,10 +464,20 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
 
         footer_row_1_y = table_bottom - 18
         pdf.setFont("Times-Roman", 8)
-        pdf.drawString(left_margin, footer_row_1_y, "No of Student Present")
-        pdf.rect(left_margin + 92, footer_row_1_y - 5, 14, 14, stroke=1, fill=0)
-        pdf.drawString(left_margin, footer_row_1_y - 18, "No of Student Absent")
-        pdf.rect(left_margin + 92, footer_row_1_y - 23, 14, 14, stroke=1, fill=0)
+        present_box_x = left_margin
+        present_box_y = footer_row_1_y - 7
+        label_box_w = 86
+        count_box_w = 14
+        box_h = 14
+        gap_w = 12
+        pdf.rect(present_box_x, present_box_y, label_box_w, box_h, stroke=1, fill=0)
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), present_box_y + 4, "No of Student Present")
+        pdf.rect(present_box_x + label_box_w + gap_w, present_box_y, count_box_w, box_h, stroke=1, fill=0)
+
+        absent_box_y = present_box_y - 18
+        pdf.rect(present_box_x, absent_box_y, label_box_w, box_h, stroke=1, fill=0)
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 4, "No of Student Absent")
+        pdf.rect(present_box_x + label_box_w + gap_w, absent_box_y, count_box_w, box_h, stroke=1, fill=0)
 
         internal_line_left = page_width - right_margin - 155
         internal_line_right = page_width - right_margin - 18
@@ -493,8 +503,8 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         )
         page_label = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
         pdf.setFont("Times-Roman", 8)
-        pdf.drawString(left_margin, bottom_margin + 6, footer_label)
-        pdf.drawRightString(page_width - right_margin, bottom_margin + 6, page_label)
+        pdf.drawString(left_margin, bottom_margin + 2, footer_label)
+        pdf.drawRightString(page_width - right_margin, bottom_margin + 2, page_label)
 
         pdf.showPage()
 
