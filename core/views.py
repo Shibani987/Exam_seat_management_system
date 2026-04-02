@@ -479,7 +479,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 4, "No of Student Absent")
         pdf.rect(present_box_x + label_box_w + gap_w, absent_box_y, count_box_w, box_h, stroke=1, fill=0)
 
-        internal_line_left = page_width - right_margin - 218
+        internal_line_left = page_width - right_margin - 268
         internal_line_right = page_width - right_margin - 6
         internal_line_y = footer_row_1_y - 1
         pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
@@ -492,7 +492,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
         draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 10, 8)
 
-        external_left = page_width - right_margin - 218
+        external_left = page_width - right_margin - 268
         external_right = page_width - right_margin - 6
         pdf.line(external_left, footer_row_2_line_y, external_right, footer_row_2_line_y)
         draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 10, 7)
