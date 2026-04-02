@@ -392,17 +392,17 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 46, "Times-Roman", 9)
         draw_center(f"Attendance Sheet for {exam_name}", page_width / 2, y_top - 66, "Times-Bold", 11)
 
-        meta_y_top = y_top - 84
+        meta_y_top = y_top - 79
         box_h = 22
         left_box_w = 116
         right_box_w = 90
         draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
         draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 12
+        right_x = page_width - right_margin - right_box_w - 52
         draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
         draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
 
-        table_top = meta_y_top - 64
+        table_top = meta_y_top - 54
         table_bottom = table_top - header_height - (ATTENDANCE_SHEET_STUDENTS_PER_PAGE * row_height)
         pdf.rect(left_margin, table_bottom, content_width, table_top - table_bottom, stroke=1, fill=0)
 
@@ -493,8 +493,8 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         )
         page_label = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
         pdf.setFont("Times-Roman", 8)
-        pdf.drawString(left_margin, bottom_margin + 10, footer_label)
-        pdf.drawRightString(page_width - right_margin, bottom_margin + 10, page_label)
+        pdf.drawString(left_margin, bottom_margin + 6, footer_label)
+        pdf.drawRightString(page_width - right_margin, bottom_margin + 6, page_label)
 
         pdf.showPage()
 
