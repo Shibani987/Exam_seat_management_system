@@ -336,7 +336,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     page_width, page_height = A4
     left_margin = 18
     right_margin = 18
-    top_margin = 18
+    top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
     col_widths = [22, 138, 104, 88, 92]
@@ -371,16 +371,16 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
             room_w = 100
             room_h = 24
             room_x = page_width - right_margin - room_w
-            room_y = y_top - room_h
+            room_y = y_top - room_h - 2
             pdf.rect(room_x, room_y, room_w, room_h, stroke=1, fill=0)
             draw_center(f"Room {str(room_number).upper()}", room_x + (room_w / 2), room_y + 8, "Times-Bold", 10)
 
         if logo_reader:
-            logo_size = 54
+            logo_size = 74
             pdf.drawImage(
                 logo_reader,
-                left_margin + 42,
-                y_top - 76,
+                left_margin + 28,
+                y_top - 66,
                 width=logo_size,
                 height=logo_size,
                 preserveAspectRatio=True,
@@ -388,11 +388,11 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
             )
 
         draw_center("CONTROLLER OF EXAMINATIONS", page_width / 2, y_top - 18, "Times-Bold", 17)
-        draw_center("JIS COLLEGE OF ENGINEERING", page_width / 2, y_top - 36, "Times-Bold", 13)
-        draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 49, "Times-Roman", 9)
-        draw_center(f"Attendance Sheet for {exam_name}", page_width / 2, y_top - 69, "Times-Bold", 11)
+        draw_center("JIS COLLEGE OF ENGINEERING", page_width / 2, y_top - 34, "Times-Bold", 13)
+        draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 46, "Times-Roman", 9)
+        draw_center(f"Attendance Sheet for {exam_name}", page_width / 2, y_top - 66, "Times-Bold", 11)
 
-        meta_y_top = y_top - 88
+        meta_y_top = y_top - 84
         box_h = 22
         left_box_w = 116
         right_box_w = 90
