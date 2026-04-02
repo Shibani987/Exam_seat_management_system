@@ -339,7 +339,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [22, 128, 96, 80, 92]
+    col_widths = [22, 120, 90, 74, 92]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
     header_height = 34
@@ -398,7 +398,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         right_box_w = 90
         draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
         draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 102
+        right_x = page_width - right_margin - right_box_w - 152
         draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
         draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
 
@@ -466,7 +466,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         pdf.setFont("Times-Roman", 8)
         present_box_x = left_margin
         present_box_y = footer_row_1_y - 7
-        label_box_w = 86
+        label_box_w = 96
         count_box_w = 14
         box_h = 14
         gap_w = 12
@@ -479,32 +479,32 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 4, "No of Student Absent")
         pdf.rect(present_box_x + label_box_w + gap_w, absent_box_y, count_box_w, box_h, stroke=1, fill=0)
 
-        internal_line_left = page_width - right_margin - 155
-        internal_line_right = page_width - right_margin - 18
-        internal_line_y = footer_row_1_y - 2
+        internal_line_left = page_width - right_margin - 170
+        internal_line_right = page_width - right_margin - 16
+        internal_line_y = footer_row_1_y - 1
         pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
-        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 10, 7)
-        draw_line_label("Name (in CAPITAL):", (internal_line_left + internal_line_right) / 2, internal_line_y - 20, 7)
+        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 9, 7)
+        draw_line_label("Name (in CAPITAL):", (internal_line_left + internal_line_right) / 2, internal_line_y - 19, 7)
 
         footer_row_2_line_y = bottom_margin + 40
         hod_left = left_margin + 12
-        hod_right = hod_left + 100
+        hod_right = hod_left + 120
         pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
-        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 11, 8)
+        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 10, 8)
 
-        external_left = page_width - right_margin - 160
+        external_left = page_width - right_margin - 175
         external_right = page_width - right_margin - 12
         pdf.line(external_left, footer_row_2_line_y, external_right, footer_row_2_line_y)
-        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 11, 7)
-        draw_line_label("Name (in CAPITAL):", (external_left + external_right) / 2, footer_row_2_line_y - 21, 7)
+        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 10, 7)
+        draw_line_label("Name (in CAPITAL):", (external_left + external_right) / 2, footer_row_2_line_y - 20, 7)
 
         footer_label = page_meta.get("footer_label") or (
             f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
         )
         page_label = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
         pdf.setFont("Times-Roman", 8)
-        pdf.drawString(left_margin, bottom_margin + 2, footer_label)
-        pdf.drawRightString(page_width - right_margin, bottom_margin + 2, page_label)
+        pdf.drawString(left_margin, bottom_margin - 2, footer_label)
+        pdf.drawRightString(page_width - right_margin, bottom_margin - 2, page_label)
 
         pdf.showPage()
 
