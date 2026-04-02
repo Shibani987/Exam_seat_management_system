@@ -398,7 +398,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         right_box_w = 78
         draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
         draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 172
+        right_x = page_width - right_margin - right_box_w - 192
         draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
         draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
 
@@ -467,7 +467,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         present_box_x = left_margin
         present_box_y = footer_row_1_y - 7
         label_box_w = 96
-        count_box_w = 14
+        count_box_w = 20
         box_h = 14
         gap_w = 12
         pdf.rect(present_box_x, present_box_y, label_box_w, box_h, stroke=1, fill=0)
@@ -479,21 +479,21 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 4, "No of Student Absent")
         pdf.rect(present_box_x + label_box_w + gap_w, absent_box_y, count_box_w, box_h, stroke=1, fill=0)
 
-        internal_line_left = page_width - right_margin - 170
-        internal_line_right = page_width - right_margin - 16
+        internal_line_left = page_width - right_margin - 158
+        internal_line_right = page_width - right_margin - 6
         internal_line_y = footer_row_1_y - 1
         pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
         draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 9, 7)
         draw_line_label("Name (in CAPITAL):", (internal_line_left + internal_line_right) / 2, internal_line_y - 19, 7)
 
         footer_row_2_line_y = bottom_margin + 20
-        hod_left = left_margin + 12
-        hod_right = hod_left + 120
+        hod_left = left_margin + 2
+        hod_right = hod_left + 150
         pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
         draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 10, 8)
 
-        external_left = page_width - right_margin - 175
-        external_right = page_width - right_margin - 12
+        external_left = page_width - right_margin - 158
+        external_right = page_width - right_margin - 6
         pdf.line(external_left, footer_row_2_line_y, external_right, footer_row_2_line_y)
         draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 10, 7)
         draw_line_label("Name (in CAPITAL):", (external_left + external_right) / 2, footer_row_2_line_y - 20, 7)
