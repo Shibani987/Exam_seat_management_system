@@ -7,18 +7,14 @@
   <title>Marks Sheet Wizard - Exam Management</title>
   <link rel="stylesheet" href="{% static 'core/css/dash_board.css' %}?v=3">
   <link rel="stylesheet" href="{% static 'core/css/marksheet_wizard.css' %}">
-  <link rel="stylesheet" href="{% static 'core/css/attendance_sheet_print.css' %}">
+  <link rel="stylesheet" href="{% static 'core/css/attendance_sheet_print.css' %}?v=20260402">
 </head>
 <body>
-
-
-  <!-- Main Content -->
   <div class="main">
     <div class="wizard-container">
       <h1>Marks Sheet Setup Wizard</h1>
       <p style="color: #666; margin-bottom: 30px;">Configure and generate marks sheets in two simple steps.</p>
 
-      <!-- Step Indicator -->
       <div class="step-indicator">
         <div class="step active" id="stepIndicator1">
           <div class="number">1</div>
@@ -36,41 +32,44 @@
         </div>
       </div>
 
-      <!-- Step 1: Exam Name -->
       <div class="step-content" id="step1Content">
-        <h3>Step 1 — Enter Exam Name</h3>
+        <h3>Step 1 - Enter Exam Name</h3>
         <div class="form-group">
           <label for="examName">Exam Name:</label>
           <input type="text" id="examName" placeholder="e.g., Midterm Exam - Data Structures" />
         </div>
         <div class="button-group">
-          <button class="btn-primary" id="nextBtn" disabled>Next →</button>
+          <button class="btn-primary" id="nextBtn" disabled>Next -></button>
         </div>
       </div>
 
-      <!-- Step 2: Select Files -->
       <div class="step-content" id="step2Content" style="display: none;">
-        <h3>Step 2 — Select Student Data Files</h3>
+        <h3>Step 2 - Upload Student Data File</h3>
 
-        <div class="form-group">
-          <label>Filter Files:</label>
-          <div style="display: flex; gap: 8px;">
-            <input type="text" id="fileFilter" placeholder="Search by file name..." style="flex: 1; max-width: 400px;" />
-            <button class="btn-secondary" id="showAllBtn">Show All</button>
+        <div class="upload-card">
+          <p class="upload-copy">
+            Upload the same Excel or CSV file format used in the dashboard student data tab.
+            This file stays temporary here and becomes permanent only after you save the generated marks sheet.
+          </p>
+          <div class="wizard-upload-row">
+            <input type="file" id="wizardFileInput" accept=".csv,.xls,.xlsx" />
+            <button class="btn-secondary" id="uploadWizardFileBtn" type="button">Upload File</button>
           </div>
+          <div id="wizardUploadStatus" class="wizard-upload-status"></div>
         </div>
 
-        <div style="margin-top: 20px; margin-bottom: 20px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd; border-radius: 4px;">
+        <div class="uploaded-preview-wrap">
           <table class="files-table" style="border: none;">
             <thead>
               <tr>
-                <th style="width: 50px;"><input type="checkbox" id="selectAllFiles" /></th>
                 <th>File Name</th>
+                <th>Uploaded At</th>
+                <th>Total Students</th>
               </tr>
             </thead>
             <tbody id="filesTableBody">
               <tr>
-                <td colspan="2" style="text-align: center; padding: 30px; color: #999;">Loading files...</td>
+                <td colspan="3" style="text-align: center; padding: 30px; color: #999;">No temporary file uploaded yet.</td>
               </tr>
             </tbody>
           </table>
@@ -78,23 +77,23 @@
 
         <div class="button-group">
           <button class="btn-primary" id="generateBtn" disabled>Generate Marks Sheet</button>
-          <button class="btn-secondary" id="backBtn">← Back</button>
+          <button class="btn-secondary" id="backBtn"><- Back</button>
         </div>
       </div>
 
-      <!-- Step 3: Preview & Save -->
       <div class="step-content" id="step3Content" style="display: none;">
-        <h3>Step 3 — Preview Generated Sheets</h3>
+        <h3>Step 3 - Preview Generated Sheets</h3>
         <div id="sheetsPreview" style="margin-bottom: 20px;"></div>
         <div class="button-group">
+          <button class="btn-secondary" id="downloadPdfBtn" type="button">Download PDF</button>
           <button class="btn-primary" id="saveBtn">Save Marks Sheets</button>
-          <button class="btn-secondary" id="backToStep2Btn">← Back</button>
+          <button class="btn-secondary" id="backToStep2Btn"><- Back</button>
         </div>
       </div>
     </div>
   </div>
 
   <script src="{% static 'core/js/dash_board.js' %}"></script>
-  <script src="{% static 'core/js/marksheet_wizard.js' %}"></script>
+  <script src="{% static 'core/js/marksheet_wizard.js' %}?v=20260402"></script>
 </body>
 </html>

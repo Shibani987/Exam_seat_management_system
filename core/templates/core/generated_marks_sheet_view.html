@@ -1,61 +1,24 @@
-﻿{% load static %}
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Generated Marks Sheets - {{ exam_name }}</title>
-  <link rel="stylesheet" href="{% static 'core/css/attendance_sheet_print.css' %}">
-  <style>body{margin:0;}.print-btn{padding:8px 12px;margin:10px;}</style>
+  <link rel="stylesheet" href="{% static 'core/css/attendance_sheet_print.css' %}?v=20260402">
+  <style>body{margin:0;}.action-btn{padding:8px 12px;margin:10px;display:inline-block;text-decoration:none;color:#000;background:#f3f3f3;border:1px solid #999;border-radius:2px;}</style>
 </head>
 <body>
-  <p style="margin:10px 0;"><a href="{% url 'dashboard' %}?tab=generate-marksheet" class="no-print" style="color:#1976d2;text-decoration:none;">← Back to Dashboard</a></p>
-  <button class="print-btn no-print" onclick="handlePrint()">Print All</button>
+  <p style="margin:10px 0;"><a href="{% url 'dashboard' %}?tab=generate-marksheet" class="no-print" style="color:#1976d2;text-decoration:none;">&larr; Back to Dashboard</a></p>
+  <a class="action-btn no-print" href="{% url 'download_marks_sheet_pdf' %}?id={{ request.GET.id }}">Download PDF</a>
   <div id="sheetsPreview"></div>
-  {% comment %} embed data safely for javascript {% endcomment %}
   {{ sheets|json_script:"initialSheets" }}
   {{ exam_name|json_script:"initialExamName" }}
+  <script src="{% static 'core/js/marksheet_wizard.js' %}?v=20260402"></script>
   <script>
     const initialSheets = JSON.parse(document.getElementById('initialSheets').textContent);
     const initialExamName = JSON.parse(document.getElementById('initialExamName').textContent);
 
-    function waitForRenderAndPrint(timeoutMs = 3000) {
-      const container = document.getElementById('sheetsPreview');
-      const start = Date.now();
-
-      function check() {
-        if (container && container.children.length > 0) {
-          const imgs = container.querySelectorAll('img');
-          if (imgs.length === 0) {
-            window.print();
-            return;
-          }
-          let remaining = imgs.length;
-          imgs.forEach(img => {
-            if (img.complete) {
-              remaining -= 1;
-              if (remaining === 0) window.print();
-            } else {
-              img.addEventListener('load', () => { remaining -= 1; if (remaining === 0) window.print(); });
-              img.addEventListener('error', () => { remaining -= 1; if (remaining === 0) window.print(); });
-            }
-          });
-          setTimeout(() => { if (remaining > 0) window.print(); }, 2000);
-        } else if (Date.now() - start < timeoutMs) {
-          setTimeout(check, 100);
-        } else {
-          window.print();
-        }
-      }
-      check();
-    }
-
-    function handlePrint() {
-      setTimeout(() => waitForRenderAndPrint(), 50);
-    }
-  </script>
-  <script src="{% static 'core/js/marksheet_wizard.js' %}"></script>
-  <script>
     document.addEventListener('DOMContentLoaded', () => {
       showStep3(initialSheets, initialExamName);
     });

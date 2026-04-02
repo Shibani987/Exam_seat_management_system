@@ -1,6 +1,3 @@
-// Marks Sheet Wizard Logic
-
-// Helper function to get CSRF token from cookies
 function getCsrfToken() {
   const name = 'csrftoken';
   let cookieValue = null;
@@ -21,20 +18,22 @@ const examNameInput = document.getElementById('examName');
 const nextBtn = document.getElementById('nextBtn');
 const backBtn = document.getElementById('backBtn');
 const generateBtn = document.getElementById('generateBtn');
-const fileFilter = document.getElementById('fileFilter');
-const showAllBtn = document.getElementById('showAllBtn');
-const selectAllFiles = document.getElementById('selectAllFiles');
 const filesTableBody = document.getElementById('filesTableBody');
+const wizardFileInput = document.getElementById('wizardFileInput');
+const uploadWizardFileBtn = document.getElementById('uploadWizardFileBtn');
+const wizardUploadStatus = document.getElementById('wizardUploadStatus');
+const saveBtn = document.getElementById('saveBtn');
+const backToStep2Btn = document.getElementById('backToStep2Btn');
+const downloadPdfBtn = document.getElementById('downloadPdfBtn');
 
-let allFiles = [];
-let selectedFiles = [];
 let currentExamId = null;
-let currentFileId = null;
-let generatedSheets = []; // array of arrays
+let generatedSheets = [];
+let generatedExamName = '';
+let tempUploadedFile = null;
 
-
-// Initialize a temporary exam when the page loads
 window.addEventListener('DOMContentLoaded', () => {
+  if (!examNameInput) return;
+
   fetch('/init-temp-exam/?t=' + Date.now())
     .then(r => r.json())
     .then(d => {
@@ -42,139 +41,176 @@ window.addEventListener('DOMContentLoaded', () => {
         currentExamId = d.exam_id;
       } else {
         alert('Error initializing temporary exam. Please reload.');
-        console.error('init_temp_exam error', d);
       }
     })
-    .catch(err => {
-      console.error('init_temp_exam fetch failed', err);
+    .catch(() => {
       alert('Error initializing temporary exam. Please reload.');
     });
-  // no summary section any more
 });
 
-// Step 1: Enable Next button when exam name is entered
-examNameInput.addEventListener('input', () => {
-  nextBtn.disabled = examNameInput.value.trim().length === 0;
-});
+if (examNameInput && nextBtn) {
+  examNameInput.addEventListener('input', () => {
+    nextBtn.disabled = examNameInput.value.trim().length === 0;
+  });
 
-nextBtn.addEventListener('click', () => {
-  const name = examNameInput.value.trim();
-  if (!currentExamId) {
-    alert('Temporary exam ID missing, please reload the page.');
+  nextBtn.addEventListener('click', () => {
+    const name = examNameInput.value.trim();
+    if (!currentExamId) {
+      alert('Temporary exam ID missing, please reload the page.');
+      return;
+    }
+
+    fetch('/update-temp-exam/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ exam_id: currentExamId, name })
+    })
+      .then(r => r.json())
+      .then(() => {
+        document.getElementById('step1Content').style.display = 'none';
+        document.getElementById('step2Content').style.display = 'block';
+        document.getElementById('stepIndicator1').classList.remove('active');
+        document.getElementById('stepIndicator2').classList.add('active');
+      });
+  });
+}
+
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    document.getElementById('step2Content').style.display = 'none';
+    document.getElementById('step1Content').style.display = 'block';
+    document.getElementById('stepIndicator2').classList.remove('active');
+    document.getElementById('stepIndicator1').classList.add('active');
+  });
+}
+
+if (wizardFileInput) {
+  wizardFileInput.addEventListener('change', () => {
+    if (wizardUploadStatus) {
+      wizardUploadStatus.textContent = '';
+      wizardUploadStatus.className = 'wizard-upload-status';
+    }
+  });
+}
+
+function setUploadStatus(message, isError) {
+  if (!wizardUploadStatus) return;
+  wizardUploadStatus.textContent = message;
+  wizardUploadStatus.className = isError ? 'wizard-upload-status error' : 'wizard-upload-status success';
+}
+
+function renderTempFileTable() {
+  if (!tempUploadedFile) {
+    filesTableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 30px; color: #999;">No temporary file uploaded yet.</td></tr>';
+    generateBtn.disabled = true;
     return;
   }
-  // update temporary exam name
-  fetch('/update-temp-exam/', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-CSRFToken': getCsrfToken()
-    },
-    body: JSON.stringify({exam_id: currentExamId, name})
-  }).then(r=>r.json()).then(d=>{
-    if (d.status !== 'success') {
-      console.error('Name update failed', d);
+
+  filesTableBody.innerHTML = `
+    <tr>
+      <td>${tempUploadedFile.file_name}</td>
+      <td>${tempUploadedFile.uploaded_at || '-'}</td>
+      <td>${tempUploadedFile.student_count || 0}</td>
+    </tr>
+  `;
+}
+
+if (uploadWizardFileBtn) {
+  uploadWizardFileBtn.addEventListener('click', async () => {
+    if (!currentExamId) {
+      alert('Temporary exam missing. Please reload the page.');
+      return;
     }
-    // proceed to step2 anyway
-    document.getElementById('step1Content').style.display = 'none';
-    document.getElementById('step2Content').style.display = 'block';
-    document.getElementById('stepIndicator1').classList.remove('active');
-    document.getElementById('stepIndicator2').classList.add('active');
-    fetchUploadedFiles();
-  });
-});
+    if (!wizardFileInput || !wizardFileInput.files || wizardFileInput.files.length === 0) {
+      setUploadStatus('Please choose an Excel or CSV file first.', true);
+      return;
+    }
 
-backBtn.addEventListener('click', () => {
-  document.getElementById('step2Content').style.display = 'none';
-  document.getElementById('step1Content').style.display = 'block';
-  document.getElementById('stepIndicator2').classList.remove('active');
-  document.getElementById('stepIndicator1').classList.add('active');
-  generateBtn.disabled = true;
-});
+    const formData = new FormData();
+    formData.append('exam_id', currentExamId);
+    formData.append('file', wizardFileInput.files[0]);
 
+    uploadWizardFileBtn.disabled = true;
+    setUploadStatus('Uploading and checking file...', false);
 
-// Fetch uploaded files
-function fetchUploadedFiles() {
-  filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 30px; color: #999;">Loading files...</td></tr>';
+    try {
+      const response = await fetch('/upload-attendance-wizard-file/', {
+        method: 'POST',
+        headers: {
+          'X-CSRFToken': getCsrfToken()
+        },
+        body: formData
+      });
+      const data = await response.json();
 
-  fetch('/get_uploaded_files/?t=' + Date.now())
-    .then(r => {
-      if (!r.ok) {
-        filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #c62828;">Error fetching files (' + r.status + ')</td></tr>';
-        return r.json().catch(() => null);
+      if (!response.ok || data.status !== 'success') {
+        setUploadStatus(data.message || 'Upload failed.', true);
+        return;
       }
-      return r.json();
-    })
-    .then(data => {
-      if (!data) return;
-      console.log('uploaded files response', data);
-      if (data.status === 'success' && Array.isArray(data.files)) {
-        allFiles = data.files;
-        renderFilesTable(allFiles);
+
+      tempUploadedFile = data.file;
+      renderTempFileTable();
+      const summary = `Uploaded ${data.file.file_name} with ${data.file.student_count} student rows.`;
+      if (data.file.skipped > 0) {
+        setUploadStatus(`${summary} ${data.file.skipped} row(s) were skipped.`, false);
       } else {
-        filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #999;">No files found.</td></tr>';
+        setUploadStatus(summary, false);
       }
-    })
-    .catch(err => {
-      filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #c62828;">Error loading files.</td></tr>';
-      console.error('Error:', err);
-    });
-}
-
-// Render files table
-function renderFilesTable(files) {
-  if (!files || files.length === 0) {
-    filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align: center; padding: 20px; color: #999;">No files uploaded yet.</td></tr>';
-    return;
-  }
-
-  filesTableBody.innerHTML = '';
-  files.forEach(file => {
-    const row = document.createElement('tr');
-    row.innerHTML = `
-      <td><input type="checkbox" class="fileCheckbox" value="${file.id}" /></td>
-      <td>${file.file_name}</td>
-    `;
-    filesTableBody.appendChild(row);
-
-    row.querySelector('.fileCheckbox').addEventListener('change', updateGenerateBtn);
-  });
-}
-
-// Generate sheets when file selected
-generateBtn.addEventListener('click', () => {
-  const selected = Array.from(document.querySelectorAll('.fileCheckbox:checked')).map(cb => cb.value);
-  if (selected.length === 0) return;
-  if (selected.length > 1) {
-    alert('Please select only one file at a time');
-    return;
-  }
-  if (!currentExamId) {
-    alert('Temporary exam missing');
-    return;
-  }
-  const fileId = selected[0];
-  currentFileId = fileId;
-  fetch('/generate-marks-sheets/', {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'X-CSRFToken': getCsrfToken()
-    },
-    body:JSON.stringify({exam_id: currentExamId, file_id: fileId})
-  }).then(r=>r.json()).then(data=>{
-    if (data.status==='success'){
-      generatedSheets = data.sheets;
-      showStep3(data.sheets, data.exam_name);
-    } else {
-      alert('Error generating sheets: '+data.message);
+      generateBtn.disabled = false;
+    } catch (error) {
+      console.error('wizard upload failed', error);
+      setUploadStatus('Upload failed. Please try again.', true);
+    } finally {
+      uploadWizardFileBtn.disabled = false;
     }
   });
-});
+}
 
-function showStep3(pages, examName){
-  // pages: array of { students: [...], branch: '', semester: '', page_index: N, total_pages: M }
-  // if wizard DOM elements exist, toggle them; view page doesn't have these
+if (generateBtn) {
+  generateBtn.addEventListener('click', () => {
+    if (!currentExamId) {
+      alert('Temporary exam missing');
+      return;
+    }
+    if (!tempUploadedFile) {
+      alert('Please upload a student data file first.');
+      return;
+    }
+
+    fetch('/generate-marks-sheets/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ exam_id: currentExamId })
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.status === 'success') {
+          generatedSheets = data.sheets;
+          showStep3(data.sheets, data.exam_name);
+        } else {
+          alert('Error generating sheets: ' + data.message);
+        }
+      });
+  });
+}
+
+function ensurePrintStyle() {
+  if (!document.getElementById('attendance-sheet-css')) {
+    const link = document.createElement('link');
+    link.id = 'attendance-sheet-css';
+    link.rel = 'stylesheet';
+    link.href = '/static/core/css/attendance_sheet_print.css';
+    document.head.appendChild(link);
+  }
+}
+
+function showStep3(pages, examName) {
   const step2Elem = document.getElementById('step2Content');
   const step3Elem = document.getElementById('step3Content');
   if (step2Elem && step3Elem) {
@@ -183,17 +219,17 @@ function showStep3(pages, examName){
     document.getElementById('stepIndicator2').classList.remove('active');
     document.getElementById('stepIndicator3').classList.add('active');
   }
+
   const container = document.getElementById('sheetsPreview');
-  if (!container) return;  // nothing to render on this page
+  if (!container) return;
   container.innerHTML = '';
-
-  // save for later (save endpoint uses generatedSheets)
   generatedSheets = pages;
+  generatedExamName = examName || '';
+  ensurePrintStyle();
 
-  pages.forEach((pageMeta, pageIdx) => {
+  pages.forEach((pageMeta) => {
     const sheetDiv = document.createElement('div');
     sheetDiv.className = 'attendance-sheet';
-    // Header (logo left, text centered, no box around title)
     let html = `
       <div class="sheet-header">
         <div class="header-logo"><img src="/static/core/img/logo.png" alt="logo" /></div>
@@ -238,38 +274,40 @@ function showStep3(pages, examName){
         <tbody>
     `;
 
-    // Add rows (15 per sheet as per image) with serial numbers starting from 1 for each sheet
-   for (let i = 0; i < 15; i++) {
-  const student = (pageMeta.students || [])[i];
-  let slText = '';
-  if (student && (student.name || student.registration_number || student.roll_number)) {
-    slText = i + 1; // Start from 1 for each sheet
-  }
-  html += `
-      <tr>
-        <td class="sl-col">${slText}</td>
-        <td class="name-col">${student ? (student.name||'').toUpperCase() : ''}</td>
-        <td class="reg-col">${student ? (student.registration_number||'').toUpperCase() : ''}</td>
-        <td class="roll-col">${student ? (student.roll_number||'').toUpperCase() : ''}</td>
-        <td class="booklet-col"></td>
-        <td class="signature-col"></td>
-      </tr>
-    `;
-}
+    for (let i = 0; i < 20; i++) {
+      const student = (pageMeta.students || [])[i];
+      let slText = '';
+      if (student && (student.name || student.registration_number || student.roll_number)) {
+        slText = `${i + 1}.`;
+      }
+      html += `
+        <tr>
+          <td class="sl-col">${slText}</td>
+          <td class="name-col">${student ? (student.name || '').toUpperCase() : ''}</td>
+          <td class="reg-col">${student ? (student.registration_number || '').toUpperCase() : ''}</td>
+          <td class="roll-col">${student ? (student.roll_number || '').toUpperCase() : ''}</td>
+          <td class="booklet-col"></td>
+          <td class="signature-col"></td>
+        </tr>
+      `;
+    }
+
     html += `
         </tbody>
       </table>
-
-      <!-- first footer row: present/absent on left, internal signature on right -->
-      <div class="sheet-footer-row">
+      <div class="sheet-footer-row sheet-footer-row-primary">
         <div class="footer-left">
           <div class="footer-section small">
-            <div class="footer-label">No of Student Present</div>
-            <div class="footer-field"></div>
+            <div class="footer-field-row">
+              <div class="footer-field">No of Student Present</div>
+              <div class="footer-mini-box"></div>
+            </div>
           </div>
           <div class="footer-section small">
-            <div class="footer-label">No of Student Absent</div>
-            <div class="footer-field"></div>
+            <div class="footer-field-row">
+              <div class="footer-field">No of Student Absent</div>
+              <div class="footer-mini-box"></div>
+            </div>
           </div>
         </div>
         <div class="footer-right-internal">
@@ -278,12 +316,10 @@ function showStep3(pages, examName){
           <div class="name-caption">Name (in CAPITAL):</div>
         </div>
       </div>
-
-      <!-- second footer row: HOD left, external right -->
-      <div class="sheet-footer-row" style="margin-top:5px;">
+      <div class="sheet-footer-row sheet-footer-row-secondary">
         <div class="footer-left-hod">
           <div class="hod-line"></div>
-          <div>Signature of HoD</div>
+          <div class="hod-label">Signature of HoD</div>
         </div>
         <div class="footer-right-external">
           <div class="external-line"></div>
@@ -291,12 +327,11 @@ function showStep3(pages, examName){
           <div class="name-caption">Name (in CAPITAL):</div>
         </div>
       </div>
-
-      <div class="sheet-footer" style="display:flex; justify-content:space-between; align-items:center; margin-top:5px;">
-        <div style="font-size:12px; text-align:left; line-height:1.2;">
-          ${pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : ''}
+      <div class="sheet-footer">
+        <div class="sheet-footer-meta sheet-footer-meta-left">
+          ${pageMeta.footer_label || (pageMeta.branch ? (pageMeta.branch.toUpperCase() + '_Sem ' + (pageMeta.semester || '')) : '')}
         </div>
-        <div style="font-size:12px; text-align:right; line-height:1.2;">
+        <div class="sheet-footer-meta sheet-footer-meta-right">
           Page ${pageMeta.page_index} of ${pageMeta.total_pages}
         </div>
       </div>
@@ -305,13 +340,58 @@ function showStep3(pages, examName){
     sheetDiv.innerHTML = html;
     container.appendChild(sheetDiv);
   });
-
-  // no print button (handled by browser or user can press Ctrl+P)
 }
 
-// Save button
-const saveBtn = document.getElementById('saveBtn');
-const backToStep2Btn = document.getElementById('backToStep2Btn');
+async function downloadMarksPdf(examName, sheets, triggerButton) {
+  if (!Array.isArray(sheets) || sheets.length === 0) {
+    alert('No marks sheets available for PDF download yet.');
+    return;
+  }
+
+  const button = triggerButton || downloadPdfBtn;
+  const originalLabel = button ? button.textContent : '';
+  if (button) {
+    button.disabled = true;
+    button.textContent = 'Preparing PDF...';
+  }
+
+  try {
+    const response = await fetch('/download-marks-sheet-pdf/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({
+        exam_name: examName || 'marks-sheet',
+        sheets
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error('PDF generation failed');
+    }
+
+    const blob = await response.blob();
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    const safeName = (examName || 'marks-sheet').trim().replace(/[^a-z0-9._-]+/gi, '_');
+    anchor.href = url;
+    anchor.download = `${safeName || 'marks-sheet'}.pdf`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    anchor.remove();
+    window.URL.revokeObjectURL(url);
+  } catch (error) {
+    console.error('downloadMarksPdf failed', error);
+    alert('Unable to generate PDF right now.');
+  } finally {
+    if (button) {
+      button.disabled = false;
+      button.textContent = originalLabel;
+    }
+  }
+}
 
 if (backToStep2Btn) {
   backToStep2Btn.addEventListener('click', () => {
@@ -319,69 +399,47 @@ if (backToStep2Btn) {
     document.getElementById('step2Content').style.display = 'block';
     document.getElementById('stepIndicator3').classList.remove('active');
     document.getElementById('stepIndicator2').classList.add('active');
-    updateGenerateBtn();
+    generateBtn.disabled = !tempUploadedFile;
   });
 }
 
-saveBtn.addEventListener('click', ()=>{
-  if (!currentExamId) return;
-  fetch('/save-generated-marks-sheets/',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'X-CSRFToken': getCsrfToken()
-    },
-    body:JSON.stringify({exam_id: currentExamId, file_id: currentFileId, sheets: generatedSheets})
-  }).then(r=>r.json()).then(d=>{
-    if(d.status==='success'){
-      alert('Marks sheets saved');
-      // clear currentExamId so unload handler won't delete it
-      currentExamId = null;
-      // redirect to homepage
-      window.location.href = '/';
-    } else {
-      alert('Save failed: '+d.message);
-    }
-  }).catch(err=>{
-    console.error('Save sheets error', err);
-    alert('Save failed');
+if (downloadPdfBtn) {
+  downloadPdfBtn.addEventListener('click', () => {
+    downloadMarksPdf(generatedExamName, generatedSheets, downloadPdfBtn);
   });
-});
-
-
-// File filter
-fileFilter.addEventListener('input', () => {
-  const q = fileFilter.value.trim().toLowerCase();
-  const filtered = allFiles.filter(f => f.file_name.toLowerCase().includes(q));
-  renderFilesTable(filtered);
-});
-
-showAllBtn.addEventListener('click', () => {
-  fileFilter.value = '';
-  renderFilesTable(allFiles);
-});
-
-// Select all files
-selectAllFiles.addEventListener('change', () => {
-  document.querySelectorAll('.fileCheckbox').forEach(cb => {
-    cb.checked = selectAllFiles.checked;
-  });
-  updateGenerateBtn();
-});
-
-// Update Generate button state
-function updateGenerateBtn() {
-  const checked = document.querySelectorAll('.fileCheckbox:checked');
-  // enable only when exactly one file is selected
-  generateBtn.disabled = checked.length !== 1;
 }
 
+if (saveBtn) {
+  saveBtn.addEventListener('click', () => {
+    if (!currentExamId) return;
+    fetch('/save-generated-marks-sheets/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRFToken': getCsrfToken()
+      },
+      body: JSON.stringify({ exam_id: currentExamId, sheets: generatedSheets })
+    })
+      .then(r => r.json())
+      .then(d => {
+        if (d.status === 'success') {
+          alert('Marks sheets saved');
+          currentExamId = null;
+          window.location.href = '/';
+        } else {
+          alert('Save failed: ' + d.message);
+        }
+      })
+      .catch(err => {
+        console.error('Save sheets error', err);
+        alert('Save failed');
+      });
+  });
+}
 
-// When the page unloads (refresh/navigate away) delete any temporary exam
 window.addEventListener('beforeunload', () => {
   if (currentExamId) {
-    // use fetch with keepalive flag (more reliable than sendBeacon and supports CSRF)
-    const payload = JSON.stringify({exam_id: currentExamId});
+    const payload = JSON.stringify({ exam_id: currentExamId });
     fetch('/delete-temp-exam/', {
       method: 'POST',
       headers: {
@@ -390,6 +448,6 @@ window.addEventListener('beforeunload', () => {
       },
       body: payload,
       keepalive: true
-    }).catch(() => {}); // silently ignore errors
+    }).catch(() => {});
   }
 });

@@ -38,6 +38,7 @@ except Exception:
 logger = logging.getLogger('exam_system')
 
 ATTENDANCE_SHEET_STUDENTS_PER_PAGE = 20
+MARKS_SHEET_STUDENTS_PER_PAGE = 20
 
 PDF_DPI = 150
 MM_TO_PX = PDF_DPI / 25.4
@@ -506,6 +507,178 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         pdf.drawString(left_margin, bottom_margin - 8, footer_label)
         pdf.drawRightString(page_width - right_margin, bottom_margin - 8, page_label)
 
+        pdf.showPage()
+
+    pdf.save()
+    buffer.seek(0)
+    response = HttpResponse(buffer.getvalue(), content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
+    return response
+
+
+def _build_marks_pdf_response(sheets, exam_name):
+    if REPORTLAB_AVAILABLE:
+        return _build_marks_pdf_response_reportlab(sheets, exam_name)
+    return _build_attendance_pdf_response(sheets, exam_name)
+
+
+def _build_marks_pdf_response_reportlab(sheets, exam_name):
+    page_width, page_height = A4
+    left_margin = 18
+    right_margin = 18
+    top_margin = 12
+    bottom_margin = 18
+    content_width = page_width - left_margin - right_margin
+    col_widths = [22, 120, 95, 82, 100]
+    col_widths.append(content_width - sum(col_widths))
+    row_height = 28
+    header_height = 34
+
+    buffer = BytesIO()
+    pdf = reportlab_canvas.Canvas(buffer, pagesize=A4)
+    filename = f"{_sanitize_download_filename(exam_name)}.pdf"
+
+    def draw_center(text, x, y, font_name="Times-Roman", font_size=10):
+        pdf.setFont(font_name, font_size)
+        pdf.drawCentredString(x, y, text)
+
+    def draw_box(x, y, width, height, label, font_size=9):
+        pdf.rect(x, y, width, height, stroke=1, fill=0)
+        draw_center(label, x + (width / 2), y + (height / 2) - 3, "Times-Roman", font_size)
+
+    def draw_line_label(text, x_center, y_base, font_size=8):
+        draw_center(text, x_center, y_base, "Times-Roman", font_size)
+
+    logo = _attendance_logo_image()
+    logo_reader = ImageReader(logo) if (logo and ImageReader) else None
+
+    for page_meta in (sheets or [{}]):
+        pdf.setLineWidth(1)
+        y_top = page_height - top_margin
+
+        if logo_reader:
+            logo_size = 74
+            pdf.drawImage(
+                logo_reader,
+                left_margin + 28,
+                y_top - 66,
+                width=logo_size,
+                height=logo_size,
+                preserveAspectRatio=True,
+                mask='auto',
+            )
+
+        draw_center("CONTROLLER OF EXAMINATIONS", page_width / 2, y_top - 18, "Times-Bold", 17)
+        draw_center("JIS COLLEGE OF ENGINEERING", page_width / 2, y_top - 34, "Times-Bold", 13)
+        draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 46, "Times-Roman", 9)
+        draw_center(f"Marks Sheet for {exam_name}", page_width / 2, y_top - 66, "Times-Bold", 11)
+
+        meta_y_top = y_top - 79
+        box_h = 22
+        left_box_w = 102
+        right_box_w = 78
+        draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
+        draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
+        right_x = page_width - right_margin - right_box_w - 182
+        draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
+        draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
+
+        table_top = meta_y_top - 54
+        table_bottom = table_top - header_height - (MARKS_SHEET_STUDENTS_PER_PAGE * row_height)
+        pdf.rect(left_margin, table_bottom, content_width, table_top - table_bottom, stroke=1, fill=0)
+
+        x_positions = [left_margin]
+        for width in col_widths:
+            x_positions.append(x_positions[-1] + width)
+        for x in x_positions[1:-1]:
+            pdf.line(x, table_bottom, x, table_top)
+
+        header_y = table_top - header_height
+        pdf.line(left_margin, header_y, left_margin + content_width, header_y)
+
+        headers = [
+            "SL",
+            "NAME",
+            "REGISTRATION NO",
+            "ROLL NO",
+            "INTERNAL MARKS",
+            "EXTERNAL MARKS",
+        ]
+        for idx, header in enumerate(headers):
+            center_x = (x_positions[idx] + x_positions[idx + 1]) / 2
+            draw_center(header, center_x, table_top - 22, "Times-Bold", 8)
+
+        students = (page_meta.get("students") or [])[:MARKS_SHEET_STUDENTS_PER_PAGE]
+        current_y = header_y
+        for row_index in range(MARKS_SHEET_STUDENTS_PER_PAGE):
+            next_y = current_y - row_height
+            pdf.line(left_margin, next_y, left_margin + content_width, next_y)
+
+            student = students[row_index] if row_index < len(students) else {}
+            has_student = any((student or {}).get(key) for key in ("name", "registration_number", "roll_number"))
+            values = [
+                f"{row_index + 1}." if has_student else "",
+                (student.get("name") or "").upper(),
+                (student.get("registration_number") or "").upper(),
+                (student.get("roll_number") or "").upper(),
+                "",
+                "",
+            ]
+            for col_index, value in enumerate(values):
+                if not value:
+                    continue
+                cell_left = x_positions[col_index]
+                cell_right = x_positions[col_index + 1]
+                cell_mid_y = next_y + 10
+                pdf.setFont("Times-Roman", 8)
+                if col_index == 1:
+                    pdf.drawString(cell_left + 4, cell_mid_y, value[:24])
+                else:
+                    pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:24])
+            current_y = next_y
+
+        footer_row_1_y = table_bottom - 18
+        pdf.setFont("Times-Roman", 8)
+        present_box_x = left_margin
+        present_box_y = footer_row_1_y - 7
+        label_box_w = 96
+        count_box_w = 48
+        box_h = 14
+        gap_w = 12
+        pdf.rect(present_box_x, present_box_y, label_box_w, box_h, stroke=1, fill=0)
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), present_box_y + 4, "No of Student Present")
+        pdf.rect(present_box_x + label_box_w + gap_w, present_box_y, count_box_w, box_h, stroke=1, fill=0)
+        absent_box_y = present_box_y - 18
+        pdf.rect(present_box_x, absent_box_y, label_box_w, box_h, stroke=1, fill=0)
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 4, "No of Student Absent")
+        pdf.rect(present_box_x + label_box_w + gap_w, absent_box_y, count_box_w, box_h, stroke=1, fill=0)
+
+        internal_line_left = page_width - right_margin - 268
+        internal_line_right = page_width - right_margin - 6
+        internal_line_y = footer_row_1_y - 1
+        pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
+        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 9, 7)
+        draw_line_label("Name (in CAPITAL):", ((internal_line_left + internal_line_right) / 2) - 110, internal_line_y - 19, 7)
+
+        footer_row_2_line_y = bottom_margin + 20
+        hod_left = left_margin + 2
+        hod_right = hod_left + 150
+        pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
+        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 10, 8)
+
+        external_left = page_width - right_margin - 268
+        external_right = page_width - right_margin - 6
+        pdf.line(external_left, footer_row_2_line_y, external_right, footer_row_2_line_y)
+        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 10, 7)
+        draw_line_label("Name (in CAPITAL):", ((external_left + external_right) / 2) - 110, footer_row_2_line_y - 20, 7)
+
+        footer_label = page_meta.get("footer_label") or (
+            f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
+        )
+        page_label = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
+        pdf.setFont("Times-Roman", 8)
+        pdf.drawString(left_margin, bottom_margin - 8, footer_label)
+        pdf.drawRightString(page_width - right_margin, bottom_margin - 8, page_label)
         pdf.showPage()
 
     pdf.save()
@@ -1758,7 +1931,7 @@ def marksheet_wizard(request):
 @csrf_exempt
 @admin_required_json
 def generate_marks_sheets(request):
-    """Given an exam_id and file_id, return paginated marks sheet data (15 students per sheet).
+    """Given an exam_id and file_id, return paginated marks sheet data (20 students per sheet).
 
     Preserves original file order (DB insertion order), filters by eligible academic_status,
     groups students by (branch, semester) preserving encounter order, and paginates each group
@@ -1771,14 +1944,19 @@ def generate_marks_sheets(request):
             exam_id = data.get("exam_id")
             file_id = data.get("file_id")
             exam = Exam.objects.get(id=exam_id)
-            student_file = StudentDataFile.objects.get(id=file_id)
+            students = []
 
-            # fetch students in DB insertion order (by PK)
-            qs = Student.objects.filter(student_file=student_file).values(
-                'id', 'name', 'roll_number', 'registration_number', 'semester', 'branch', 'academic_status'
-            ).order_by('id')
-
-            students = list(qs)
+            if file_id:
+                student_file = StudentDataFile.objects.get(id=file_id)
+                qs = Student.objects.filter(student_file=student_file).values(
+                    'id', 'name', 'roll_number', 'registration_number', 'semester', 'branch', 'academic_status'
+                ).order_by('id')
+                students = list(qs)
+            else:
+                temp_upload = _get_temp_attendance_upload(request, exam_id)
+                if not temp_upload:
+                    return JsonResponse({"status": "error", "message": "Student file not found"}, status=404)
+                students = temp_upload.get("students", [])
 
             # Group by (branch, semester) while preserving encounter order
             from collections import OrderedDict
@@ -1799,13 +1977,16 @@ def generate_marks_sheets(request):
 
             pages = []
             for (branch, semester), group_students in groups.items():
-                total_pages = (len(group_students) + 14) // 15
+                total_pages = (len(group_students) + (MARKS_SHEET_STUDENTS_PER_PAGE - 1)) // MARKS_SHEET_STUDENTS_PER_PAGE
                 for p in range(total_pages):
-                    chunk = group_students[p*15:(p+1)*15]
+                    chunk = group_students[
+                        p * MARKS_SHEET_STUDENTS_PER_PAGE:(p + 1) * MARKS_SHEET_STUDENTS_PER_PAGE
+                    ]
                     pages.append({
                         'students': chunk,
                         'branch': branch,
                         'semester': semester,
+                        'footer_label': f"{branch.upper()}_Sem {semester}" if branch else f"Sem {semester}",
                         'page_index': p + 1,
                         'total_pages': total_pages,
                     })
@@ -1841,7 +2022,16 @@ def save_generated_marks_sheets(request):
             file_id = data.get("file_id")
             sheets = data.get("sheets")
             exam = Exam.objects.get(id=exam_id)
-            student_file = StudentDataFile.objects.get(id=file_id)
+            if file_id:
+                student_file = StudentDataFile.objects.get(id=file_id)
+            else:
+                temp_upload = _pop_temp_attendance_upload(request, exam_id)
+                if not temp_upload:
+                    return JsonResponse({"status": "error", "message": "No temporary student file available to save"}, status=400)
+                student_file = _create_student_file_with_students(
+                    temp_upload.get("file_name") or "marksheet_wizard_upload.xlsx",
+                    temp_upload.get("students", []),
+                )
             # record in MarksSheet model
             MarksSheet.objects.create(
                 exam=exam,
@@ -1954,6 +2144,31 @@ def view_generated_marks_sheet(request):
         'sheets': sheet.sheet_data or []
     }
     return render(request, 'core/generated_marks_sheet_view.html', context)
+
+
+@csrf_exempt
+@admin_required
+def download_marks_sheet_pdf(request):
+    try:
+        if request.method == "GET":
+            sheet_id = request.GET.get("id")
+            if not sheet_id:
+                return HttpResponse("Missing id", status=400)
+            sheet = MarksSheet.objects.select_related("exam").get(id=sheet_id)
+            return _build_marks_pdf_response(sheet.sheet_data or [], sheet.exam.name or "marks-sheet")
+
+        if request.method == "POST":
+            data = json.loads(request.body or "{}")
+            exam_name = data.get("exam_name") or "marks-sheet"
+            sheets = data.get("sheets") or []
+            return _build_marks_pdf_response(sheets, exam_name)
+
+        return HttpResponse("Method not allowed", status=405)
+    except MarksSheet.DoesNotExist:
+        return HttpResponse("Sheet not found", status=404)
+    except Exception as exc:
+        logger.error(f"download_marks_sheet_pdf error: {exc}\n{traceback.format_exc()}")
+        return HttpResponse("Unable to generate PDF", status=500)
 
 
 # =========================
