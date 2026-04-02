@@ -26,10 +26,12 @@ from PIL import Image, ImageDraw, ImageFont
 try:
     from reportlab.lib.pagesizes import A4
     from reportlab.pdfgen import canvas as reportlab_canvas
+    from reportlab.lib.utils import ImageReader
     REPORTLAB_AVAILABLE = True
 except Exception:
     A4 = None
     reportlab_canvas = None
+    ImageReader = None
     REPORTLAB_AVAILABLE = False
 
 # Setup logging for security events
@@ -334,10 +336,10 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     page_width, page_height = A4
     left_margin = 18
     right_margin = 18
-    top_margin = 20
+    top_margin = 18
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [22, 132, 112, 88, 96]
+    col_widths = [22, 138, 104, 88, 92]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
     header_height = 34
@@ -354,6 +356,12 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         pdf.rect(x, y, width, height, stroke=1, fill=0)
         draw_center(label, x + (width / 2), y + (height / 2) - 3, "Times-Roman", font_size)
 
+    def draw_line_label(text, x_center, y_base, font_size=8):
+        draw_center(text, x_center, y_base, "Times-Roman", font_size)
+
+    logo = _attendance_logo_image()
+    logo_reader = ImageReader(logo) if (logo and ImageReader) else None
+
     for page_meta in (sheets or [{}]):
         pdf.setLineWidth(1)
         y_top = page_height - top_margin
@@ -367,22 +375,34 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
             pdf.rect(room_x, room_y, room_w, room_h, stroke=1, fill=0)
             draw_center(f"Room {str(room_number).upper()}", room_x + (room_w / 2), room_y + 8, "Times-Bold", 10)
 
-        draw_center("CONTROLLER OF EXAMINATIONS", page_width / 2, y_top - 18, "Times-Bold", 18)
-        draw_center("JIS COLLEGE OF ENGINEERING", page_width / 2, y_top - 36, "Times-Bold", 13)
-        draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 50, "Times-Roman", 10)
-        draw_center(f"Attendance Sheet for {exam_name}", page_width / 2, y_top - 72, "Times-Bold", 12)
+        if logo_reader:
+            logo_size = 54
+            pdf.drawImage(
+                logo_reader,
+                left_margin + 42,
+                y_top - 76,
+                width=logo_size,
+                height=logo_size,
+                preserveAspectRatio=True,
+                mask='auto',
+            )
 
-        meta_y_top = y_top - 90
-        box_h = 24
-        left_box_w = 140
-        right_box_w = 110
+        draw_center("CONTROLLER OF EXAMINATIONS", page_width / 2, y_top - 18, "Times-Bold", 17)
+        draw_center("JIS COLLEGE OF ENGINEERING", page_width / 2, y_top - 36, "Times-Bold", 13)
+        draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 49, "Times-Roman", 9)
+        draw_center(f"Attendance Sheet for {exam_name}", page_width / 2, y_top - 69, "Times-Bold", 11)
+
+        meta_y_top = y_top - 88
+        box_h = 22
+        left_box_w = 116
+        right_box_w = 90
         draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
         draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 55
+        right_x = page_width - right_margin - right_box_w - 12
         draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
         draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
 
-        table_top = meta_y_top - 72
+        table_top = meta_y_top - 64
         table_bottom = table_top - header_height - (ATTENDANCE_SHEET_STUDENTS_PER_PAGE * row_height)
         pdf.rect(left_margin, table_bottom, content_width, table_top - table_bottom, stroke=1, fill=0)
 
@@ -437,39 +457,44 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
                 cell_mid_y = next_y + 10
                 pdf.setFont("Times-Roman", 8)
                 if col_index == 1:
-                    pdf.drawString(cell_left + 4, cell_mid_y, value[:28])
+                    pdf.drawString(cell_left + 4, cell_mid_y, value[:26])
                 else:
                     pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:24])
             current_y = next_y
 
-        footer_y = table_bottom - 22
-        pdf.setFont("Times-Roman", 10)
-        pdf.drawString(left_margin, footer_y, "No of Student Present")
-        pdf.rect(left_margin + 105, footer_y - 6, 16, 16, stroke=1, fill=0)
-        pdf.drawString(left_margin, footer_y - 22, "No of Student Absent")
-        pdf.rect(left_margin + 105, footer_y - 28, 16, 16, stroke=1, fill=0)
+        footer_row_1_y = table_bottom - 18
+        pdf.setFont("Times-Roman", 8)
+        pdf.drawString(left_margin, footer_row_1_y, "No of Student Present")
+        pdf.rect(left_margin + 92, footer_row_1_y - 5, 14, 14, stroke=1, fill=0)
+        pdf.drawString(left_margin, footer_row_1_y - 18, "No of Student Absent")
+        pdf.rect(left_margin + 92, footer_row_1_y - 23, 14, 14, stroke=1, fill=0)
 
-        internal_x = page_width - right_margin - 150
-        pdf.rect(internal_x, footer_y - 6, 95, 30, stroke=1, fill=0)
-        draw_center("Signature of Examiner (Internal)", internal_x + 47.5, footer_y - 20, "Times-Roman", 8)
-        draw_center("Name (in CAPITAL):", internal_x + 47.5, footer_y - 31, "Times-Roman", 8)
+        internal_line_left = page_width - right_margin - 155
+        internal_line_right = page_width - right_margin - 18
+        internal_line_y = footer_row_1_y - 2
+        pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
+        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 10, 7)
+        draw_line_label("Name (in CAPITAL):", (internal_line_left + internal_line_right) / 2, internal_line_y - 20, 7)
 
-        bottom_line_y = bottom_margin + 24
-        pdf.line(left_margin + 25, bottom_line_y, left_margin + 120, bottom_line_y)
-        draw_center("Signature of HoD", left_margin + 72, bottom_line_y - 12, "Times-Roman", 9)
+        footer_row_2_line_y = bottom_margin + 40
+        hod_left = left_margin + 12
+        hod_right = hod_left + 100
+        pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
+        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 11, 8)
 
-        ext_left = page_width - right_margin - 155
-        pdf.line(ext_left, bottom_line_y, page_width - right_margin - 15, bottom_line_y)
-        draw_center("Signature of Examiner (External)", ext_left + 70, bottom_line_y - 12, "Times-Roman", 8)
-        draw_center("Name (in CAPITAL):", ext_left + 70, bottom_line_y - 24, "Times-Roman", 8)
+        external_left = page_width - right_margin - 160
+        external_right = page_width - right_margin - 12
+        pdf.line(external_left, footer_row_2_line_y, external_right, footer_row_2_line_y)
+        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 11, 7)
+        draw_line_label("Name (in CAPITAL):", (external_left + external_right) / 2, footer_row_2_line_y - 21, 7)
 
         footer_label = page_meta.get("footer_label") or (
             f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
         )
         page_label = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
         pdf.setFont("Times-Roman", 8)
-        pdf.drawString(left_margin, bottom_margin + 4, footer_label)
-        pdf.drawRightString(page_width - right_margin, bottom_margin + 4, page_label)
+        pdf.drawString(left_margin, bottom_margin + 10, footer_label)
+        pdf.drawRightString(page_width - right_margin, bottom_margin + 10, page_label)
 
         pdf.showPage()
 
