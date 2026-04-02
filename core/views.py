@@ -339,7 +339,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [22, 120, 90, 74, 92]
+    col_widths = [22, 120, 80, 74, 92]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
     header_height = 34
@@ -394,11 +394,11 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
 
         meta_y_top = y_top - 79
         box_h = 22
-        left_box_w = 116
-        right_box_w = 90
+        left_box_w = 102
+        right_box_w = 78
         draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
         draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 152
+        right_x = page_width - right_margin - right_box_w - 172
         draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
         draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
 
@@ -486,7 +486,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 9, 7)
         draw_line_label("Name (in CAPITAL):", (internal_line_left + internal_line_right) / 2, internal_line_y - 19, 7)
 
-        footer_row_2_line_y = bottom_margin + 40
+        footer_row_2_line_y = bottom_margin + 20
         hod_left = left_margin + 12
         hod_right = hod_left + 120
         pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
@@ -503,8 +503,8 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         )
         page_label = f"Page {page_meta.get('page_index', 1)} of {page_meta.get('total_pages', 1)}"
         pdf.setFont("Times-Roman", 8)
-        pdf.drawString(left_margin, bottom_margin - 2, footer_label)
-        pdf.drawRightString(page_width - right_margin, bottom_margin - 2, page_label)
+        pdf.drawString(left_margin, bottom_margin - 8, footer_label)
+        pdf.drawRightString(page_width - right_margin, bottom_margin - 8, page_label)
 
         pdf.showPage()
 
