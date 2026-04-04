@@ -573,15 +573,15 @@ def _build_marks_pdf_response_reportlab(sheets, exam_name):
         draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 46, "Times-Roman", 9)
         draw_center(f"Marks Sheet for {exam_name}", page_width / 2, y_top - 66, "Times-Bold", 11)
 
-        meta_y_top = y_top - 79
+        meta_y_top = y_top - 74
         box_h = 22
-        left_box_w = 102
-        right_box_w = 78
-        draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
-        draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 182
-        draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
-        draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
+        left_box_w = 92
+        right_box_w = 108
+        draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Paper Name", 10)
+        draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Code", 10)
+        right_x = page_width - right_margin - right_box_w - 152
+        draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Date of Examination", 10)
+        draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Time", 10)
 
         table_top = meta_y_top - 54
         table_bottom = table_top - header_height - (MARKS_SHEET_STUDENTS_PER_PAGE * row_height)
