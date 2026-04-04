@@ -6,7 +6,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Attendance Sheet Wizard - Exam Management</title>
   <link rel="stylesheet" href="{% static 'core/css/dash_board.css' %}?v=3">
-  <link rel="stylesheet" href="{% static 'core/css/attendance_wizard.css' %}">
+  <link rel="stylesheet" href="{% static 'core/css/attendance_wizard.css' %}?v=20260404a">
   <link rel="stylesheet" href="{% static 'core/css/attendance_sheet_print.css' %}?v=20260401">
 </head>
 <body>
@@ -81,9 +81,9 @@
         </div>
       </div>
 
-      <div class="step-content" id="step3Content" style="display: none;">
+      <div class="step-content preview-step-content" id="step3Content" style="display: none;">
         <h3>Step 3 - Preview Generated Sheets</h3>
-        <div id="sheetsPreview" style="margin-bottom: 20px;"></div>
+        <div id="sheetsPreview" class="wizard-sheets-preview" style="margin-bottom: 20px;"></div>
         <div class="button-group">
           <button class="btn-secondary" id="downloadPdfBtn" type="button">Download PDF</button>
           <button class="btn-primary" id="saveBtn">Save Attendance Sheets</button>

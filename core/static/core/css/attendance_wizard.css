@@ -1,6 +1,13 @@
+.main {
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+}
+
 .wizard-container {
   max-width: 950px;
   margin: 0 auto;
+  width: 100%;
   padding: 40px 20px;
 }
 
@@ -294,4 +301,30 @@
   margin-bottom: 10px;
   padding-bottom: 10px;
   border-bottom: 1px solid #ddd;
+}
+
+@media (min-width: 1024px) {
+  .wizard-container {
+    max-width: min(1500px, calc(100vw - 120px));
+  }
+
+  .preview-step-content {
+    max-width: 1400px;
+    margin: 0 auto 24px;
+  }
+
+  .wizard-sheets-preview {
+    width: 100%;
+    padding: 12px 24px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow-x: auto;
+  }
+
+  .wizard-sheets-preview .attendance-sheet {
+    flex: 0 0 auto;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
