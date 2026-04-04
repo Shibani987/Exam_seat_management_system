@@ -263,10 +263,10 @@ function showStep3(pages, examName) {
         </colgroup>
         <thead>
           <tr>
-            <th class="sl-col">SL</th>
-            <th class="name-col">NAME</th>
-            <th class="reg-col">REGISTRATION NO</th>
-            <th class="roll-col">ROLL NO</th>
+            <th class="sl-col">SL.</th>
+            <th class="name-col">STUDENT NAME</th>
+            <th class="reg-col">UNIVERSITY REG.<br>NUMBER</th>
+            <th class="roll-col">COLLEGE ROLL<br>NUMBER</th>
             <th class="booklet-col">INTERNAL MARKS</th>
             <th class="signature-col">EXTERNAL MARKS</th>
           </tr>

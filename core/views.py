@@ -597,16 +597,21 @@ def _build_marks_pdf_response_reportlab(sheets, exam_name):
         pdf.line(left_margin, header_y, left_margin + content_width, header_y)
 
         headers = [
-            "SL",
-            "NAME",
-            "REGISTRATION NO",
-            "ROLL NO",
+            "SL.",
+            "STUDENT NAME",
+            "UNIVERSITY REG.\nNUMBER",
+            "COLLEGE ROLL\nNUMBER",
             "INTERNAL MARKS",
             "EXTERNAL MARKS",
         ]
         for idx, header in enumerate(headers):
             center_x = (x_positions[idx] + x_positions[idx + 1]) / 2
-            draw_center(header, center_x, table_top - 22, "Times-Bold", 8)
+            lines = header.split("\n")
+            if len(lines) == 1:
+                draw_center(lines[0], center_x, table_top - 22, "Times-Bold", 8)
+            else:
+                draw_center(lines[0], center_x, table_top - 18, "Times-Bold", 8)
+                draw_center(lines[1], center_x, table_top - 28, "Times-Bold", 8)
 
         students = (page_meta.get("students") or [])[:MARKS_SHEET_STUDENTS_PER_PAGE]
         current_y = header_y
