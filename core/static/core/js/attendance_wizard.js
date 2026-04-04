@@ -352,7 +352,7 @@ function showStep3(pages, examName) {
         </div>
         <div class="meta-field-group">
           <div class="meta-field">Date of Examination</div>
-          <div class="meta-field">time</div>
+          <div class="meta-field">Time</div>
         </div>
       </div>
       <table class="sheet-table">

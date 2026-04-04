@@ -268,29 +268,29 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
                 _draw_text(draw, ((left + right) / 2, (row_top + row_bottom) / 2), value, regular_30, anchor="mm")
 
     primary_top = table_bottom + _mm(10)
-    mini_box_size = _mm(9)
-    _draw_text(draw, (content_left, primary_top), "No of Student Present", regular_36)
-    draw.rectangle((content_left + _mm(43), primary_top - _mm(1), content_left + _mm(43) + mini_box_size, primary_top - _mm(1) + mini_box_size), outline="black", width=2)
-    _draw_text(draw, (content_left, primary_top + _mm(12)), "No of Student Absent", regular_36)
-    draw.rectangle((content_left + _mm(43), primary_top + _mm(10), content_left + _mm(43) + mini_box_size, primary_top + _mm(10) + mini_box_size), outline="black", width=2)
+    mini_box_size = _mm(11)
+    _draw_text(draw, (content_left, primary_top), "No of Student Present", regular_40)
+    draw.rectangle((content_left + _mm(50), primary_top - _mm(2), content_left + _mm(50) + mini_box_size, primary_top - _mm(2) + mini_box_size), outline="black", width=2)
+    _draw_text(draw, (content_left, primary_top + _mm(14)), "No of Student Absent", regular_40)
+    draw.rectangle((content_left + _mm(50), primary_top + _mm(12), content_left + _mm(50) + mini_box_size, primary_top + _mm(12) + mini_box_size), outline="black", width=2)
 
     internal_x = content_right - _mm(58)
     internal_sig_top = primary_top - _mm(2)
     draw.rectangle((internal_x, internal_sig_top, internal_x + _mm(36), internal_sig_top + _mm(14)), outline="black", width=2)
-    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(18)), "Signature of Examiner (Internal)", regular_34, anchor="ma")
-    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(24)), "Name (in CAPITAL):", regular_34, anchor="ma")
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(19)), "Signature of Examiner (Internal)", regular_40, anchor="ma")
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(26)), "Name (in CAPITAL):", regular_40, anchor="ma")
 
     secondary_y = A4_HEIGHT_PX - _mm(28)
     hod_left = content_left + _mm(10)
     hod_right = hod_left + _mm(48)
     draw.line((hod_left, secondary_y, hod_right, secondary_y), fill="black", width=2)
-    _draw_text(draw, ((hod_left + hod_right) / 2, secondary_y + _mm(4)), "Signature of HoD", regular_36, anchor="ma")
+    _draw_text(draw, ((hod_left + hod_right) / 2, secondary_y + _mm(5)), "Signature of HoD", regular_40, anchor="ma")
 
     ext_left = content_right - _mm(58)
     ext_right = content_right - _mm(8)
     draw.line((ext_left, secondary_y, ext_right, secondary_y), fill="black", width=2)
-    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(4)), "Signature of Examiner (External)", regular_34, anchor="ma")
-    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(10)), "Name (in CAPITAL):", regular_34, anchor="ma")
+    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(5)), "Signature of Examiner (External)", regular_40, anchor="ma")
+    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(12)), "Name (in CAPITAL):", regular_40, anchor="ma")
 
     footer_label = page_meta.get("footer_label") or (
         f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
@@ -464,40 +464,40 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
             current_y = next_y
 
         footer_row_1_y = table_bottom - 18
-        pdf.setFont("Times-Roman", 9)
+        pdf.setFont("Times-Roman", 11)
         present_box_x = left_margin
-        present_box_y = footer_row_1_y - 7
-        label_box_w = 96
-        count_box_w = 48
-        box_h = 18
+        present_box_y = footer_row_1_y - 10
+        label_box_w = 116
+        count_box_w = 58
+        box_h = 24
         gap_w = 12
         pdf.rect(present_box_x, present_box_y, label_box_w, box_h, stroke=1, fill=0)
-        pdf.drawCentredString(present_box_x + (label_box_w / 2), present_box_y + 6, "No of Student Present")
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), present_box_y + 8, "No of Student Present")
         pdf.rect(present_box_x + label_box_w + gap_w, present_box_y, count_box_w, box_h, stroke=1, fill=0)
 
-        absent_box_y = present_box_y - 22
+        absent_box_y = present_box_y - 28
         pdf.rect(present_box_x, absent_box_y, label_box_w, box_h, stroke=1, fill=0)
-        pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 6, "No of Student Absent")
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 8, "No of Student Absent")
         pdf.rect(present_box_x + label_box_w + gap_w, absent_box_y, count_box_w, box_h, stroke=1, fill=0)
 
         internal_line_left = page_width - right_margin - 268
         internal_line_right = page_width - right_margin - 6
         internal_line_y = footer_row_1_y - 1
         pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
-        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 10, 8)
-        draw_line_label("Name (in CAPITAL):", ((internal_line_left + internal_line_right) / 2) - 110, internal_line_y - 21, 8)
+        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 12, 10)
+        draw_line_label("Name (in CAPITAL):", ((internal_line_left + internal_line_right) / 2) - 118, internal_line_y - 25, 10)
 
         footer_row_2_line_y = bottom_margin + 20
         hod_left = left_margin + 2
         hod_right = hod_left + 150
         pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
-        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 11, 9)
+        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 13, 11)
 
         external_left = page_width - right_margin - 268
         external_right = page_width - right_margin - 6
         pdf.line(external_left, footer_row_2_line_y, external_right, footer_row_2_line_y)
-        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 10, 8)
-        draw_line_label("Name (in CAPITAL):", ((external_left + external_right) / 2) - 110, footer_row_2_line_y - 21, 8)
+        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 12, 10)
+        draw_line_label("Name (in CAPITAL):", ((external_left + external_right) / 2) - 118, footer_row_2_line_y - 25, 10)
 
         footer_label = page_meta.get("footer_label") or (
             f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()

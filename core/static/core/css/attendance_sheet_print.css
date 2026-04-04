@@ -126,11 +126,12 @@ body {
   display: flex;
   flex-direction: column;
   gap: 6px;
-  width: 150px;
+  width: max-content;
+  min-width: 122px;
    
 }
 .meta-field-group:last-child {
-  width: 100px;
+  min-width: 188px;
   margin-right: 180px;
 }
 .meta-field {
@@ -147,6 +148,9 @@ body {
 }
 .meta-field-group:first-child {
   padding-left: 0;
+}
+.sheet-meta-box .meta-field {
+  white-space: nowrap;
 }
 .meta-field .meta-label {
   position: absolute;
