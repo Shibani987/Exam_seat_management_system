@@ -118,7 +118,7 @@ body {
   align-items: flex-start;
   padding-right: 60px;
   width: 100%;   /* table width follow করবে */
-  margin: 0 0 10px 0;
+  margin: -6px 0 10px 0;
   padding: 6px 0;
 }
 
@@ -135,12 +135,12 @@ body {
 }
 .meta-field {
   border: 0.8px solid #000;
-  padding: 4px 8px;
-  min-height: 25px;
+  padding: 5px 8px;
+  min-height: 30px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 500;
   position: relative;
   width: 100%;   /* group width follow করবে */
@@ -272,8 +272,8 @@ body {
 
 .footer-field {
   border: 0.8px solid #000;
-  min-height: 14px;
-  padding: 4px 6px 2px;
+  min-height: 22px;
+  padding: 5px 8px 4px;
   margin: 0;
   width: 150px;
   min-width: 150px;
@@ -282,6 +282,7 @@ body {
   justify-content: center;
   white-space: nowrap;
   text-align: center;
+  font-size: 12px;
 }
 
 .footer-field-row {
@@ -295,6 +296,7 @@ body {
   min-width: 40px;
   border: 0.8px solid #000;
   margin-left: 20px;
+  min-height: 22px;
 }
 
 .signature-box {
@@ -309,6 +311,7 @@ body {
   font-weight: normal; /* remove boldness */
   margin-bottom: 0px; /* no extra space below label */
   line-height: 1;
+  font-size: 12px;
 }
 
 /* new layout helpers */
@@ -359,6 +362,7 @@ body {
 
 .hod-label {
   margin-left: 38px;
+  font-size: 12px;
 }
 
 .hod-line, .external-line {
@@ -379,7 +383,7 @@ body {
 }
 .name-caption {
   display: inline-block;
-  font-size: 11px;
+  font-size: 12px;
   margin-top: 4px;
   width: 250px;
   text-align: left;
@@ -594,9 +598,15 @@ body {
   }
 
   .sheet-meta-box {
-    margin: 0 0 6px 0 !important;
+    margin: -6px 0 6px 0 !important;
     padding: 4px 0 !important;
     width: 100% !important;
+  }
+
+  .meta-field {
+    min-height: 31px !important;
+    padding: 5px 8px !important;
+    font-size: 13px !important;
   }
 
   .sheet-table {
@@ -636,6 +646,22 @@ body {
   .footer-left-hod,
   .footer-right-external {
     margin-top: 4px !important;
+  }
+
+  .footer-field {
+    min-height: 22px !important;
+    padding: 5px 8px 4px !important;
+    font-size: 12px !important;
+  }
+
+  .footer-mini-box {
+    min-height: 22px !important;
+  }
+
+  .footer-label,
+  .hod-label,
+  .name-caption {
+    font-size: 12px !important;
   }
 
   .sheet-footer {
