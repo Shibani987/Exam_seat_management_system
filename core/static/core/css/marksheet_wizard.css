@@ -146,6 +146,35 @@
   height: 18px;
 }
 
+.wizard-sheets-preview {
+  width: 100%;
+}
+
+@media (min-width: 1024px) {
+  .wizard-container {
+    max-width: min(1500px, calc(100vw - 100px));
+  }
+
+  .preview-step-content {
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+
+  .wizard-sheets-preview {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 24px;
+    width: 100%;
+    padding: 8px 24px 24px;
+    overflow-x: auto;
+  }
+
+  .wizard-sheets-preview .attendance-sheet {
+    flex: 0 0 auto;
+  }
+}
+
 /* Responsive */
 @media (max-width: 768px) {
   .wizard-container {
