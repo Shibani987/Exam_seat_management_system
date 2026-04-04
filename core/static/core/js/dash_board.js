@@ -274,8 +274,7 @@ const uploadCheckMessage = document.getElementById('uploadCheckMessage');
 
 if (generateSheetBtn) {
   generateSheetBtn.addEventListener('click', () => {
-    // Check if student data has been uploaded
-    checkStudentDataAndShowModal();
+    window.location.href = '/attendance-wizard/';
   });
 }
 
