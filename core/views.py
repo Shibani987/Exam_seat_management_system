@@ -180,24 +180,24 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     _draw_text(draw, (header_center_x, top_margin + _mm(20)), "AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", regular_34, anchor="ma")
     _draw_text(draw, (header_center_x, top_margin + _mm(29)), f"Attendance Sheet for {exam_name}", bold_42, anchor="ma")
 
-    meta_top = top_margin + _mm(33)
+    meta_top = top_margin + _mm(33) - 5
     meta_height = _mm(11)
-    left_meta_width = _mm(58)
-    right_meta_width = _mm(48)
-    right_meta_right = content_right - _mm(26)
+    left_meta_width = _mm(52)
+    right_meta_width = _mm(58)
+    right_meta_right = content_right - _mm(18)
     right_meta_left = right_meta_right - right_meta_width
 
     left_boxes = [
-        (content_left, meta_top, content_left + left_meta_width, meta_top + meta_height, "Date of Examination"),
-        (content_left, meta_top + meta_height + _mm(1.5), content_left + left_meta_width, meta_top + (meta_height * 2) + _mm(1.5), "Paper Name"),
+        (content_left, meta_top, content_left + left_meta_width, meta_top + meta_height, "Paper Name"),
+        (content_left, meta_top + meta_height + _mm(1.5), content_left + left_meta_width, meta_top + (meta_height * 2) + _mm(1.5), "Paper Code"),
     ]
     right_boxes = [
-        (right_meta_left, meta_top, right_meta_right, meta_top + meta_height, "Time"),
-        (right_meta_left, meta_top + meta_height + _mm(1.5), right_meta_right, meta_top + (meta_height * 2) + _mm(1.5), "Paper Code"),
+        (right_meta_left, meta_top, right_meta_right, meta_top + meta_height, "Date of Examination"),
+        (right_meta_left, meta_top + meta_height + _mm(1.5), right_meta_right, meta_top + (meta_height * 2) + _mm(1.5), "Time"),
     ]
     for left, top, right, bottom, label in left_boxes + right_boxes:
         draw.rectangle((left, top, right, bottom), outline="black", width=2)
-        _draw_centered_text(draw, (left, top, right, bottom), label, regular_30)
+        _draw_centered_text(draw, (left, top, right, bottom), label, regular_34)
 
     table_top = top_margin + _mm(58)
     table_bottom = top_margin + _mm(235)
@@ -268,29 +268,29 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
                 _draw_text(draw, ((left + right) / 2, (row_top + row_bottom) / 2), value, regular_30, anchor="mm")
 
     primary_top = table_bottom + _mm(10)
-    mini_box_size = _mm(7.5)
-    _draw_text(draw, (content_left, primary_top), "No of Student Present", regular_34)
+    mini_box_size = _mm(9)
+    _draw_text(draw, (content_left, primary_top), "No of Student Present", regular_36)
     draw.rectangle((content_left + _mm(43), primary_top - _mm(1), content_left + _mm(43) + mini_box_size, primary_top - _mm(1) + mini_box_size), outline="black", width=2)
-    _draw_text(draw, (content_left, primary_top + _mm(11)), "No of Student Absent", regular_34)
+    _draw_text(draw, (content_left, primary_top + _mm(12)), "No of Student Absent", regular_36)
     draw.rectangle((content_left + _mm(43), primary_top + _mm(10), content_left + _mm(43) + mini_box_size, primary_top + _mm(10) + mini_box_size), outline="black", width=2)
 
     internal_x = content_right - _mm(58)
     internal_sig_top = primary_top - _mm(2)
     draw.rectangle((internal_x, internal_sig_top, internal_x + _mm(36), internal_sig_top + _mm(14)), outline="black", width=2)
-    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(18)), "Signature of Examiner (Internal)", regular_30, anchor="ma")
-    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(24)), "Name (in CAPITAL):", regular_30, anchor="ma")
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(18)), "Signature of Examiner (Internal)", regular_34, anchor="ma")
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(24)), "Name (in CAPITAL):", regular_34, anchor="ma")
 
     secondary_y = A4_HEIGHT_PX - _mm(28)
     hod_left = content_left + _mm(10)
     hod_right = hod_left + _mm(48)
     draw.line((hod_left, secondary_y, hod_right, secondary_y), fill="black", width=2)
-    _draw_text(draw, ((hod_left + hod_right) / 2, secondary_y + _mm(4)), "Signature of HoD", regular_34, anchor="ma")
+    _draw_text(draw, ((hod_left + hod_right) / 2, secondary_y + _mm(4)), "Signature of HoD", regular_36, anchor="ma")
 
     ext_left = content_right - _mm(58)
     ext_right = content_right - _mm(8)
     draw.line((ext_left, secondary_y, ext_right, secondary_y), fill="black", width=2)
-    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(4)), "Signature of Examiner (External)", regular_30, anchor="ma")
-    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(10)), "Name (in CAPITAL):", regular_30, anchor="ma")
+    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(4)), "Signature of Examiner (External)", regular_34, anchor="ma")
+    _draw_text(draw, ((ext_left + ext_right) / 2, secondary_y + _mm(10)), "Name (in CAPITAL):", regular_34, anchor="ma")
 
     footer_label = page_meta.get("footer_label") or (
         f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
@@ -393,15 +393,15 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         draw_center("AN AUTONOMOUS INSTITUTE UNDER MAKAUT, W.B.", page_width / 2, y_top - 46, "Times-Roman", 9)
         draw_center(f"Attendance Sheet for {exam_name}", page_width / 2, y_top - 66, "Times-Bold", 11)
 
-        meta_y_top = y_top - 79
+        meta_y_top = y_top - 74
         box_h = 22
-        left_box_w = 102
-        right_box_w = 78
-        draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Date of Examination")
-        draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Name")
-        right_x = page_width - right_margin - right_box_w - 182
-        draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Time")
-        draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Paper Code")
+        left_box_w = 92
+        right_box_w = 108
+        draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Paper Name", 10)
+        draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Code", 10)
+        right_x = page_width - right_margin - right_box_w - 152
+        draw_box(right_x, meta_y_top - box_h, right_box_w, box_h, "Date of Examination", 10)
+        draw_box(right_x, meta_y_top - (box_h * 2) - 6, right_box_w, box_h, "Time", 10)
 
         table_top = meta_y_top - 54
         table_bottom = table_top - header_height - (ATTENDANCE_SHEET_STUDENTS_PER_PAGE * row_height)
@@ -464,40 +464,40 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
             current_y = next_y
 
         footer_row_1_y = table_bottom - 18
-        pdf.setFont("Times-Roman", 8)
+        pdf.setFont("Times-Roman", 9)
         present_box_x = left_margin
         present_box_y = footer_row_1_y - 7
         label_box_w = 96
         count_box_w = 48
-        box_h = 14
+        box_h = 18
         gap_w = 12
         pdf.rect(present_box_x, present_box_y, label_box_w, box_h, stroke=1, fill=0)
-        pdf.drawCentredString(present_box_x + (label_box_w / 2), present_box_y + 4, "No of Student Present")
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), present_box_y + 6, "No of Student Present")
         pdf.rect(present_box_x + label_box_w + gap_w, present_box_y, count_box_w, box_h, stroke=1, fill=0)
 
-        absent_box_y = present_box_y - 18
+        absent_box_y = present_box_y - 22
         pdf.rect(present_box_x, absent_box_y, label_box_w, box_h, stroke=1, fill=0)
-        pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 4, "No of Student Absent")
+        pdf.drawCentredString(present_box_x + (label_box_w / 2), absent_box_y + 6, "No of Student Absent")
         pdf.rect(present_box_x + label_box_w + gap_w, absent_box_y, count_box_w, box_h, stroke=1, fill=0)
 
         internal_line_left = page_width - right_margin - 268
         internal_line_right = page_width - right_margin - 6
         internal_line_y = footer_row_1_y - 1
         pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
-        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 9, 7)
-        draw_line_label("Name (in CAPITAL):", ((internal_line_left + internal_line_right) / 2) - 110, internal_line_y - 19, 7)
+        draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 10, 8)
+        draw_line_label("Name (in CAPITAL):", ((internal_line_left + internal_line_right) / 2) - 110, internal_line_y - 21, 8)
 
         footer_row_2_line_y = bottom_margin + 20
         hod_left = left_margin + 2
         hod_right = hod_left + 150
         pdf.line(hod_left, footer_row_2_line_y, hod_right, footer_row_2_line_y)
-        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 10, 8)
+        draw_line_label("Signature of HoD", (hod_left + hod_right) / 2, footer_row_2_line_y - 11, 9)
 
         external_left = page_width - right_margin - 268
         external_right = page_width - right_margin - 6
         pdf.line(external_left, footer_row_2_line_y, external_right, footer_row_2_line_y)
-        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 10, 7)
-        draw_line_label("Name (in CAPITAL):", ((external_left + external_right) / 2) - 110, footer_row_2_line_y - 20, 7)
+        draw_line_label("Signature of Examiner (External)", (external_left + external_right) / 2, footer_row_2_line_y - 10, 8)
+        draw_line_label("Name (in CAPITAL):", ((external_left + external_right) / 2) - 110, footer_row_2_line_y - 21, 8)
 
         footer_label = page_meta.get("footer_label") or (
             f"{str(page_meta.get('branch', '')).upper()}_Sem {page_meta.get('semester', '')}".strip("_ ").strip()
