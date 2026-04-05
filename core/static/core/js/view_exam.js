@@ -10,6 +10,23 @@ document.addEventListener('DOMContentLoaded', function(){
         if (['2nd half', '2ndhalf', 'second half', 'afternoon'].includes(normalized)) return 1;
         return 2;
     };
+    const getDominantSemester = (seats) => {
+        const counts = {};
+        (seats || []).forEach(seat => {
+            const reg = String(seat?.registration || '').trim().toUpperCase();
+            if (!reg || reg === 'EMPTY') return;
+            const semester = String(seat?.semester || seat?.student_semester || '').trim();
+            if (!semester) return;
+            counts[semester] = (counts[semester] || 0) + 1;
+        });
+        const entries = Object.entries(counts);
+        if (!entries.length) return '';
+        entries.sort((a, b) => {
+            if (b[1] !== a[1]) return b[1] - a[1];
+            return String(a[0]).localeCompare(String(b[0]));
+        });
+        return entries[0][0];
+    };
 
     if (downloadExamPdfBtn) {
         downloadExamPdfBtn.addEventListener('click', () => {
@@ -119,9 +136,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 roomCard.className = 'room-card';
 
                 const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
-                const roomSemester = roomStudents.length > 0
-                    ? String(roomStudents[0].semester || roomStudents[0].student_semester || '').trim()
-                    : '';
+                const roomSemester = getDominantSemester(roomStudents);
                 const roomDepartments = new Set();
                 roomStudents.forEach(seat => {
                     if (seat.department && seat.department.trim()) {

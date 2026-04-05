@@ -110,6 +110,72 @@ def _session_sort_key(session_value):
     return 2
 
 
+def _resolve_department_exam_meta(dept_exam_lookup, department, exam_date, exam_session, semester=""):
+    dept_key = str(department or "").strip().upper()
+    date_key = str(exam_date or "")
+    session_key = str(exam_session or "")
+    semester_key = str(semester or "").strip()
+
+    candidates = []
+    for key, value in dept_exam_lookup.items():
+        key_dept, key_date, key_session, key_sem = key
+        if key_dept != dept_key or key_date != date_key or key_session != session_key:
+            continue
+        has_time = bool(value.get("start_time") or value.get("end_time"))
+        candidates.append((key_sem, value, has_time))
+
+    if not candidates:
+        return {"start_time": "", "end_time": "", "semester": semester_key}
+
+    if semester_key:
+        for key_sem, value, has_time in candidates:
+            if key_sem == semester_key and has_time:
+                return {
+                    "start_time": value.get("start_time", ""),
+                    "end_time": value.get("end_time", ""),
+                    "semester": value.get("semester", "") or semester_key,
+                }
+
+    for key_sem, value, has_time in candidates:
+        if has_time:
+            return {
+                "start_time": value.get("start_time", ""),
+                "end_time": value.get("end_time", ""),
+                "semester": value.get("semester", "") or semester_key or key_sem,
+            }
+
+    for key_sem, value, _ in candidates:
+        if key_sem == semester_key:
+            return {
+                "start_time": value.get("start_time", ""),
+                "end_time": value.get("end_time", ""),
+                "semester": value.get("semester", "") or semester_key,
+            }
+
+    key_sem, value, _ = candidates[0]
+    return {
+        "start_time": value.get("start_time", ""),
+        "end_time": value.get("end_time", ""),
+        "semester": value.get("semester", "") or semester_key or key_sem,
+    }
+
+
+def _dominant_room_semester(room_seats):
+    semester_counts = {}
+    for seat in room_seats or []:
+        registration = str(seat.get("registration") or "").strip()
+        if not registration or registration.upper() == "EMPTY":
+            continue
+        semester = str(seat.get("semester") or seat.get("student_semester") or "").strip()
+        if not semester:
+            continue
+        semester_counts[semester] = semester_counts.get(semester, 0) + 1
+
+    if not semester_counts:
+        return ""
+    return max(semester_counts.items(), key=lambda item: (item[1], item[0]))[0]
+
+
 def _load_attendance_font(size, bold=False):
     key = "bold" if bold else "regular"
     for font_path in FONT_CANDIDATES[key]:
@@ -3829,19 +3895,13 @@ def get_exam_summary(request):
                         is_eligible = student_eligibility.get(reg_upper, False)
 
                     student_sem = student_semester.get(reg_upper, '')
-                    key = (
-                        str(seat.department or '').strip().upper(),
-                        str(seat.exam_date or ''),
-                        str(seat.exam_session or ''),
-                        str(student_sem or '').strip()
+                    dept_times = _resolve_department_exam_meta(
+                        dept_exam_lookup,
+                        seat.department,
+                        seat.exam_date,
+                        seat.exam_session,
+                        student_sem,
                     )
-                    fallback_key = (
-                        str(seat.department or '').strip().upper(),
-                        str(seat.exam_date or ''),
-                        str(seat.exam_session or ''),
-                        ''
-                    )
-                    dept_times = dept_exam_lookup.get(key) or dept_exam_lookup.get(fallback_key) or {'start_time': '', 'end_time': '', 'semester': ''}
 
                     seating_data.append({
                         'room_id': seat.room_id,
@@ -3982,19 +4042,13 @@ def _build_seating_pdf_rooms(exam):
         reg = (seat.registration_number or '').strip()
         reg_upper = reg.upper()
         student_sem = student_semester.get(reg_upper, '')
-        lookup_key = (
-            str(seat.department or '').strip().upper(),
-            str(seat.exam_date or ''),
-            str(seat.exam_session or ''),
-            str(student_sem or '').strip()
+        dept_times = _resolve_department_exam_meta(
+            dept_exam_lookup,
+            seat.department,
+            seat.exam_date,
+            seat.exam_session,
+            student_sem,
         )
-        fallback_key = (
-            str(seat.department or '').strip().upper(),
-            str(seat.exam_date or ''),
-            str(seat.exam_session or ''),
-            ''
-        )
-        dept_times = dept_exam_lookup.get(lookup_key) or dept_exam_lookup.get(fallback_key) or {'start_time': '', 'end_time': '', 'semester': ''}
 
         seating_data.append({
             'room_id': seat.room_id,
@@ -4038,7 +4092,7 @@ def _build_seating_pdf_rooms(exam):
             if dept_key not in room_departments:
                 continue
 
-            detail_key = f"{dept_key}||{seat.get('exam_name','')}||{seat.get('exam_date','')}||{seat.get('session','')}||{seat.get('start_time','')}||{seat.get('end_time','')}||{seat.get('semester','')}"
+            detail_key = f"{dept_key}||{seat.get('exam_name','')}||{seat.get('exam_date','')}||{seat.get('session','')}||{seat.get('start_time','')}||{seat.get('end_time','')}"
             if detail_key in seen_details:
                 continue
             seen_details.add(detail_key)
@@ -4125,35 +4179,51 @@ def _expand_room_slots_for_output(rooms):
 
 def _hydrate_empty_seat_slot_metadata(room_seats):
     slots_by_date_session = {}
+    semester_by_date_session = {}
     for seat in room_seats:
-        registration = str(seat.get('registration') or '').strip()
-        if not registration or registration.upper() == 'EMPTY':
-            continue
-
         key = (str(seat.get('exam_date') or ''), str(seat.get('session') or ''))
-        slots_by_date_session.setdefault(key, [])
-        slot_meta = (
-            str(seat.get('start_time') or ''),
-            str(seat.get('end_time') or ''),
-            str(seat.get('semester') or '')
-        )
-        if slot_meta not in slots_by_date_session[key]:
-            slots_by_date_session[key].append(slot_meta)
+        start_time = str(seat.get('start_time') or '')
+        end_time = str(seat.get('end_time') or '')
+        semester = str(seat.get('semester') or seat.get('student_semester') or '')
+        registration = str(seat.get('registration') or '').strip()
+
+        if start_time or end_time:
+            slots_by_date_session.setdefault(key, {})
+            slot_meta = (start_time, end_time)
+            slots_by_date_session[key][slot_meta] = slots_by_date_session[key].get(slot_meta, 0) + 1
+
+        if registration and registration.upper() != 'EMPTY' and semester:
+            semester_by_date_session.setdefault(key, {})
+            semester_by_date_session[key][semester] = semester_by_date_session[key].get(semester, 0) + 1
+
+    dominant_slot_meta = {}
+    for key, meta_counts in slots_by_date_session.items():
+        dominant_slot_meta[key] = max(
+            meta_counts.items(),
+            key=lambda item: (item[1], item[0][0], item[0][1])
+        )[0]
+
+    dominant_semester = {}
+    for key, sem_counts in semester_by_date_session.items():
+        dominant_semester[key] = max(
+            sem_counts.items(),
+            key=lambda item: (item[1], item[0])
+        )[0]
 
     for seat in room_seats:
-        registration = str(seat.get('registration') or '').strip()
-        if registration and registration.upper() != 'EMPTY':
-            continue
-
         key = (str(seat.get('exam_date') or ''), str(seat.get('session') or ''))
-        candidates = slots_by_date_session.get(key) or []
-        if len(candidates) == 1:
-            start_time, end_time, semester = candidates[0]
+        slot_meta = dominant_slot_meta.get(key)
+        if slot_meta:
+            start_time, end_time = slot_meta
             if not seat.get('start_time'):
                 seat['start_time'] = start_time
             if not seat.get('end_time'):
                 seat['end_time'] = end_time
-            if not seat.get('semester'):
+
+        registration = str(seat.get('registration') or '').strip()
+        if (not registration or registration.upper() == 'EMPTY') and not seat.get('semester'):
+            semester = dominant_semester.get(key, '')
+            if semester:
                 seat['semester'] = semester
 
     return room_seats
@@ -4169,7 +4239,7 @@ def _draw_seating_pdf_page(pdf, exam, room, page_width, page_height):
         if str(seat.get('registration') or '').strip()
         and str(seat.get('registration') or '').strip().upper() != 'EMPTY'
     ]
-    room_semester = str(room_students[0].get('semester') or room_students[0].get('student_semester') or '').strip() if room_students else ''
+    room_semester = _dominant_room_semester(room_students)
     room_departments = {
         str(seat.get('department') or '').strip().upper()
         for seat in room_students
