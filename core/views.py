@@ -3650,8 +3650,14 @@ def lock_seating(request):
         data = json.loads(request.body)
         exam_id = data.get('exam_id')
         seating_data = data.get('seating_data', [])
-        
-        exam = Exam.objects.get(id=exam_id)
+
+        exam = None
+        if exam_id:
+            exam = Exam.objects.filter(id=exam_id).first()
+        if not exam:
+            exam = Exam.objects.filter(is_temporary=True, is_completed=False).order_by('-id').first()
+        if not exam:
+            return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
         
         # Clear existing allocations
         SeatAllocation.objects.filter(exam=exam).delete()
@@ -3690,7 +3696,8 @@ def lock_seating(request):
         
         return JsonResponse({
             "status": "success",
-            "message": f"{len(allocations)} seats saved to database"
+            "message": f"{len(allocations)} seats saved to database",
+            "exam_id": exam.id
         })
     except Exam.DoesNotExist:
         return JsonResponse({"status": "error", "message": "Exam not found"}, status=404)
