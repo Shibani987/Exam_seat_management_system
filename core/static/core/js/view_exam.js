@@ -3,6 +3,12 @@
 document.addEventListener('DOMContentLoaded', function(){
     const examId = window.EXAM_ID || null;
     const container = document.getElementById('roomsContainer');
+    const getSessionSortKey = (session) => {
+        const normalized = String(session || '').trim().toLowerCase();
+        if (['1st half', '1sthalf', 'first half', 'morning'].includes(normalized)) return 0;
+        if (['2nd half', '2ndhalf', 'second half', 'afternoon'].includes(normalized)) return 1;
+        return 2;
+    };
 
     if (!examId) {
         container.innerHTML = '<p style="color:red;">Invalid exam ID</p>';
@@ -56,6 +62,28 @@ document.addEventListener('DOMContentLoaded', function(){
                 });
             });
 
+            rooms.sort((a, b) => {
+                const aDate = String(a?.slot_date || a?.seats?.[0]?.exam_date || '');
+                const bDate = String(b?.slot_date || b?.seats?.[0]?.exam_date || '');
+                if (aDate !== bDate) return aDate.localeCompare(bDate);
+
+                const aSession = getSessionSortKey(a?.slot_session || a?.seats?.[0]?.session || '');
+                const bSession = getSessionSortKey(b?.slot_session || b?.seats?.[0]?.session || '');
+                if (aSession !== bSession) return aSession - bSession;
+
+                const aFilled = (a?.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY').length;
+                const bFilled = (b?.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY').length;
+                if (aFilled !== bFilled) return bFilled - aFilled;
+
+                const aDeptCount = new Set((a?.department_details || []).map(item => String(item.department || '').trim().toUpperCase()).filter(Boolean)).size;
+                const bDeptCount = new Set((b?.department_details || []).map(item => String(item.department || '').trim().toUpperCase()).filter(Boolean)).size;
+                if (aDeptCount !== bDeptCount) return bDeptCount - aDeptCount;
+
+                const aRoom = `${a?.building || ''}-${a?.room_number || ''}`;
+                const bRoom = `${b?.building || ''}-${b?.room_number || ''}`;
+                return aRoom.localeCompare(bRoom);
+            });
+
             if (!rooms.length) {
                 container.innerHTML = '<p style="color:#666;">No rooms with allocated seats available.</p>';
                 return;
@@ -70,9 +98,15 @@ document.addEventListener('DOMContentLoaded', function(){
                 const roomStudents = (room.seats || []).filter(seat => seat.registration && seat.registration.trim() && seat.registration.trim().toUpperCase() !== 'EMPTY');
                 const roomSemesters = new Set();
                 const roomDepartments = new Set();
+                (room.department_details || []).forEach(item => {
+                    if (item.semester && item.semester.toString().trim()) {
+                        roomSemesters.add(item.semester.toString().trim());
+                    }
+                });
                 roomStudents.forEach(seat => {
-                    if (seat.student_semester && seat.student_semester.toString().trim()) {
-                        roomSemesters.add(seat.student_semester.toString().trim());
+                    const seatSemester = seat.semester || seat.student_semester || '';
+                    if (seatSemester && seatSemester.toString().trim()) {
+                        roomSemesters.add(seatSemester.toString().trim());
                     }
                     if (seat.department && seat.department.trim()) {
                         roomDepartments.add(seat.department.trim().toUpperCase());
@@ -195,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function(){
                         seatDiv.classList.remove('blocked', 'empty');
                         const reg = seat.registration || '';
                         const dept = (seat.department || '').trim();
-                        const sem = seat.student_semester || '';
+                        const sem = seat.semester || seat.student_semester || '';
                         const semText = sem ? ` (Sem ${sem})` : '';
                         seatDiv.innerHTML = `
                             <div class="seat-num">${row}${col}</div>

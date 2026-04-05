@@ -3953,7 +3953,10 @@ def get_student_info(request):
             return JsonResponse({"status": "error", "message": "Student not found"}, status=404)
         
         # Get all seat allocations for this student
-        allocations = SeatAllocation.objects.filter(registration_number=reg_number)
+        allocations = SeatAllocation.objects.filter(
+            registration_number=reg_number,
+            exam__is_completed=True
+        ).select_related('exam').order_by('exam_date', 'exam_session', 'exam_name', 'id')
         
         if not allocations.exists():
             return JsonResponse({"status": "error", "message": "No seat allocations found for this student"}, status=404)
@@ -3962,12 +3965,6 @@ def get_student_info(request):
         seen_exams = set()
         
         for alloc in allocations:
-            # Skip if we already have this exam
-            exam_key = (alloc.exam.id, alloc.exam_date)
-            if exam_key in seen_exams:
-                continue
-            seen_exams.add(exam_key)
-            
             # Get DepartmentExam to fetch start_time and end_time
             student_department = str(getattr(student, 'branch', '') or '').strip()
             dept_exam = DepartmentExam.objects.filter(
@@ -3995,6 +3992,16 @@ def get_student_info(request):
                 'start_time': start_time_str,
                 'end_time': end_time_str,
             }
+            exam_key = (
+                exam_data['exam_id'],
+                exam_data['exam_name'],
+                exam_data['exam_date'],
+                exam_data['start_time'],
+                exam_data['end_time'],
+            )
+            if exam_key in seen_exams:
+                continue
+            seen_exams.add(exam_key)
             exams.append(exam_data)
         
         student_info = {
