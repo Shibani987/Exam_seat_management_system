@@ -17,7 +17,44 @@ document.addEventListener('DOMContentLoaded', function(){
                 return;
             }
 
-            const rooms = data.rooms || [];
+            const rooms = [];
+            (data.rooms || []).forEach(room => {
+                if (!room || !Array.isArray(room.seats) || room.seats.length === 0) {
+                    rooms.push(room);
+                    return;
+                }
+
+                const seatsBySlot = {};
+                room.seats.forEach(seat => {
+                    const slotKey = `${seat.exam_date || ''}||${seat.session || ''}`;
+                    if (!seatsBySlot[slotKey]) {
+                        seatsBySlot[slotKey] = [];
+                    }
+                    seatsBySlot[slotKey].push(seat);
+                });
+
+                const slotKeys = Object.keys(seatsBySlot).sort();
+                if (slotKeys.length <= 1) {
+                    rooms.push(room);
+                    return;
+                }
+
+                slotKeys.forEach(slotKey => {
+                    const [slotDate, slotSession] = slotKey.split('||');
+                    rooms.push({
+                        ...room,
+                        slot_date: slotDate,
+                        slot_session: slotSession,
+                        department_details: Array.isArray(room.department_details)
+                            ? room.department_details.filter(item =>
+                                String(item.exam_date || '') === slotDate &&
+                                String(item.session || '') === slotSession
+                            )
+                            : [],
+                        seats: seatsBySlot[slotKey]
+                    });
+                });
+            });
 
             if (!rooms.length) {
                 container.innerHTML = '<p style="color:#666;">No rooms with allocated seats available.</p>';
@@ -48,7 +85,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 header.innerHTML = `
                     <div>
                         <strong>${room.building} — ${room.room_number}</strong>
-                        <div class="room-meta">Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText}</div>
+                        <div class="room-meta">${room.slot_date && room.slot_session ? `${room.slot_date} | ${room.slot_session} &nbsp; | &nbsp; ` : ''}Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText}</div>
                     </div>
                 `;
                 roomCard.appendChild(header);

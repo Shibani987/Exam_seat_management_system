@@ -1659,9 +1659,48 @@ function renderSeatGrid(rooms) {
         return;
     }
     
-    console.log('[renderSeatGrid] Processing', rooms.length, 'room(s)');
+    const expandedRooms = [];
+    rooms.forEach(room => {
+        if (!room || !Array.isArray(room.seats) || room.seats.length === 0) {
+            expandedRooms.push(room);
+            return;
+        }
+
+        const seatsBySlot = {};
+        room.seats.forEach(seat => {
+            const slotKey = `${seat.exam_date || ''}||${seat.session || ''}`;
+            if (!seatsBySlot[slotKey]) {
+                seatsBySlot[slotKey] = [];
+            }
+            seatsBySlot[slotKey].push(seat);
+        });
+
+        const slotKeys = Object.keys(seatsBySlot).sort();
+        if (slotKeys.length <= 1) {
+            expandedRooms.push(room);
+            return;
+        }
+
+        slotKeys.forEach(slotKey => {
+            const [slotDate, slotSession] = slotKey.split('||');
+            expandedRooms.push({
+                ...room,
+                slot_date: slotDate,
+                slot_session: slotSession,
+                department_details: Array.isArray(room.department_details)
+                    ? room.department_details.filter(item =>
+                        String(item.exam_date || '') === slotDate &&
+                        String(item.session || '') === slotSession
+                    )
+                    : [],
+                seats: seatsBySlot[slotKey]
+            });
+        });
+    });
+
+    console.log('[renderSeatGrid] Processing', expandedRooms.length, 'room slot(s)');
     
-    rooms.forEach((room, roomIdx) => {
+    expandedRooms.forEach((room, roomIdx) => {
         console.log(`[renderSeatGrid] Rendering room ${roomIdx}:`, room);
         
         if (!room) {
@@ -1676,7 +1715,10 @@ function renderSeatGrid(rooms) {
         // Room header
         const header = document.createElement('div');
         header.className = 'room-header';
-        header.innerHTML = `<strong>${room.building || 'Main'} - ${room.room_number || 'N/A'}</strong><span>Capacity: ${room.capacity || 0} seats</span>`;
+        const slotLabel = room.slot_date && room.slot_session
+            ? `${room.slot_date}, ${room.slot_session}<br>`
+            : '';
+        header.innerHTML = `<strong>${room.building || 'Main'} - ${room.room_number || 'N/A'}</strong><span>${slotLabel}Capacity: ${room.capacity || 0} seats</span>`;
         roomDiv.appendChild(header);
 
         // Department exams info
