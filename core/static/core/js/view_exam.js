@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     }
                 });
                 roomStudents.forEach(seat => {
-                    const seatSemester = seat.student_semester || seat.semester || '';
+                    const seatSemester = seat.semester || seat.student_semester || '';
                     if (seatSemester && seatSemester.toString().trim()) {
                         roomSemesters.add(seatSemester.toString().trim());
                     }
@@ -156,6 +156,25 @@ document.addEventListener('DOMContentLoaded', function(){
             if (targetDate && item.exam_date !== targetDate) return false;
             if (targetSession && item.session !== targetSession) return false;
             return true;
+        });
+
+        filteredDetails = filteredDetails.map(item => {
+            if (item.start_time && item.end_time && item.start_time !== 'N/A' && item.end_time !== 'N/A') {
+                return item;
+            }
+
+            const fallback = (room.department_details || []).find(candidate => {
+                return String(candidate.department || '').trim().toUpperCase() === String(item.department || '').trim().toUpperCase()
+                    && String(candidate.exam_name || '').trim() === String(item.exam_name || '').trim()
+                    && String(candidate.exam_date || '').trim() === String(item.exam_date || '').trim()
+                    && String(candidate.session || '').trim() === String(item.session || '').trim()
+                    && candidate.start_time
+                    && candidate.end_time
+                    && candidate.start_time !== 'N/A'
+                    && candidate.end_time !== 'N/A';
+            });
+
+            return fallback ? { ...item, start_time: fallback.start_time, end_time: fallback.end_time } : item;
         });
 
         const deptLine = roomDepartments.size ? Array.from(roomDepartments).join(', ') : 'N/A';
@@ -229,7 +248,7 @@ document.addEventListener('DOMContentLoaded', function(){
                         seatDiv.classList.remove('blocked', 'empty');
                         const reg = seat.registration || '';
                         const dept = (seat.department || '').trim();
-                        const sem = seat.student_semester || seat.semester || '';
+                        const sem = seat.semester || seat.student_semester || '';
                         const semText = sem ? ` (Sem ${sem})` : '';
                         seatDiv.innerHTML = `
                             <div class="seat-num">${row}${col}</div>

@@ -3839,7 +3839,7 @@ def get_exam_summary(request):
                         'exam_name': seat.exam_name or '',
                         'start_time': dept_times.get('start_time', ''),
                         'end_time': dept_times.get('end_time', ''),
-                        'semester': student_sem or dept_times.get('semester', ''),
+                        'semester': dept_times.get('semester', '') or student_sem,
                         'student_semester': student_sem,
                         'year': '',
                         'is_eligible': is_eligible
@@ -3890,7 +3890,7 @@ def get_exam_summary(request):
 
                 dept_details.append({
                     'department': dept,
-                    'semester': s.get('student_semester',''),
+                    'semester': s.get('semester',''),
                     'exam_name': s.get('exam_name','N/A'),
                     'exam_date': s.get('exam_date','N/A'),
                     'session': s.get('session','N/A'),
