@@ -3969,43 +3969,47 @@ def get_student_info(request):
         if not student:
             return JsonResponse({"status": "error", "message": "Student not found"}, status=404)
         
-        # Get all seat allocations for this student
-        allocations = SeatAllocation.objects.filter(
-            registration_number=reg_number,
-            exam__is_completed=True
-        ).select_related('exam').order_by('exam_date', 'exam_session', 'exam_name', 'id')
-        
-        if not allocations.exists():
-            return JsonResponse({"status": "error", "message": "No seat allocations found for this student"}, status=404)
-        
+        student_department = str(getattr(student, 'branch', '') or '').strip()
+        student_semester = str(getattr(student, 'semester', '') or '').strip()
+
+        dept_exams = DepartmentExam.objects.filter(
+            exam__is_completed=True,
+            department__iexact=student_department
+        ).filter(
+            Q(semester=student_semester) | Q(semester='') | Q(semester__isnull=True)
+        ).select_related('exam').order_by('exam_date', 'session', 'start_time', 'exam_name', 'id')
+
+        if not dept_exams.exists():
+            return JsonResponse({"status": "error", "message": "No exams found for this student"}, status=404)
+
         exams = []
         seen_exams = set()
-        
-        for alloc in allocations:
-            # Get DepartmentExam to fetch start_time and end_time
-            student_department = str(getattr(student, 'branch', '') or '').strip()
-            dept_exam = DepartmentExam.objects.filter(
-                exam=alloc.exam,
-                department__iexact=student_department,
-                exam_date=alloc.exam_date
-            ).first()
-            
+
+        def _session_sort_key(session_value):
+            normalized = str(session_value or '').strip().lower()
+            if normalized in ['1st half', '1sthalf', 'first half', 'morning']:
+                return 0
+            if normalized in ['2nd half', '2ndhalf', 'second half', 'afternoon']:
+                return 1
+            return 2
+
+        for dept_exam in dept_exams:
             start_time_str = ''
             end_time_str = ''
             paper_code = ''
-            
-            if dept_exam:
-                if dept_exam.start_time:
-                    start_time_str = dept_exam.start_time.strftime('%H:%M') if isinstance(dept_exam.start_time, time) else str(dept_exam.start_time)
-                if dept_exam.end_time:
-                    end_time_str = dept_exam.end_time.strftime('%H:%M') if isinstance(dept_exam.end_time, time) else str(dept_exam.end_time)
-                paper_code = dept_exam.paper_code or ''
-            
+
+            if dept_exam.start_time:
+                start_time_str = dept_exam.start_time.strftime('%H:%M') if isinstance(dept_exam.start_time, time) else str(dept_exam.start_time)
+            if dept_exam.end_time:
+                end_time_str = dept_exam.end_time.strftime('%H:%M') if isinstance(dept_exam.end_time, time) else str(dept_exam.end_time)
+            paper_code = dept_exam.paper_code or ''
+
             exam_data = {
-                'exam_id': alloc.exam.id,
-                'exam_name': alloc.exam_name or (dept_exam.exam_name if dept_exam else alloc.exam.name),
+                'exam_id': dept_exam.exam.id,
+                'exam_name': dept_exam.exam_name or dept_exam.exam.name,
                 'paper_code': paper_code,
-                'exam_date': str(alloc.exam_date) if alloc.exam_date else '',
+                'exam_date': str(dept_exam.exam_date) if dept_exam.exam_date else '',
+                'session': dept_exam.session or '',
                 'start_time': start_time_str,
                 'end_time': end_time_str,
             }
@@ -4020,6 +4024,13 @@ def get_student_info(request):
                 continue
             seen_exams.add(exam_key)
             exams.append(exam_data)
+
+        exams.sort(key=lambda item: (
+            str(item.get('exam_date') or ''),
+            _session_sort_key(item.get('session')),
+            str(item.get('start_time') or ''),
+            str(item.get('exam_name') or '')
+        ))
         
         student_info = {
             'name': student.name,
