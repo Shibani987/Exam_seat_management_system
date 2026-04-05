@@ -3179,23 +3179,35 @@ def generate_seating(request):
                 "message": f"NO DEPARTMENTS CONFIGURED! Please go back to Step 2 and add departments & exams.\nYour students are in: {', '.join(student_depts)}"
             }, status=400)
         
-        # Build dept_exam_map with normalized department names
+        # Build dept_exam_map with normalized department names + semester
         dept_exam_map = {}
         for de in dept_exams:
             dept_key = (de.department or '').strip().upper()
+            semester_key = str(de.semester or '').strip()
             if not dept_key:
                 continue
-            if dept_key not in dept_exam_map:
-                dept_exam_map[dept_key] = []
-            dept_exam_map[dept_key].append({
+            lookup_key = (dept_key, semester_key)
+            if lookup_key not in dept_exam_map:
+                dept_exam_map[lookup_key] = []
+            dept_exam_map[lookup_key].append({
                 'date': de.exam_date,
                 'session': de.session,
                 'name': de.exam_name,
                 'start_time': str(de.start_time) if de.start_time else None,
-                'end_time': str(de.end_time) if de.end_time else None
+                'end_time': str(de.end_time) if de.end_time else None,
+                'semester': semester_key
             })
-        
-        print(f"[DEBUG] DepartmentExam map departments: {list(dept_exam_map.keys())}")
+
+        for exam_list in dept_exam_map.values():
+            exam_list.sort(key=lambda item: (
+                str(item.get('date') or ''),
+                str(item.get('start_time') or ''),
+                str(item.get('end_time') or ''),
+                str(item.get('session') or ''),
+                str(item.get('name') or '')
+            ))
+
+        print(f"[DEBUG] DepartmentExam map keys: {list(dept_exam_map.keys())}")
         
         # Group students by (semester, exam_date, session)
         room_groups = defaultdict(list)
@@ -3209,12 +3221,17 @@ def generate_seating(request):
             dept_raw = getattr(student, 'branch', '') or ''
             dept = dept_raw.strip().upper()
 
-            if not dept or dept not in dept_exam_map:
+            semester_key = str(semester or '').strip()
+            matching_exam_infos = dept_exam_map.get((dept, semester_key))
+            if not matching_exam_infos and semester_key:
+                matching_exam_infos = dept_exam_map.get((dept, ''))
+
+            if not dept or not matching_exam_infos:
                 skipped_students.append((student.registration_number, dept_raw))
-                print(f"[DEBUG] SKIPPED student {student.registration_number} with dept='{dept_raw}' (not in dept_exam_map)")
+                print(f"[DEBUG] SKIPPED student {student.registration_number} with dept='{dept_raw}' semester='{semester_key}' (not in dept_exam_map)")
                 continue
 
-            for dept_exam_info in dept_exam_map[dept]:
+            for dept_exam_info in matching_exam_infos:
                 exam_date = dept_exam_info['date']
                 session = dept_exam_info['session']
                 exam_name = dept_exam_info['name']
@@ -3462,7 +3479,7 @@ def generate_seating(request):
                 print(f"[DEBUG]   ✗ No seats found for this room")
         
         print(f"\n[DEBUG] ===== SEATING GENERATION SUMMARY =====")
-        print(f"[DEBUG] DepartmentExam departments: {list(dept_exam_map.keys())}")
+        print(f"[DEBUG] DepartmentExam department/semester keys: {list(dept_exam_map.keys())}")
         print(f"[DEBUG] Total exam students: {exam_students.count()}")
         print(f"[DEBUG] Skipped students: {len(skipped_students)}")
         if skipped_students:
@@ -3481,7 +3498,10 @@ def generate_seating(request):
             print(f"[DEBUG] ✗ CRITICAL: ALL {exam_students.count()} STUDENTS WERE SKIPPED!")
             print(f"[DEBUG] Department mismatch between student file and Step 2 departments")
             student_depts_in_file = list(set(s.student.branch for s in exam_students))
-            configured_depts = list(dept_exam_map.keys())
+            configured_depts = [
+                f"{dept} (Sem {sem})" if sem else dept
+                for dept, sem in dept_exam_map.keys()
+            ]
             print(f"[DEBUG] Departments in student file: {student_depts_in_file}")
             print(f"[DEBUG] Departments in Step 2: {configured_depts}")
             print(f"[DEBUG] ==========================================\n")
