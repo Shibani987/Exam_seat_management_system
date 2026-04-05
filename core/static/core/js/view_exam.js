@@ -115,6 +115,21 @@ document.addEventListener('DOMContentLoaded', function(){
                         <div class="room-meta">${room.slot_date && room.slot_session ? `${room.slot_date} | ${room.slot_session} &nbsp; | &nbsp; ` : ''}Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText}</div>
                     </div>
                 `;
+                const pdfBtn = document.createElement('button');
+                pdfBtn.type = 'button';
+                pdfBtn.textContent = 'Export A4 PDF';
+                Object.assign(pdfBtn.style, {
+                    marginLeft: '10px',
+                    padding: '6px 10px',
+                    borderRadius: '6px',
+                    border: 'none',
+                    background: '#1976d2',
+                    color: '#fff',
+                    cursor: 'pointer',
+                    fontWeight: '600'
+                });
+                pdfBtn.addEventListener('click', () => openRoomPdfPrint(roomCard, room));
+                header.appendChild(pdfBtn);
                 roomCard.appendChild(header);
 
                 const deptDiv = document.createElement('div');
@@ -268,5 +283,119 @@ document.addEventListener('DOMContentLoaded', function(){
         });
 
         return grid;
+    }
+
+    function buildRoomPdfFilename(room) {
+        const parts = [
+            room.building || 'room',
+            room.room_number || 'na',
+            room.slot_date || room.seats?.[0]?.exam_date || '',
+            room.slot_session || room.seats?.[0]?.session || ''
+        ];
+        return parts.filter(Boolean).join('-').replace(/[^\w.-]+/g, '_');
+    }
+
+    function openRoomPdfPrint(roomCard, room) {
+        const printWindow = window.open('', '_blank', 'width=1100,height=900');
+        if (!printWindow) {
+            alert('Popup blocked. Please allow popups to export PDF.');
+            return;
+        }
+
+        const printableRoom = roomCard.cloneNode(true);
+        printableRoom.querySelectorAll('button').forEach(btn => btn.remove());
+        const safeTitle = buildRoomPdfFilename(room);
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${safeTitle}</title>
+                <style>
+                    @page { size: A4 portrait; margin: 8mm; }
+                    * { box-sizing: border-box; }
+                    body { margin: 0; font-family: Arial, sans-serif; color: #000; background: #fff; }
+                    .print-page { width: 194mm; min-height: 281mm; margin: 0 auto; }
+                    .room-card {
+                        width: 100%;
+                        border: 1px solid #d0d0d0;
+                        border-radius: 8px;
+                        padding: 10px;
+                        background: #fff;
+                    }
+                    .room-header {
+                        display: flex;
+                        justify-content: space-between;
+                        align-items: flex-start;
+                        gap: 10px;
+                        margin-bottom: 8px;
+                        padding-bottom: 8px;
+                        border-bottom: 1px solid #ddd;
+                        font-size: 12px;
+                    }
+                    .dept-info {
+                        margin-bottom: 8px;
+                        padding: 8px;
+                        background: #fff;
+                        border-left: 3px solid #1976d2;
+                        border-radius: 4px;
+                        font-size: 11px;
+                        line-height: 1.3;
+                    }
+                    .seat-grid {
+                        display: flex;
+                        flex-direction: column;
+                        gap: 6px;
+                        background: #f9f9f9;
+                        padding: 10px;
+                        border-radius: 8px;
+                        width: 100%;
+                        border: 1px solid #e0e0e0;
+                    }
+                    .seat-row {
+                        display: grid;
+                        grid-template-columns: repeat(5, 1fr);
+                        gap: 6px;
+                        width: 100%;
+                    }
+                    .seat {
+                        aspect-ratio: 1;
+                        min-width: 0;
+                        min-height: 0;
+                        border-radius: 6px;
+                        display: flex;
+                        flex-direction: column;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 8px;
+                        text-align: center;
+                        font-weight: 600;
+                        padding: 4px;
+                        background: #fff;
+                        border: 1px solid #ccc;
+                        overflow: hidden;
+                        page-break-inside: avoid;
+                    }
+                    .seat.eligible { background: #28a745 !important; color: #fff !important; border-color: #228b22 !important; }
+                    .seat.blocked { background: #ffffff !important; color: #000 !important; }
+                    .seat.empty { background: #f1f1f1 !important; color: #666 !important; }
+                    .seat-num { font-weight: 700; font-size: 8px; margin-bottom: 2px; }
+                    .seat-info { font-size: 7px; line-height: 1.1; width: 100%; word-break: break-word; }
+                </style>
+            </head>
+            <body>
+                <div class="print-page">${printableRoom.outerHTML}</div>
+                <script>
+                    window.onload = function() {
+                        setTimeout(function() {
+                            window.print();
+                        }, 250);
+                    };
+                <\/script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
     }
 });
