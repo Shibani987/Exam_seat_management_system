@@ -3226,7 +3226,7 @@ def generate_seating(request):
 
         print(f"[DEBUG] DepartmentExam map keys: {list(dept_exam_map.keys())}")
         
-        # Group students by (semester, exam_date, session)
+        # Group students by (semester, exam_date, start_time, end_time, session)
         room_groups = defaultdict(list)
         skipped_students = []
         seen_by_slot = defaultdict(set)
@@ -3255,8 +3255,8 @@ def generate_seating(request):
                 start_time = dept_exam_info.get('start_time')
                 end_time = dept_exam_info.get('end_time')
 
-                group_key = (semester, exam_date, session)
-                slot_key = (student.registration_number, exam_date, session)
+                group_key = (semester, exam_date, start_time or '', end_time or '', session)
+                slot_key = (student.registration_number, exam_date, start_time or '', end_time or '', session)
 
                 if slot_key in seen_by_slot[group_key]:
                     # already assigned once for this date/session
@@ -3280,7 +3280,7 @@ def generate_seating(request):
                 total_group_students += 1
 
         seating_results = defaultdict(list)
-        used_room_sessions = set()  # (room_id, exam_date, session)
+        used_room_sessions = set()  # (room_id, exam_date, start_time, end_time, session)
 
         def _build_column_assignments(departments):
             if not departments:
@@ -3305,9 +3305,9 @@ def generate_seating(request):
 
         from collections import deque
 
-        for group_key in sorted(room_groups.keys(), key=lambda k: (str(k[1]), _session_sort_key(k[2]), str(k[0]))):
+        for group_key in sorted(room_groups.keys(), key=lambda k: (str(k[1]), str(k[2] or ''), str(k[3] or ''), _session_sort_key(k[4]), str(k[0]))):
             students_in_group = list(room_groups[group_key])
-            semester, exam_date, session = group_key
+            semester, exam_date, start_time, end_time, session = group_key
 
             # Dedup by reg+date+session
             deduped = []
@@ -3316,7 +3316,7 @@ def generate_seating(request):
                 reg = sw.get('registration_number')
                 if not reg:
                     continue
-                slot_key = (reg, sw.get('exam_date'), sw.get('session'))
+                slot_key = (reg, sw.get('exam_date'), sw.get('start_time') or '', sw.get('end_time') or '', sw.get('session'))
                 if slot_key in seen_reg_slot:
                     continue
                 seen_reg_slot.add(slot_key)
@@ -3331,11 +3331,11 @@ def generate_seating(request):
             if not dept_queues:
                 continue
 
-            available_rooms = [r for r in rooms if (r.id, exam_date, session) not in used_room_sessions]
+            available_rooms = [r for r in rooms if (r.id, exam_date, start_time or '', end_time or '', session) not in used_room_sessions]
             if not available_rooms:
                 return JsonResponse({
                     "status": "error",
-                    "message": f"Not enough rooms available for {exam_date} {session}. Add more rooms or adjust capacities."}, status=400)
+                    "message": f"Not enough rooms available for {exam_date} {session} {start_time or ''}-{end_time or ''}. Add more rooms or adjust capacities."}, status=400)
 
             available_rooms = sorted(available_rooms, key=lambda r: int(r.capacity), reverse=True)
             total_remaining = sum(len(q) for q in dept_queues.values())
@@ -3345,7 +3345,7 @@ def generate_seating(request):
                 if room_idx >= len(available_rooms):
                     return JsonResponse({
                         "status": "error",
-                        "message": f"Not enough room capacity for {exam_date} {session}. {total_remaining} students remain unassigned."}, status=400)
+                        "message": f"Not enough room capacity for {exam_date} {session} {start_time or ''}-{end_time or ''}. {total_remaining} students remain unassigned."}, status=400)
                 room = available_rooms[room_idx]
                 room_idx += 1
 
@@ -3409,7 +3409,7 @@ def generate_seating(request):
                             'semester': ''
                         })
 
-                used_room_sessions.add((room.id, exam_date, session))
+                used_room_sessions.add((room.id, exam_date, start_time or '', end_time or '', session))
                 dept_queues = {d: q for d, q in dept_queues.items() if q}
 
                 if total_remaining <= 0:
@@ -3418,7 +3418,7 @@ def generate_seating(request):
             if any(len(q) > 0 for q in dept_queues.values()):
                 return JsonResponse({
                     "status": "error",
-                    "message": "Some students are not allocated. Not enough rooms for this date/session."}, status=400)
+                    "message": "Some students are not allocated. Not enough rooms for this date/time slot."}, status=400)
 
         # Final allocation validation
         allocated_students = sum(
@@ -3445,12 +3445,14 @@ def generate_seating(request):
             first_seat = next((seat for seat in seats if seat.get('exam_date') or seat.get('session')), {})
             slot_room_keys.append((
                 str(first_seat.get('exam_date') or ''),
+                str(first_seat.get('start_time') or ''),
+                str(first_seat.get('end_time') or ''),
                 _session_sort_key(first_seat.get('session')),
                 str(first_seat.get('session') or ''),
                 room_id
             ))
 
-        for _, _, _, room_id in sorted(slot_room_keys):
+        for _, _, _, _, _, room_id in sorted(slot_room_keys):
             room = room_by_id.get(room_id)
             if not room:
                 continue
@@ -4065,25 +4067,31 @@ def _expand_room_slots_for_output(rooms):
 
         seats_by_slot = {}
         for seat in seats:
-            slot_key = f"{seat.get('exam_date', '')}||{seat.get('session', '')}"
+            slot_key = f"{seat.get('exam_date', '')}||{seat.get('start_time', '')}||{seat.get('end_time', '')}||{seat.get('session', '')}"
             seats_by_slot.setdefault(slot_key, []).append(seat)
 
         if len(seats_by_slot) <= 1:
             room_copy = dict(room)
             room_copy['slot_date'] = seats[0].get('exam_date', '')
+            room_copy['slot_start_time'] = seats[0].get('start_time', '')
+            room_copy['slot_end_time'] = seats[0].get('end_time', '')
             room_copy['slot_session'] = seats[0].get('session', '')
             expanded_rooms.append(room_copy)
             continue
 
         for slot_key, slot_seats in seats_by_slot.items():
-            slot_date, slot_session = slot_key.split('||', 1)
+            slot_date, slot_start_time, slot_end_time, slot_session = slot_key.split('||', 3)
             expanded_rooms.append({
                 **room,
                 'slot_date': slot_date,
+                'slot_start_time': slot_start_time,
+                'slot_end_time': slot_end_time,
                 'slot_session': slot_session,
                 'department_details': [
                     item for item in (room.get('department_details') or [])
                     if str(item.get('exam_date') or '') == slot_date
+                    and str(item.get('start_time') or '') == slot_start_time
+                    and str(item.get('end_time') or '') == slot_end_time
                     and str(item.get('session') or '') == slot_session
                 ],
                 'seats': slot_seats
@@ -4091,6 +4099,8 @@ def _expand_room_slots_for_output(rooms):
 
     expanded_rooms.sort(key=lambda room: (
         str(room.get('slot_date') or room.get('seats', [{}])[0].get('exam_date') or ''),
+        str(room.get('slot_start_time') or room.get('seats', [{}])[0].get('start_time') or ''),
+        str(room.get('slot_end_time') or room.get('seats', [{}])[0].get('end_time') or ''),
         _session_sort_key(room.get('slot_session') or room.get('seats', [{}])[0].get('session') or ''),
         -sum(1 for seat in (room.get('seats') or []) if str(seat.get('registration') or '').strip() and str(seat.get('registration') or '').strip().upper() != 'EMPTY'),
         -len({
@@ -4210,6 +4220,7 @@ def _draw_seating_pdf_page(pdf, exam, room, page_width, page_height):
             cols_to_render = leftover or 5
 
         for col in range(1, cols_to_render + 1):
+            display_seat_label = f"{chr(64 + col)}{row_index + 1}"
             x = margin_x + ((col - 1) * (cell_width + gap))
             y = grid_top - cell_height - (row_index * (cell_height + gap))
             seat = seat_map.get((row_label, col))
@@ -4234,7 +4245,7 @@ def _draw_seating_pdf_page(pdf, exam, room, page_width, page_height):
                 pdf.setFillColorRGB(1, 1, 1)
 
             pdf.setFont("Helvetica-Bold", 9)
-            pdf.drawCentredString(x + (cell_width / 2), y + cell_height - 14, f"{row_label}{col}")
+            pdf.drawCentredString(x + (cell_width / 2), y + cell_height - 14, display_seat_label)
 
             if is_empty:
                 pdf.setFont("Helvetica", 8)

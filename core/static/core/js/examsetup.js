@@ -838,17 +838,32 @@ function renderDeptExams(dept) {
         examDiv.className = 'exam-input-group';
         examDiv.innerHTML = `
             <div class="exam-row">
-                <input type="text" class="exam-name" data-dept="${dept}" data-idx="${idx}" placeholder="Exam Name" value="${exam.name}">
-                <input type="text" class="exam-code" data-dept="${dept}" data-idx="${idx}" placeholder="Paper Code" value="${exam.code}">
+                <div class="exam-field">
+                    <label>Exam Name</label>
+                    <input type="text" class="exam-name" data-dept="${dept}" data-idx="${idx}" placeholder="Exam Name" value="${exam.name}">
+                </div>
+                <div class="exam-field">
+                    <label>Paper Code</label>
+                    <input type="text" class="exam-code" data-dept="${dept}" data-idx="${idx}" placeholder="Paper Code" value="${exam.code}">
+                </div>
             </div>
             <div class="exam-row">
-                <input type="date" class="exam-date" data-dept="${dept}" data-idx="${idx}" value="${exam.date}">
-                <select class="exam-session" data-dept="${dept}" data-idx="${idx}">
-                    <option value="">Select Session</option>
-                    <option value="1st Half" ${exam.session==='1st Half'?'selected':''}>1st Half</option>
-                    <option value="2nd Half" ${exam.session==='2nd Half'?'selected':''}>2nd Half</option>
-                </select>
-                <input type="text" class="exam-semester" data-dept="${dept}" data-idx="${idx}" placeholder="Semester" value="${exam.semester || ''}">
+                <div class="exam-field">
+                    <label>Exam Date</label>
+                    <input type="date" class="exam-date" data-dept="${dept}" data-idx="${idx}" value="${exam.date}">
+                </div>
+                <div class="exam-field">
+                    <label>Session</label>
+                    <select class="exam-session" data-dept="${dept}" data-idx="${idx}">
+                        <option value="">Select Session</option>
+                        <option value="1st Half" ${exam.session==='1st Half'?'selected':''}>1st Half</option>
+                        <option value="2nd Half" ${exam.session==='2nd Half'?'selected':''}>2nd Half</option>
+                    </select>
+                </div>
+                <div class="exam-field">
+                    <label>Semester</label>
+                    <input type="text" class="exam-semester" data-dept="${dept}" data-idx="${idx}" placeholder="Semester" value="${exam.semester || ''}">
+                </div>
             </div>
             <div class="exam-row">
                 <div class="time-input-group">
@@ -1689,7 +1704,7 @@ function renderSeatGrid(rooms) {
 
         const seatsBySlot = {};
         room.seats.forEach(seat => {
-            const slotKey = `${seat.exam_date || ''}||${seat.session || ''}`;
+            const slotKey = `${seat.exam_date || ''}||${seat.start_time || ''}||${seat.end_time || ''}||${seat.session || ''}`;
             if (!seatsBySlot[slotKey]) {
                 seatsBySlot[slotKey] = [];
             }
@@ -1703,14 +1718,18 @@ function renderSeatGrid(rooms) {
         }
 
         slotKeys.forEach(slotKey => {
-            const [slotDate, slotSession] = slotKey.split('||');
+            const [slotDate, slotStartTime, slotEndTime, slotSession] = slotKey.split('||');
             expandedRooms.push({
                 ...room,
                 slot_date: slotDate,
+                slot_start_time: slotStartTime,
+                slot_end_time: slotEndTime,
                 slot_session: slotSession,
                 department_details: Array.isArray(room.department_details)
                     ? room.department_details.filter(item =>
                         String(item.exam_date || '') === slotDate &&
+                        String(item.start_time || '') === slotStartTime &&
+                        String(item.end_time || '') === slotEndTime &&
                         String(item.session || '') === slotSession
                     )
                     : [],
@@ -1723,6 +1742,14 @@ function renderSeatGrid(rooms) {
         const aDate = String(a?.slot_date || a?.seats?.[0]?.exam_date || '');
         const bDate = String(b?.slot_date || b?.seats?.[0]?.exam_date || '');
         if (aDate !== bDate) return aDate.localeCompare(bDate);
+
+        const aStart = String(a?.slot_start_time || a?.seats?.[0]?.start_time || '');
+        const bStart = String(b?.slot_start_time || b?.seats?.[0]?.start_time || '');
+        if (aStart !== bStart) return aStart.localeCompare(bStart);
+
+        const aEnd = String(a?.slot_end_time || a?.seats?.[0]?.end_time || '');
+        const bEnd = String(b?.slot_end_time || b?.seats?.[0]?.end_time || '');
+        if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
 
         const aSession = getSessionSortKey(a?.slot_session || a?.seats?.[0]?.session || '');
         const bSession = getSessionSortKey(b?.slot_session || b?.seats?.[0]?.session || '');
@@ -1883,6 +1910,7 @@ function renderSeatGrid(rooms) {
             rows.forEach((row, rowIdx) => {
                 const rowDiv = document.createElement('div');
                 rowDiv.className = 'seat-row';
+                const getDisplaySeatLabel = (columnNumber, visualRowIndex) => `${String.fromCharCode(64 + columnNumber)}${visualRowIndex + 1}`;
 
                 // For last row, only render the leftover columns up to capacity
                 let colsToRender = cols;
@@ -1898,6 +1926,7 @@ function renderSeatGrid(rooms) {
 
                     // Find seat matching this row and column
                     const seat = room.seats?.find(s => s.row === row && s.column === col);
+                    const displaySeatLabel = getDisplaySeatLabel(col, rowIdx);
                     
                     if (seat) {
                         const isEligible = seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true';
@@ -1913,7 +1942,7 @@ function renderSeatGrid(rooms) {
                                 const dept = seat.department || '';
 
                                 seatDiv.innerHTML = `
-                                    <div class="seat-num">${row}${col}</div>
+                                    <div class="seat-num">${displaySeatLabel}</div>
                                     <div class="seat-info">${dept} ${reg}</div>
                                 `;
 
@@ -1923,7 +1952,7 @@ function renderSeatGrid(rooms) {
                                 seatDiv.classList.add('blocked');
 
                                 seatDiv.innerHTML = `
-                                    <div class="seat-num">${row}${col}</div>
+                                    <div class="seat-num">${displaySeatLabel}</div>
                                 `;
                             }
 
@@ -1933,7 +1962,7 @@ function renderSeatGrid(rooms) {
                             seatDiv.classList.add('empty');
 
                             seatDiv.innerHTML = `
-                                <div class="seat-num">${row}${col}</div>
+                                <div class="seat-num">${displaySeatLabel}</div>
                                 <div class="seat-info">EMPTY</div>
                             `;
                         }
@@ -1944,7 +1973,7 @@ function renderSeatGrid(rooms) {
                         seatDiv.classList.add('empty');
 
                         seatDiv.innerHTML = `
-                            <div class="seat-num">${row}${col}</div>
+                            <div class="seat-num">${displaySeatLabel}</div>
                             <div class="seat-info">EMPTY</div>
                         `;
                     }

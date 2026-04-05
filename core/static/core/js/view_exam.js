@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function(){
 
                 const seatsBySlot = {};
                 room.seats.forEach(seat => {
-                    const slotKey = `${seat.exam_date || ''}||${seat.session || ''}`;
+                    const slotKey = `${seat.exam_date || ''}||${seat.start_time || ''}||${seat.end_time || ''}||${seat.session || ''}`;
                     if (!seatsBySlot[slotKey]) {
                         seatsBySlot[slotKey] = [];
                     }
@@ -57,14 +57,18 @@ document.addEventListener('DOMContentLoaded', function(){
                 }
 
                 slotKeys.forEach(slotKey => {
-                    const [slotDate, slotSession] = slotKey.split('||');
+                    const [slotDate, slotStartTime, slotEndTime, slotSession] = slotKey.split('||');
                     rooms.push({
                         ...room,
                         slot_date: slotDate,
+                        slot_start_time: slotStartTime,
+                        slot_end_time: slotEndTime,
                         slot_session: slotSession,
                         department_details: Array.isArray(room.department_details)
                             ? room.department_details.filter(item =>
                                 String(item.exam_date || '') === slotDate &&
+                                String(item.start_time || '') === slotStartTime &&
+                                String(item.end_time || '') === slotEndTime &&
                                 String(item.session || '') === slotSession
                             )
                             : [],
@@ -77,6 +81,14 @@ document.addEventListener('DOMContentLoaded', function(){
                 const aDate = String(a?.slot_date || a?.seats?.[0]?.exam_date || '');
                 const bDate = String(b?.slot_date || b?.seats?.[0]?.exam_date || '');
                 if (aDate !== bDate) return aDate.localeCompare(bDate);
+
+                const aStart = String(a?.slot_start_time || a?.seats?.[0]?.start_time || '');
+                const bStart = String(b?.slot_start_time || b?.seats?.[0]?.start_time || '');
+                if (aStart !== bStart) return aStart.localeCompare(bStart);
+
+                const aEnd = String(a?.slot_end_time || a?.seats?.[0]?.end_time || '');
+                const bEnd = String(b?.slot_end_time || b?.seats?.[0]?.end_time || '');
+                if (aEnd !== bEnd) return aEnd.localeCompare(bEnd);
 
                 const aSession = getSessionSortKey(a?.slot_session || a?.seats?.[0]?.session || '');
                 const bSession = getSessionSortKey(b?.slot_session || b?.seats?.[0]?.session || '');
@@ -229,6 +241,7 @@ document.addEventListener('DOMContentLoaded', function(){
         rows.forEach((row, rowIdx) => {
             const rowDiv = document.createElement('div');
             rowDiv.className = 'seat-row';
+            const getDisplaySeatLabel = (columnNumber, visualRowIndex) => `${String.fromCharCode(64 + columnNumber)}${visualRowIndex + 1}`;
 
             let colsToRender = [1, 2, 3, 4, 5];
             if (rowIdx === rows.length - 1) {
@@ -242,6 +255,7 @@ document.addEventListener('DOMContentLoaded', function(){
                 seatDiv.className = 'seat';
 
                 const seat = (room.seats || []).find(s => s.row === row && Number(s.column) === col);
+                const displaySeatLabel = getDisplaySeatLabel(col, rowIdx);
 
                 if (seat && seat.registration && seat.registration !== 'Empty') {
                     const isEligible = seat.is_eligible === true || String(seat.is_eligible).toLowerCase() === 'true';
@@ -252,14 +266,14 @@ document.addEventListener('DOMContentLoaded', function(){
                         const reg = seat.registration || '';
                         const dept = (seat.department || '').trim();
                         seatDiv.innerHTML = `
-                            <div class="seat-num">${row}${col}</div>
+                            <div class="seat-num">${displaySeatLabel}</div>
                             <div class="seat-info">${dept} ${reg}</div>
                         `;
                     } else {
                         seatDiv.classList.remove('eligible', 'empty');
                         seatDiv.classList.add('blocked');
                         seatDiv.innerHTML = `
-                            <div class="seat-num">${row}${col}</div>
+                            <div class="seat-num">${displaySeatLabel}</div>
                         `;
                     }
 
@@ -267,7 +281,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     seatDiv.classList.remove('eligible', 'blocked');
                     seatDiv.classList.add('empty');
                     seatDiv.innerHTML = `
-                        <div class="seat-num">${row}${col}</div>
+                        <div class="seat-num">${displaySeatLabel}</div>
                         <div class="seat-info">EMPTY</div>
                     `;
                 }
