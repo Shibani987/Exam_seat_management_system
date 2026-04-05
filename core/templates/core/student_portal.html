@@ -773,6 +773,50 @@
             }
         }
 
+        function generateSeatGrid(seat) {
+            const grid = document.getElementById('seatGrid');
+            const layoutTitle = document.querySelector('.seating-layout h4');
+            grid.innerHTML = '';
+
+            const cols = 5;
+            const capacity = parseInt(seat.room_capacity || 0, 10) || 0;
+            const rows = capacity > 0 ? Math.ceil(capacity / cols) : 0;
+
+            if (layoutTitle) {
+                layoutTitle.textContent = `Room Layout (${cols} Columns × ${rows} Rows)`;
+            }
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 1; col <= cols; col++) {
+                    const filledBefore = row * cols;
+                    const seatNumber = filledBefore + col;
+                    if (seatNumber > capacity) continue;
+
+                    const actualRowLetter = String.fromCharCode(65 + row);
+                    const actualSeatCode = `${actualRowLetter}${col}`;
+                    const displaySeatCode = `${String.fromCharCode(64 + col)}${row + 1}`;
+
+                    const seatCell = document.createElement('div');
+                    seatCell.className = 'seat-cell';
+
+                    if (actualSeatCode === seat.seat_code) {
+                        seatCell.classList.add('student-seat');
+                        seatCell.textContent = displaySeatCode;
+                        seatCell.title = 'Your Seat';
+                    } else {
+                        if (seat.room_occupied_seats && seat.room_occupied_seats.includes(actualSeatCode)) {
+                            seatCell.classList.add('occupied');
+                        } else {
+                            seatCell.classList.add('empty');
+                        }
+                        seatCell.textContent = displaySeatCode;
+                    }
+
+                    grid.appendChild(seatCell);
+                }
+            }
+        }
+
         function showMessage(msg, type) {
             messageContainer.innerHTML = `<div class="${type}">${msg}</div>`;
         }
