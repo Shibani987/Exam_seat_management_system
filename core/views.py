@@ -3884,6 +3884,7 @@ def get_exam_summary(request):
             room_seats = [s for s in seating_data if s.get('room_id') == r.get('id')]
             if not room_seats:
                 continue
+            room_seats = _hydrate_empty_seat_slot_metadata(room_seats)
 
             # Determine departments with actual students in room
             room_departments = set()
@@ -4020,6 +4021,7 @@ def _build_seating_pdf_rooms(exam):
         room_seats = [seat for seat in seating_data if seat.get('room_id') == room_data.get('id')]
         if not room_seats:
             continue
+        room_seats = _hydrate_empty_seat_slot_metadata(room_seats)
 
         room_departments = set()
         for seat in room_seats:
@@ -4119,6 +4121,42 @@ def _expand_room_slots_for_output(rooms):
         str(room.get('room_number') or '')
     ))
     return expanded_rooms
+
+
+def _hydrate_empty_seat_slot_metadata(room_seats):
+    slots_by_date_session = {}
+    for seat in room_seats:
+        registration = str(seat.get('registration') or '').strip()
+        if not registration or registration.upper() == 'EMPTY':
+            continue
+
+        key = (str(seat.get('exam_date') or ''), str(seat.get('session') or ''))
+        slots_by_date_session.setdefault(key, [])
+        slot_meta = (
+            str(seat.get('start_time') or ''),
+            str(seat.get('end_time') or ''),
+            str(seat.get('semester') or '')
+        )
+        if slot_meta not in slots_by_date_session[key]:
+            slots_by_date_session[key].append(slot_meta)
+
+    for seat in room_seats:
+        registration = str(seat.get('registration') or '').strip()
+        if registration and registration.upper() != 'EMPTY':
+            continue
+
+        key = (str(seat.get('exam_date') or ''), str(seat.get('session') or ''))
+        candidates = slots_by_date_session.get(key) or []
+        if len(candidates) == 1:
+            start_time, end_time, semester = candidates[0]
+            if not seat.get('start_time'):
+                seat['start_time'] = start_time
+            if not seat.get('end_time'):
+                seat['end_time'] = end_time
+            if not seat.get('semester'):
+                seat['semester'] = semester
+
+    return room_seats
 
 
 def _draw_seating_pdf_page(pdf, exam, room, page_width, page_height):

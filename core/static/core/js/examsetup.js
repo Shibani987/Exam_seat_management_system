@@ -39,6 +39,7 @@ let selectedFiles = [];
 let selectedFilesData = null; // Store merged file + student data from Step 4
 let currentSeatingData = null; // Store current seating for lock feature
 let step4UploadedFile = null;
+let skipTempExamCleanup = false;
 
 // =============================
 // TIME CONVERSION HELPER FUNCTIONS
@@ -254,7 +255,7 @@ document.addEventListener('DOMContentLoaded', () => {
 // =============================
 window.addEventListener('beforeunload', (e) => {
     // Only delete if exam is still temporary (not completed)
-    if (examId) {
+    if (examId && !skipTempExamCleanup) {
         const data = JSON.stringify({ exam_id: examId });
         navigator.sendBeacon('/delete-temp-exam/', data);
     }
@@ -1379,7 +1380,9 @@ if (downloadStep5PdfBtn) {
             alert('Exam ID not found.');
             return;
         }
+        skipTempExamCleanup = true;
         window.location.href = `/download-seating-pdf/?exam_id=${encodeURIComponent(examId)}`;
+        setTimeout(() => { skipTempExamCleanup = false; }, 3000);
     };
 }
 
