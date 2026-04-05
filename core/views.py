@@ -3179,6 +3179,14 @@ def generate_seating(request):
                 "message": f"NO DEPARTMENTS CONFIGURED! Please go back to Step 2 and add departments & exams.\nYour students are in: {', '.join(student_depts)}"
             }, status=400)
         
+        def _session_sort_key(session_value):
+            normalized = str(session_value or '').strip().lower()
+            if normalized in ['1st half', '1sthalf', 'first half', 'morning']:
+                return 0
+            if normalized in ['2nd half', '2ndhalf', 'second half', 'afternoon']:
+                return 1
+            return 2
+
         # Build dept_exam_map with normalized department names + semester
         dept_exam_map = {}
         for de in dept_exams:
@@ -3201,9 +3209,9 @@ def generate_seating(request):
         for exam_list in dept_exam_map.values():
             exam_list.sort(key=lambda item: (
                 str(item.get('date') or ''),
+                _session_sort_key(item.get('session')),
                 str(item.get('start_time') or ''),
                 str(item.get('end_time') or ''),
-                str(item.get('session') or ''),
                 str(item.get('name') or '')
             ))
 
@@ -3288,7 +3296,7 @@ def generate_seating(request):
 
         from collections import deque
 
-        for group_key in sorted(room_groups.keys(), key=lambda k: (k[0], str(k[1]), k[2])):
+        for group_key in sorted(room_groups.keys(), key=lambda k: (str(k[1]), _session_sort_key(k[2]), str(k[0]))):
             students_in_group = list(room_groups[group_key])
             semester, exam_date, session = group_key
 
@@ -3420,63 +3428,77 @@ def generate_seating(request):
         print(f"[DEBUG] Building response_rooms from {len(rooms)} rooms")
         print(f"[DEBUG] seating_results keys (room IDs with seats): {list(seating_results.keys())}")
 
-        response_rooms = []
-        print(f"[DEBUG] Building response_rooms from {len(rooms)} rooms")
-        print(f"[DEBUG] seating_results keys (room IDs with seats): {list(seating_results.keys())}")
-        
-        for room in rooms:
+        room_by_id = {room.id: room for room in rooms}
+        slot_room_keys = []
+        for room_id, seats in seating_results.items():
+            if not seats:
+                continue
+            first_seat = next((seat for seat in seats if seat.get('exam_date') or seat.get('session')), {})
+            slot_room_keys.append((
+                str(first_seat.get('exam_date') or ''),
+                _session_sort_key(first_seat.get('session')),
+                str(first_seat.get('session') or ''),
+                room_id
+            ))
+
+        for _, _, _, room_id in sorted(slot_room_keys):
+            room = room_by_id.get(room_id)
+            if not room:
+                continue
+
             print(f"[DEBUG] Checking room {room.id} (Building: {room.building}, Room: {room.room_number})")
-            if room.id in seating_results:
-                seats = seating_results[room.id]
-                print(f"[DEBUG]   ✓ Found {len(seats)} seats for this room")
+            seats = seating_results[room.id]
+            print(f"[DEBUG]   ✓ Found {len(seats)} seats for this room")
 
-                # First, get all departments that actually have students in this room
-                room_departments_with_students = set()
-                for s in seats:
-                    if s.get('registration') and s.get('registration') != 'Empty' and s.get('department'):
-                        room_departments_with_students.add(s.get('department').strip().upper())
+            room_departments_with_students = set()
+            for s in seats:
+                if s.get('registration') and s.get('registration') != 'Empty' and s.get('department'):
+                    room_departments_with_students.add(s.get('department').strip().upper())
+            
+            print(f"[DEBUG]   Departments with actual students in room: {room_departments_with_students}")
+
+            dept_set = set()
+            dept_details = []
+            seen_details = set()
+            for s in seats:
+                d = str(s.get('department') or '').strip().upper()
+                if not d or d.lower() == 'empty':
+                    continue
                 
-                print(f"[DEBUG]   Departments with actual students in room: {room_departments_with_students}")
+                if d not in room_departments_with_students:
+                    print(f"[DEBUG]   ⚠ SKIPPING department '{d}' - no actual students in this room")
+                    continue
+                
+                dept_set.add(d)
+                key = f"{d}||{s.get('exam_name','')}||{s.get('exam_date','')}||{s.get('session','')}||{s.get('start_time','')}||{s.get('end_time','')}||{s.get('semester','')}"
+                if key not in seen_details:
+                    seen_details.add(key)
+                    dept_details.append({
+                        'department': d,
+                        'semester': s.get('semester',''),
+                        'exam_name': s.get('exam_name','N/A'),
+                        'exam_date': s.get('exam_date','N/A'),
+                        'session': s.get('session','N/A'),
+                        'start_time': s.get('start_time','N/A'),
+                        'end_time': s.get('end_time','N/A')
+                    })
 
-                # Build clean dept list and exam details ONLY for departments with students
-                dept_set = set()
-                dept_details = []
-                seen_details = set()
-                for s in seats:
-                    d = str(s.get('department') or '').strip().upper()
-                    if not d or d.lower() == 'empty':
-                        continue
-                    
-                    # CRITICAL: Only include if this department has actual students in this room
-                    if d not in room_departments_with_students:
-                        print(f"[DEBUG]   ⚠ SKIPPING department '{d}' - no actual students in this room")
-                        continue
-                    
-                    dept_set.add(d)
-                    key = f"{d}||{s.get('exam_name','')}||{s.get('exam_date','')}||{s.get('session','')}||{s.get('start_time','')}||{s.get('end_time','')}||{s.get('semester','')}"
-                    if key not in seen_details:
-                        seen_details.add(key)
-                        dept_details.append({
-                            'department': d,
-                            'semester': s.get('semester',''),
-                            'exam_name': s.get('exam_name','N/A'),
-                            'exam_date': s.get('exam_date','N/A'),
-                            'session': s.get('session','N/A'),
-                            'start_time': s.get('start_time','N/A'),
-                            'end_time': s.get('end_time','N/A')
-                        })
+            dept_details.sort(key=lambda item: (
+                str(item.get('exam_date') or ''),
+                _session_sort_key(item.get('session')),
+                str(item.get('start_time') or ''),
+                str(item.get('department') or '')
+            ))
 
-                response_rooms.append({
-                    'id': room.id,
-                    'building': room.building,
-                    'room_number': room.room_number,
-                    'capacity': room.capacity,
-                    'departments': sorted(list(dept_set)),
-                    'department_details': dept_details,
-                    'seats': seats
-                })
-            else:
-                print(f"[DEBUG]   ✗ No seats found for this room")
+            response_rooms.append({
+                'id': room.id,
+                'building': room.building,
+                'room_number': room.room_number,
+                'capacity': room.capacity,
+                'departments': sorted(list(dept_set)),
+                'department_details': dept_details,
+                'seats': seats
+            })
         
         print(f"\n[DEBUG] ===== SEATING GENERATION SUMMARY =====")
         print(f"[DEBUG] DepartmentExam department/semester keys: {list(dept_exam_map.keys())}")
