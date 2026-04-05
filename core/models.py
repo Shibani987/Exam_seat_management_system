@@ -139,7 +139,7 @@ class SeatAllocation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        unique_together = ('exam', 'room', 'registration_number')
+        unique_together = ('exam', 'room', 'exam_date', 'exam_session', 'seat_code')
 
     def __str__(self):
         return f"{self.registration_number} - {self.seat_code}"
