@@ -25,13 +25,14 @@ const newExamBtn = document.getElementById('newExamBtn');
 const newExamModal = document.getElementById('newExamModal');
 const modalCloseBtn = document.getElementById('modalCloseBtn');
 
-// Safely check if modal exists (to avoid errors if missing in some views)
-if (newExamBtn && newExamModal && modalCloseBtn) {
-  // Open modal
+if (newExamBtn) {
   newExamBtn.addEventListener('click', () => {
-    newExamModal.classList.add('active');
+    window.location.href = '/exam-setup/';
   });
+}
 
+// Safely check if modal exists (to avoid errors if missing in some views)
+if (newExamModal && modalCloseBtn) {
   // Close modal
   modalCloseBtn.addEventListener('click', () => {
     newExamModal.classList.remove('active');
@@ -243,7 +244,7 @@ if (uploadBtn) {
 
 if (continueBtn) {
   continueBtn.addEventListener('click', () => {
-    window.location.href = examSetupUrl; // ✅ dynamic Django URL
+    window.location.href = '/exam-setup/';
   });
 }
 

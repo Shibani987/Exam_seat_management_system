@@ -38,6 +38,7 @@ let allUploadedFiles = [];
 let selectedFiles = [];
 let selectedFilesData = null; // Store merged file + student data from Step 4
 let currentSeatingData = null; // Store current seating for lock feature
+let step4UploadedFile = null;
 
 // =============================
 // TIME CONVERSION HELPER FUNCTIONS
@@ -1101,7 +1102,7 @@ if (proceedStep3Btn) {
                 step4.classList.add('active');
                 step3Content.style.display = 'none';
                 step4Content.style.display = 'block';
-                loadUploadedFiles();
+                renderUploadedStudentFile();
             } else {
                 // Display user-friendly error message from backend
                 alert('❌ Error: ' + r.message);
@@ -1116,66 +1117,49 @@ if (proceedStep3Btn) {
 }
 
 // =============================
-// STEP 4 - SELECT STUDENT DATA (Updated with merged student info)
+// STEP 4 - UPLOAD STUDENT DATA FOR THIS EXAM
 // =============================
-const filterFileName = document.getElementById('filterFileName');
-const searchFileBtn = document.getElementById('searchFileBtn');
+const step4StudentFileInput = document.getElementById('step4StudentFileInput');
+const uploadStudentFileBtn = document.getElementById('uploadStudentFileBtn');
+const uploadStudentFileStatus = document.getElementById('uploadStudentFileStatus');
 const filesTableBody = document.getElementById('filesTableBody');
-const showAllBtn = document.getElementById('showAllBtn');
 const backStep4Btn = document.getElementById('backStep4Btn');
 const proceedStep4Btn = document.getElementById('proceedStep4Btn');
 
 selectedFiles = [];
 
-function loadUploadedFiles() {
-    fetch('/get_uploaded_files/', { method: 'GET', headers: { 'X-CSRFToken': csrftoken } })
-    .then(r => r.json())
-    .then(data => {
-        if (data.status === 'success') {
-            allUploadedFiles = data.files;
-            displayFiles(allUploadedFiles);
-        } else {
-            filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#999;padding:20px;">No files uploaded yet.</td></tr>';
-        }
-    })
-    .catch(err => console.error(err));
+function setStudentUploadStatus(message, isError = false) {
+    if (!uploadStudentFileStatus) return;
+    uploadStudentFileStatus.textContent = message;
+    uploadStudentFileStatus.style.color = isError ? '#c62828' : '#2e7d32';
 }
 
-function displayFiles(files) {
-    if (!files.length) {
-        filesTableBody.innerHTML = '<tr><td colspan="2" style="text-align:center;color:#999;padding:20px;">No files found.</td></tr>';
+function renderUploadedStudentFile() {
+    if (!filesTableBody) return;
+
+    if (!step4UploadedFile) {
+        filesTableBody.innerHTML = `
+            <tr>
+                <td colspan="4" style="text-align:center; padding:20px; color:#999;">
+                    No student data file uploaded yet.
+                </td>
+            </tr>
+        `;
+        selectedFiles = [];
+        updateProceedStep4Btn();
         return;
     }
 
-    const selectedIds = new Set(selectedFiles.map(f => String(f.id)));
-
-    filesTableBody.innerHTML = files.map(file => {
-        const checked = selectedIds.has(String(file.id)) ? 'checked' : '';
-        const dept = file.department || '';
-        return `
+    filesTableBody.innerHTML = `
         <tr>
-            <td>${file.file_name}</td>
-            <td><input type="checkbox" class="file-checkbox" ${checked} data-file-id="${file.id}" data-dept="${dept}"></td>
+            <td>${step4UploadedFile.file_name}</td>
+            <td>${step4UploadedFile.uploaded_at || '-'}</td>
+            <td>${step4UploadedFile.student_count || 0}</td>
+            <td>Ready</td>
         </tr>
     `;
-    }).join('');
-
-    document.querySelectorAll('.file-checkbox').forEach(cb => cb.addEventListener('change', onFileCheckboxChange));
-}
-
-function onFileCheckboxChange() {
-    const checkbox = this;
-    const fileId = checkbox.dataset.fileId;
-    const dept = checkbox.dataset.dept || '';
-
-    if (checkbox.checked) {
-        // Just store file ID, backend will fetch students on Proceed
-        selectedFiles.push({ id: fileId, department: dept });
-        updateProceedStep4Btn();
-    } else {
-        selectedFiles = selectedFiles.filter(f => String(f.id) !== String(fileId));
-        updateProceedStep4Btn();
-    }
+    selectedFiles = [{ id: step4UploadedFile.id }];
+    updateProceedStep4Btn();
 }
 
 function updateProceedStep4Btn() {
@@ -1185,25 +1169,66 @@ function updateProceedStep4Btn() {
     }
 }
 
-if (searchFileBtn) {
-    searchFileBtn.onclick = e => {
-        e.preventDefault();
-        const query = (filterFileName?.value || '').trim().toLowerCase();
-        if (!query) {
-            displayFiles(allUploadedFiles);
-            return;
+if (step4StudentFileInput) {
+    step4StudentFileInput.addEventListener('change', () => {
+        if (uploadStudentFileStatus) {
+            uploadStudentFileStatus.textContent = '';
+            uploadStudentFileStatus.style.color = '#555';
         }
-        const filtered = (allUploadedFiles || []).filter(f => (f.file_name || '').toLowerCase().includes(query));
-        displayFiles(filtered);
-    };
+    });
 }
 
-if (showAllBtn) {
-    showAllBtn.onclick = e => {
+if (uploadStudentFileBtn) {
+    uploadStudentFileBtn.onclick = async e => {
         e.preventDefault();
-        // Reset search fields and show everything loaded from the server
-        if (filterFileName) filterFileName.value = '';
-        displayFiles(allUploadedFiles || []);
+
+        if (!examId) {
+            alert('Error: exam_id is missing. Please refresh and try again.');
+            return;
+        }
+
+        if (!step4StudentFileInput || !step4StudentFileInput.files || step4StudentFileInput.files.length === 0) {
+            setStudentUploadStatus('Please choose an Excel or CSV file first.', true);
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('exam_id', examId);
+        formData.append('file', step4StudentFileInput.files[0]);
+        if (step4UploadedFile && step4UploadedFile.id) {
+            formData.append('replace_file_id', step4UploadedFile.id);
+        }
+
+        uploadStudentFileBtn.disabled = true;
+        setStudentUploadStatus('Uploading student data...', false);
+
+        try {
+            const response = await fetch('/upload-exam-student-file/', {
+                method: 'POST',
+                headers: { 'X-CSRFToken': csrftoken },
+                body: formData
+            });
+            const data = await response.json();
+
+            if (!response.ok || data.status !== 'success') {
+                setStudentUploadStatus(data.message || 'Upload failed.', true);
+                return;
+            }
+
+            step4UploadedFile = data.file;
+            renderUploadedStudentFile();
+
+            let summary = `Uploaded ${data.file.file_name} with ${data.file.student_count} student rows.`;
+            if (data.file.skipped > 0) {
+                summary += ` ${data.file.skipped} row(s) were skipped.`;
+            }
+            setStudentUploadStatus(summary, false);
+        } catch (err) {
+            console.error('[STEP 4] Student upload failed:', err);
+            setStudentUploadStatus('Upload failed. Please try again.', true);
+        } finally {
+            uploadStudentFileBtn.disabled = false;
+        }
     };
 }
 

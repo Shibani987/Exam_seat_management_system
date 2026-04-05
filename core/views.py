@@ -1353,6 +1353,63 @@ def upload_attendance_wizard_file(request):
         return JsonResponse({"status": "error", "message": "Internal server error during upload. Please try again."}, status=500)
 
 
+@csrf_exempt
+@admin_required_json
+def upload_exam_student_file(request):
+    if request.method != "POST":
+        return JsonResponse({"status": "error", "message": "POST required"}, status=400)
+
+    try:
+        exam_id = request.POST.get("exam_id")
+        if not exam_id:
+            return JsonResponse({"status": "error", "message": "exam_id is required"}, status=400)
+
+        exam = Exam.objects.get(id=exam_id, is_temporary=True, is_completed=False)
+        uploaded_file = request.FILES.get("file")
+        if not uploaded_file:
+            return JsonResponse({"status": "error", "message": "No file uploaded"}, status=400)
+
+        max_size = 10 * 1024 * 1024
+        if uploaded_file.size > max_size:
+            return JsonResponse({"status": "error", "message": "File size too large. Maximum allowed is 10MB."}, status=400)
+
+        df = _read_student_dataframe(uploaded_file)
+        parse_result = _extract_student_records_from_dataframe(df)
+
+        if parse_result["inserted"] == 0:
+            return JsonResponse({
+                "status": "error",
+                "message": "No valid student rows found in the uploaded file."
+            }, status=400)
+
+        new_file = _create_student_file_with_students(uploaded_file.name, parse_result["records"])
+
+        replace_file_id = request.POST.get("replace_file_id")
+        if replace_file_id and str(replace_file_id).isdigit():
+            StudentDataFile.objects.filter(id=int(replace_file_id)).exclude(id=new_file.id).delete()
+
+        student_count = Student.objects.filter(student_file=new_file).count()
+        return JsonResponse({
+            "status": "success",
+            "file": {
+                "id": new_file.id,
+                "file_name": new_file.file_name,
+                "student_count": student_count,
+                "uploaded_at": new_file.uploaded_at.strftime('%Y-%m-%d %H:%M') if new_file.uploaded_at else timezone.now().strftime('%Y-%m-%d %H:%M'),
+                "total": parse_result["total"],
+                "skipped": parse_result["skipped"],
+                "exam_id": exam.id,
+            }
+        })
+    except Exam.DoesNotExist:
+        return JsonResponse({"status": "error", "message": "Temporary exam not found"}, status=404)
+    except ValueError as exc:
+        return JsonResponse({"status": "error", "message": str(exc)}, status=400)
+    except Exception as exc:
+        logger.error(f"upload_exam_student_file unexpected: {exc}\n{traceback.format_exc()}")
+        return JsonResponse({"status": "error", "message": "Internal server error during upload. Please try again."}, status=500)
+
+
 # =========================
 # Delete Student File (DB only)
 # =========================

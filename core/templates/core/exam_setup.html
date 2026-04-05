@@ -95,14 +95,15 @@
 
 <!-- STEP 4 -->
 <div id="step4Content" style="display:none;">
-    <h2>Select Uploaded Student Data</h2>
-    <p>Select semester, year, and department-wise uploaded student data for seating allocation.</p>
-    
-    <div class="filter-section">
-        <label for="filterFileName">Search by File Name:</label>
-        <input type="text" id="filterFileName" placeholder="Enter file name..." />
-        <button id="searchFileBtn" class="filter-btn">Search</button>
-        <button id="showAllBtn" class="filter-btn">All</button>
+    <h2>Upload Student Data</h2>
+    <p>Upload the Excel or CSV file for this exam. Seat allocation will be generated from the students in this uploaded file.</p>
+
+    <div class="bulk-upload" style="margin-bottom: 18px; padding: 14px; border: 1px solid #ccc; border-radius: 6px; background: #fafafa;">
+        <h3 style="margin:0 0 8px 0; font-size:1.1rem;">Upload Student Data File (CSV / XLS / XLSX)</h3>
+        <input type="file" id="step4StudentFileInput" accept=".csv,.xls,.xlsx" style="margin-bottom: 8px;" />
+        <button id="uploadStudentFileBtn" style="margin-bottom: 8px;">Upload Student Data</button>
+        <p style="font-size:0.85rem; color:#555; margin:0;">File must include columns like <strong>COURSE</strong>, <strong>SEM</strong>, <strong>BRANCH</strong>, <strong>STUDENT NAME</strong>, <strong>ROLLNO</strong>, <strong>REG NO</strong>, <strong>STD ID</strong>, <strong>ACADEMIC_STATUS</strong>.</p>
+        <div id="uploadStudentFileStatus" style="font-size:0.9rem; color:#555; margin-top: 8px;"></div>
     </div>
 
     <div class="files-table-container">
@@ -110,13 +111,15 @@
             <thead>
                 <tr>
                     <th>File Name</th>
-                    <th>Select</th>
+                    <th>Uploaded At</th>
+                    <th>Students</th>
+                    <th>Status</th>
                 </tr>
             </thead>
             <tbody id="filesTableBody">
                 <tr>
-                    <td colspan="2" style="text-align:center; padding:20px; color:#999;">
-                        No files uploaded yet.
+                    <td colspan="4" style="text-align:center; padding:20px; color:#999;">
+                        No student data file uploaded yet.
                     </td>
                 </tr>
             </tbody>
@@ -188,7 +191,7 @@
 
 </div>
 
-<script src="{% static 'core/js/examsetup.js' %}?v=20"></script>
+<script src="{% static 'core/js/examsetup.js' %}?v=21"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 </body>
 </html>
