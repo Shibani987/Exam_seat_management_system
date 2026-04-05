@@ -2667,7 +2667,7 @@ def get_room_details(request):
                 'id': es.student.id,
                 'registration_number': es.student.registration_number,
                 'name': es.student.name,
-                'department': es.student.department,
+                'department': es.student.branch,
                 'semester': es.student.semester
             })
 
@@ -3969,9 +3969,10 @@ def get_student_info(request):
             seen_exams.add(exam_key)
             
             # Get DepartmentExam to fetch start_time and end_time
+            student_department = str(getattr(student, 'branch', '') or '').strip()
             dept_exam = DepartmentExam.objects.filter(
                 exam=alloc.exam,
-                department=student.department,
+                department__iexact=student_department,
                 exam_date=alloc.exam_date
             ).first()
             
@@ -3998,8 +3999,8 @@ def get_student_info(request):
         
         student_info = {
             'name': student.name,
-            'department': student.department,
-            'year': student.year,
+            'department': student.branch,
+            'year': '',
             'semester': student.semester,
         }
         
