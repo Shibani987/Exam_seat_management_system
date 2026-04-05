@@ -3404,8 +3404,8 @@ def generate_seating(request):
                                 'session': session,
                                 'exam_name': '',
                             'is_eligible': False,
-                            'start_time': '',
-                            'end_time': '',
+                            'start_time': start_time or '',
+                            'end_time': end_time or '',
                             'semester': ''
                         })
 
