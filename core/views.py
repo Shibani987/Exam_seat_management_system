@@ -101,6 +101,15 @@ def _sanitize_download_filename(value, fallback="attendance-sheet"):
     return cleaned or fallback
 
 
+def _session_sort_key(session_value):
+    normalized = str(session_value or "").strip().lower()
+    if normalized in ["1st half", "1sthalf", "first half", "morning"]:
+        return 0
+    if normalized in ["2nd half", "2ndhalf", "second half", "afternoon"]:
+        return 1
+    return 2
+
+
 def _load_attendance_font(size, bold=False):
     key = "bold" if bold else "regular"
     for font_path in FONT_CANDIDATES[key]:
@@ -3928,6 +3937,356 @@ def get_exam_summary(request):
         import traceback
         traceback.print_exc()
         return JsonResponse({"status": "error", "message": f"Server error: {str(e)}"}, status=500)
+
+
+def _build_seating_pdf_rooms(exam):
+    room_data_all = list(exam.rooms.all().values('id', 'building', 'room_number', 'capacity'))
+    allocated_room_ids = set()
+    seating_data = []
+    student_eligibility = {}
+    student_semester = {}
+
+    exam_students = ExamStudent.objects.filter(exam=exam).select_related('student')
+    for es in exam_students:
+        reg = (es.student.registration_number or '').strip().upper()
+        if reg:
+            student_eligibility[reg] = str(getattr(es.student, 'academic_status', '')).strip().lower() == 'eligible'
+            student_semester[reg] = str(getattr(es.student, 'semester', '')).strip()
+
+    dept_exam_lookup = {}
+    for de in DepartmentExam.objects.filter(exam=exam):
+        key = (
+            str(de.department or '').strip().upper(),
+            str(de.exam_date or ''),
+            str(de.session or ''),
+            str(de.semester or '').strip()
+        )
+        dept_exam_lookup[key] = {
+            'start_time': str(de.start_time) if de.start_time else '',
+            'end_time': str(de.end_time) if de.end_time else '',
+            'semester': str(de.semester).strip() if de.semester else ''
+        }
+
+    for seat in SeatAllocation.objects.filter(exam=exam).select_related('room'):
+        allocated_room_ids.add(seat.room_id)
+        reg = (seat.registration_number or '').strip()
+        reg_upper = reg.upper()
+        student_sem = student_semester.get(reg_upper, '')
+        lookup_key = (
+            str(seat.department or '').strip().upper(),
+            str(seat.exam_date or ''),
+            str(seat.exam_session or ''),
+            str(student_sem or '').strip()
+        )
+        fallback_key = (
+            str(seat.department or '').strip().upper(),
+            str(seat.exam_date or ''),
+            str(seat.exam_session or ''),
+            ''
+        )
+        dept_times = dept_exam_lookup.get(lookup_key) or dept_exam_lookup.get(fallback_key) or {'start_time': '', 'end_time': '', 'semester': ''}
+
+        seating_data.append({
+            'room_id': seat.room_id,
+            'row': seat.row or '',
+            'column': seat.column or 0,
+            'seat': seat.seat_code or '',
+            'registration': reg or '',
+            'department': seat.department or '',
+            'exam_date': str(seat.exam_date) if seat.exam_date else '',
+            'session': seat.exam_session or '',
+            'exam_name': seat.exam_name or '',
+            'start_time': dept_times.get('start_time', ''),
+            'end_time': dept_times.get('end_time', ''),
+            'semester': dept_times.get('semester', '') or student_sem,
+            'student_semester': student_sem,
+            'is_eligible': student_eligibility.get(reg_upper, False) if reg_upper and reg_upper != 'EMPTY' else False
+        })
+
+    rooms_data = []
+    for room_data in room_data_all:
+        if room_data.get('id') not in allocated_room_ids:
+            continue
+
+        room_seats = [seat for seat in seating_data if seat.get('room_id') == room_data.get('id')]
+        if not room_seats:
+            continue
+
+        room_departments = set()
+        for seat in room_seats:
+            if seat.get('registration') and seat.get('registration') != 'Empty' and seat.get('department'):
+                room_departments.add(str(seat.get('department')).strip().upper())
+
+        dept_details = []
+        seen_details = set()
+        for seat in room_seats:
+            dept = str(seat.get('department') or '').strip()
+            if not dept or dept.upper() == 'EMPTY':
+                continue
+            dept_key = dept.upper()
+            if dept_key not in room_departments:
+                continue
+
+            detail_key = f"{dept_key}||{seat.get('exam_name','')}||{seat.get('exam_date','')}||{seat.get('session','')}||{seat.get('start_time','')}||{seat.get('end_time','')}||{seat.get('semester','')}"
+            if detail_key in seen_details:
+                continue
+            seen_details.add(detail_key)
+
+            dept_details.append({
+                'department': dept,
+                'semester': seat.get('semester', ''),
+                'exam_name': seat.get('exam_name', 'N/A'),
+                'exam_date': seat.get('exam_date', 'N/A'),
+                'session': seat.get('session', 'N/A'),
+                'start_time': seat.get('start_time', 'N/A'),
+                'end_time': seat.get('end_time', 'N/A')
+            })
+
+        rooms_data.append({
+            'id': room_data.get('id'),
+            'building': room_data.get('building'),
+            'room_number': room_data.get('room_number'),
+            'capacity': room_data.get('capacity'),
+            'departments': sorted(list(room_departments)),
+            'department_details': dept_details,
+            'seats': room_seats
+        })
+
+    return rooms_data
+
+
+def _expand_room_slots_for_output(rooms):
+    expanded_rooms = []
+    for room in rooms:
+        seats = room.get('seats') or []
+        if not seats:
+            expanded_rooms.append(room)
+            continue
+
+        seats_by_slot = {}
+        for seat in seats:
+            slot_key = f"{seat.get('exam_date', '')}||{seat.get('session', '')}"
+            seats_by_slot.setdefault(slot_key, []).append(seat)
+
+        if len(seats_by_slot) <= 1:
+            room_copy = dict(room)
+            room_copy['slot_date'] = seats[0].get('exam_date', '')
+            room_copy['slot_session'] = seats[0].get('session', '')
+            expanded_rooms.append(room_copy)
+            continue
+
+        for slot_key, slot_seats in seats_by_slot.items():
+            slot_date, slot_session = slot_key.split('||', 1)
+            expanded_rooms.append({
+                **room,
+                'slot_date': slot_date,
+                'slot_session': slot_session,
+                'department_details': [
+                    item for item in (room.get('department_details') or [])
+                    if str(item.get('exam_date') or '') == slot_date
+                    and str(item.get('session') or '') == slot_session
+                ],
+                'seats': slot_seats
+            })
+
+    expanded_rooms.sort(key=lambda room: (
+        str(room.get('slot_date') or room.get('seats', [{}])[0].get('exam_date') or ''),
+        _session_sort_key(room.get('slot_session') or room.get('seats', [{}])[0].get('session') or ''),
+        -sum(1 for seat in (room.get('seats') or []) if str(seat.get('registration') or '').strip() and str(seat.get('registration') or '').strip().upper() != 'EMPTY'),
+        -len({
+            str(item.get('department') or '').strip().upper()
+            for item in (room.get('department_details') or [])
+            if str(item.get('department') or '').strip()
+        }),
+        str(room.get('building') or ''),
+        str(room.get('room_number') or '')
+    ))
+    return expanded_rooms
+
+
+def _draw_seating_pdf_page(pdf, exam, room, page_width, page_height):
+    margin_x = 24
+    top_y = page_height - 26
+    content_width = page_width - (margin_x * 2)
+
+    room_students = [
+        seat for seat in (room.get('seats') or [])
+        if str(seat.get('registration') or '').strip()
+        and str(seat.get('registration') or '').strip().upper() != 'EMPTY'
+    ]
+    room_semester = str(room_students[0].get('semester') or room_students[0].get('student_semester') or '').strip() if room_students else ''
+    room_departments = {
+        str(seat.get('department') or '').strip().upper()
+        for seat in room_students
+        if str(seat.get('department') or '').strip()
+    }
+    target_date = room.get('slot_date') or (room_students[0].get('exam_date') if room_students else '')
+    target_session = room.get('slot_session') or (room_students[0].get('session') if room_students else '')
+
+    filtered_details = []
+    for item in (room.get('department_details') or []):
+        dept = str(item.get('department') or '').strip().upper()
+        if not dept or dept not in room_departments:
+            continue
+        if room_semester and str(item.get('semester') or '').strip() and str(item.get('semester') or '').strip() != room_semester:
+            continue
+        if target_date and str(item.get('exam_date') or '') != str(target_date):
+            continue
+        if target_session and str(item.get('session') or '') != str(target_session):
+            continue
+        filtered_details.append(item)
+
+    filtered_details.sort(key=lambda item: (
+        str(item.get('exam_date') or ''),
+        _session_sort_key(item.get('session')),
+        str(item.get('start_time') or ''),
+        str(item.get('department') or '')
+    ))
+
+    pdf.setTitle(exam.name or "Exam Seating")
+    pdf.setFont("Helvetica-Bold", 17)
+    pdf.drawString(margin_x, top_y, f"{room.get('building') or 'Main'} - {room.get('room_number') or 'N/A'}")
+    pdf.setFont("Helvetica", 10)
+    pdf.drawString(
+        margin_x,
+        top_y - 18,
+        f"{target_date} | {target_session} | Capacity: {room.get('capacity') or 0} | Semester: {room_semester or 'N/A'}"
+    )
+    pdf.drawRightString(page_width - margin_x, top_y, exam.name or "Exam Seating")
+
+    info_lines = [f"Departments in this room: {', '.join(sorted(room_departments)) or 'N/A'}"]
+    if room_semester:
+        info_lines.append(f"Students in this room are from Semester {room_semester}")
+    if filtered_details:
+        info_lines.append("")
+        if target_date or target_session:
+            info_lines.append(f"{target_date}, {target_session}:")
+        for item in filtered_details:
+            sem_text = f" [Sem {item.get('semester')}]" if item.get('semester') else ""
+            info_lines.append(f"  {item.get('department', '')}{sem_text} - {item.get('exam_name', 'N/A')}")
+            info_lines.append(f"    Timing: {item.get('start_time') or 'N/A'} - {item.get('end_time') or 'N/A'}")
+
+    line_height = 11
+    info_box_height = max(92, 16 + (len(info_lines) * line_height))
+    info_top = top_y - 42
+    info_bottom = info_top - info_box_height
+
+    pdf.setLineWidth(1)
+    pdf.setStrokeColorRGB(0.12, 0.46, 0.82)
+    pdf.rect(margin_x, info_bottom, content_width, info_box_height, stroke=1, fill=0)
+
+    current_y = info_top - 14
+    slot_heading = f"{target_date}, {target_session}:"
+    for idx, line in enumerate(info_lines):
+        if not line:
+            current_y -= line_height
+            continue
+        if idx == 0 or line == slot_heading:
+            pdf.setFont("Helvetica-Bold", 10.5)
+            pdf.setFillColorRGB(0.12, 0.46, 0.82)
+        else:
+            pdf.setFont("Helvetica", 10)
+            pdf.setFillColorRGB(0, 0, 0)
+        pdf.drawString(margin_x + 10, current_y, line)
+        current_y -= line_height
+
+    pdf.setFillColorRGB(0, 0, 0)
+    capacity = int(room.get('capacity') or 0)
+    rows_needed = int((capacity + 4) / 5) if capacity > 0 else 0
+    grid_top = info_bottom - 18
+    grid_bottom = 28
+    grid_height = max(200, grid_top - grid_bottom)
+    gap = 6
+    cell_width = (content_width - (gap * 4)) / 5.0
+    cell_height = (grid_height - (gap * max(rows_needed - 1, 0))) / max(rows_needed, 1)
+    seat_map = {(seat.get('row'), int(seat.get('column') or 0)): seat for seat in (room.get('seats') or [])}
+
+    for row_index in range(rows_needed):
+        row_label = chr(ord('A') + row_index)
+        cols_to_render = 5
+        if row_index == rows_needed - 1:
+            filled_before = row_index * 5
+            leftover = max(0, capacity - filled_before)
+            cols_to_render = leftover or 5
+
+        for col in range(1, cols_to_render + 1):
+            x = margin_x + ((col - 1) * (cell_width + gap))
+            y = grid_top - cell_height - (row_index * (cell_height + gap))
+            seat = seat_map.get((row_label, col))
+            registration = str((seat or {}).get('registration') or '').strip()
+            is_empty = not registration or registration.upper() == 'EMPTY'
+            is_eligible = bool((seat or {}).get('is_eligible')) and not is_empty
+
+            if is_empty:
+                pdf.setFillColorRGB(0.95, 0.95, 0.95)
+                pdf.setStrokeColorRGB(0.8, 0.8, 0.8)
+            elif is_eligible:
+                pdf.setFillColorRGB(0.16, 0.65, 0.27)
+                pdf.setStrokeColorRGB(0.13, 0.55, 0.23)
+            else:
+                pdf.setFillColorRGB(1, 1, 1)
+                pdf.setStrokeColorRGB(0.75, 0.75, 0.75)
+
+            pdf.roundRect(x, y, cell_width, cell_height, 5, stroke=1, fill=1)
+            if is_empty or not is_eligible:
+                pdf.setFillColorRGB(0, 0, 0)
+            else:
+                pdf.setFillColorRGB(1, 1, 1)
+
+            pdf.setFont("Helvetica-Bold", 9)
+            pdf.drawCentredString(x + (cell_width / 2), y + cell_height - 14, f"{row_label}{col}")
+
+            if is_empty:
+                pdf.setFont("Helvetica", 8)
+                pdf.drawCentredString(x + (cell_width / 2), y + (cell_height / 2) - 2, "EMPTY")
+            elif is_eligible:
+                dept = str((seat or {}).get('department') or '').strip()
+                pdf.setFont("Helvetica-Bold", 7)
+                pdf.drawCentredString(x + (cell_width / 2), y + (cell_height / 2), dept)
+                pdf.setFont("Helvetica", 7)
+                pdf.drawCentredString(x + (cell_width / 2), y + (cell_height / 2) - 10, registration)
+
+    pdf.setFont("Helvetica", 8)
+    pdf.setFillColorRGB(0.35, 0.35, 0.35)
+    pdf.drawRightString(page_width - margin_x, 14, "Generated by Exam Seating System")
+
+
+@admin_required
+def download_seating_pdf(request):
+    if not REPORTLAB_AVAILABLE:
+        return HttpResponse("ReportLab is not available on this server.", status=500)
+
+    exam_id = request.GET.get('exam_id')
+    if not exam_id:
+        return HttpResponse("exam_id is required.", status=400)
+
+    try:
+        exam = Exam.objects.get(id=exam_id)
+    except Exam.DoesNotExist:
+        return HttpResponse("Exam not found.", status=404)
+
+    rooms_data = _build_seating_pdf_rooms(exam)
+    expanded_rooms = _expand_room_slots_for_output(rooms_data)
+    if not expanded_rooms:
+        return HttpResponse("No seating data available for PDF export.", status=404)
+
+    buffer = BytesIO()
+    pdf = reportlab_canvas.Canvas(buffer, pagesize=A4)
+    page_width, page_height = A4
+
+    for index, room in enumerate(expanded_rooms):
+        if index > 0:
+            pdf.showPage()
+        _draw_seating_pdf_page(pdf, exam, room, page_width, page_height)
+
+    pdf.save()
+    pdf_bytes = buffer.getvalue()
+    buffer.close()
+
+    filename = _sanitize_download_filename(f"{exam.name or 'exam'}_seating_a4", "exam_seating_a4")
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    response["Content-Disposition"] = f'attachment; filename="{filename}.pdf"'
+    return response
 
 
 def view_exam(request, exam_id):

@@ -1340,6 +1340,7 @@ if (proceedStep4Btn) {
             // Enable both buttons
             document.getElementById('regenStep5Btn').disabled = false;
             document.getElementById('lockStep5Btn').disabled = false;
+            if (downloadStep5PdfBtn) downloadStep5PdfBtn.disabled = false;
         })
         .catch(err => {
             console.error('Error:', err);
@@ -1354,6 +1355,18 @@ if (proceedStep4Btn) {
 const roomSection = document.getElementById('roomSection');
 const regenStep5Btn = document.getElementById('regenStep5Btn');
 const lockStep5Btn = document.getElementById('lockStep5Btn');
+const downloadStep5PdfBtn = document.getElementById('downloadStep5PdfBtn');
+
+if (downloadStep5PdfBtn) {
+    downloadStep5PdfBtn.onclick = e => {
+        e.preventDefault();
+        if (!examId) {
+            alert('Exam ID not found.');
+            return;
+        }
+        window.location.href = `/download-seating-pdf/?exam_id=${encodeURIComponent(examId)}`;
+    };
+}
 
 // Regenerate Seating Button Handler — simplified (random only)
 if (regenStep5Btn) {
@@ -1394,6 +1407,7 @@ if (regenStep5Btn) {
                 renderSeatGrid(genResult.rooms);
                 document.getElementById('lockStep5Btn').disabled = false;
                 document.getElementById('regenStep5Btn').disabled = false;
+                if (downloadStep5PdfBtn) downloadStep5PdfBtn.disabled = false;
                 alert('Seating regenerated successfully');
             })
             .catch(err => { 
@@ -1439,6 +1453,7 @@ if (lockStep5Btn) {
             // Disable both buttons after locking
             regenStep5Btn.disabled = true;
             lockStep5Btn.disabled = true;
+            if (downloadStep5PdfBtn) downloadStep5PdfBtn.disabled = true;
             
             // Move to Step 6
             step5.classList.remove('active');
@@ -1747,21 +1762,6 @@ function renderSeatGrid(rooms) {
             ? `${room.slot_date}, ${room.slot_session}<br>`
             : '';
         header.innerHTML = `<strong>${room.building || 'Main'} - ${room.room_number || 'N/A'}</strong><span>${slotLabel}Capacity: ${room.capacity || 0} seats</span>`;
-        const pdfBtn = document.createElement('button');
-        pdfBtn.type = 'button';
-        pdfBtn.textContent = 'Export A4 PDF';
-        Object.assign(pdfBtn.style, {
-            marginLeft: '10px',
-            padding: '6px 10px',
-            borderRadius: '6px',
-            border: 'none',
-            background: '#1976d2',
-            color: '#fff',
-            cursor: 'pointer',
-            fontWeight: '600'
-        });
-        pdfBtn.addEventListener('click', () => openRoomPdfPrint(roomDiv, room));
-        header.appendChild(pdfBtn);
         roomDiv.appendChild(header);
 
         // Department exams info

@@ -3,12 +3,23 @@
 document.addEventListener('DOMContentLoaded', function(){
     const examId = window.EXAM_ID || null;
     const container = document.getElementById('roomsContainer');
+    const downloadExamPdfBtn = document.getElementById('downloadExamPdfBtn');
     const getSessionSortKey = (session) => {
         const normalized = String(session || '').trim().toLowerCase();
         if (['1st half', '1sthalf', 'first half', 'morning'].includes(normalized)) return 0;
         if (['2nd half', '2ndhalf', 'second half', 'afternoon'].includes(normalized)) return 1;
         return 2;
     };
+
+    if (downloadExamPdfBtn) {
+        downloadExamPdfBtn.addEventListener('click', () => {
+            if (!examId) {
+                alert('Invalid exam ID');
+                return;
+            }
+            window.location.href = `/download-seating-pdf/?exam_id=${encodeURIComponent(examId)}`;
+        });
+    }
 
     if (!examId) {
         container.innerHTML = '<p style="color:red;">Invalid exam ID</p>';
@@ -115,21 +126,6 @@ document.addEventListener('DOMContentLoaded', function(){
                         <div class="room-meta">${room.slot_date && room.slot_session ? `${room.slot_date} | ${room.slot_session} &nbsp; | &nbsp; ` : ''}Capacity: ${room.capacity} &nbsp; | &nbsp; Semester: ${semesterText}</div>
                     </div>
                 `;
-                const pdfBtn = document.createElement('button');
-                pdfBtn.type = 'button';
-                pdfBtn.textContent = 'Export A4 PDF';
-                Object.assign(pdfBtn.style, {
-                    marginLeft: '10px',
-                    padding: '6px 10px',
-                    borderRadius: '6px',
-                    border: 'none',
-                    background: '#1976d2',
-                    color: '#fff',
-                    cursor: 'pointer',
-                    fontWeight: '600'
-                });
-                pdfBtn.addEventListener('click', () => openRoomPdfPrint(roomCard, room));
-                header.appendChild(pdfBtn);
                 roomCard.appendChild(header);
 
                 const deptDiv = document.createElement('div');

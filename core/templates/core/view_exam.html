@@ -34,14 +34,18 @@
     .room-card { margin-bottom: 25px; background:#f9f9f9; border:1px solid #d0d0d0; border-radius:8px; padding:18px; }
     .room-meta { color:#666; font-size:0.9rem; }
     .dept-info { margin-bottom:12px; padding:12px; background:#fff; border-left:3px solid #1976d2; border-radius:6px; }
+    .view-exam-shell { width:min(94vw, 980px); max-width:none; margin:30px auto; padding:0 20px; }
   </style>
 </head>
 <body>
-  <div style="width:min(92vw, 1320px);max-width:none;margin:30px auto;padding:0 20px;">
+  <div class="view-exam-shell">
     <a id="back-link" href="/dashboard/">← Back to Dashboard</a>
     <h1 style="margin-top:12px; margin-bottom:8px;">Exam Seating — {{ exam_name }}</h1>
     <div style="margin-bottom:18px; color:#444; font-size:0.95rem;">
       <strong>Start Date:</strong> {{ start_date|default:"N/A" }} &nbsp; | &nbsp; <strong>End Date:</strong> {{ end_date|default:"N/A" }}
+    </div>
+    <div style="margin-bottom:18px;">
+      <button id="downloadExamPdfBtn" type="button" style="background:#1976d2; color:#fff; border:none; border-radius:6px; padding:10px 16px; cursor:pointer; font-weight:600;">Download PDF</button>
     </div>
     <div id="roomsContainer">
       <p style="color:#666;">Loading seating data...</p>
