@@ -1650,6 +1650,12 @@ function renderSeatGrid(rooms) {
     console.log('[renderSeatGrid] Input rooms:', rooms);
     console.log('[renderSeatGrid] rooms is array?', Array.isArray(rooms));
     console.log('[renderSeatGrid] rooms length:', rooms?.length);
+    const getSessionSortKey = (session) => {
+        const normalized = String(session || '').trim().toLowerCase();
+        if (['1st half', '1sthalf', 'first half', 'morning'].includes(normalized)) return 0;
+        if (['2nd half', '2ndhalf', 'second half', 'afternoon'].includes(normalized)) return 1;
+        return 2;
+    };
     
     roomSection.innerHTML = '';
     
@@ -1696,6 +1702,28 @@ function renderSeatGrid(rooms) {
                 seats: seatsBySlot[slotKey]
             });
         });
+    });
+
+    expandedRooms.sort((a, b) => {
+        const aDate = String(a?.slot_date || a?.seats?.[0]?.exam_date || '');
+        const bDate = String(b?.slot_date || b?.seats?.[0]?.exam_date || '');
+        if (aDate !== bDate) return aDate.localeCompare(bDate);
+
+        const aSession = getSessionSortKey(a?.slot_session || a?.seats?.[0]?.session || '');
+        const bSession = getSessionSortKey(b?.slot_session || b?.seats?.[0]?.session || '');
+        if (aSession !== bSession) return aSession - bSession;
+
+        const aFilled = (a?.seats || []).filter(seat => seat.registration && seat.registration !== 'Empty').length;
+        const bFilled = (b?.seats || []).filter(seat => seat.registration && seat.registration !== 'Empty').length;
+        if (aFilled !== bFilled) return bFilled - aFilled;
+
+        const aDeptCount = new Set((a?.department_details || []).map(item => String(item.department || '').trim().toUpperCase()).filter(Boolean)).size;
+        const bDeptCount = new Set((b?.department_details || []).map(item => String(item.department || '').trim().toUpperCase()).filter(Boolean)).size;
+        if (aDeptCount !== bDeptCount) return bDeptCount - aDeptCount;
+
+        const aRoom = `${a?.building || ''}-${a?.room_number || ''}`;
+        const bRoom = `${b?.building || ''}-${b?.room_number || ''}`;
+        return aRoom.localeCompare(bRoom);
     });
 
     console.log('[renderSeatGrid] Processing', expandedRooms.length, 'room slot(s)');

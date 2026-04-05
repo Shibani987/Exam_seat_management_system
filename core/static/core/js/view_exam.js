@@ -104,7 +104,7 @@ document.addEventListener('DOMContentLoaded', function(){
                     }
                 });
                 roomStudents.forEach(seat => {
-                    const seatSemester = seat.semester || seat.student_semester || '';
+                    const seatSemester = seat.student_semester || seat.semester || '';
                     if (seatSemester && seatSemester.toString().trim()) {
                         roomSemesters.add(seatSemester.toString().trim());
                     }
@@ -229,7 +229,7 @@ document.addEventListener('DOMContentLoaded', function(){
                         seatDiv.classList.remove('blocked', 'empty');
                         const reg = seat.registration || '';
                         const dept = (seat.department || '').trim();
-                        const sem = seat.semester || seat.student_semester || '';
+                        const sem = seat.student_semester || seat.semester || '';
                         const semText = sem ? ` (Sem ${sem})` : '';
                         seatDiv.innerHTML = `
                             <div class="seat-num">${row}${col}</div>

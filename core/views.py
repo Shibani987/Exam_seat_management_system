@@ -3781,7 +3781,12 @@ def get_exam_summary(request):
         dept_exam_lookup = {}
         try:
             for de in DepartmentExam.objects.filter(exam=exam):
-                key = (str(de.department or '').strip().upper(), str(de.exam_date or ''), str(de.session or ''))
+                key = (
+                    str(de.department or '').strip().upper(),
+                    str(de.exam_date or ''),
+                    str(de.session or ''),
+                    str(de.semester or '').strip()
+                )
                 dept_exam_lookup[key] = {
                     'start_time': str(de.start_time) if de.start_time else '',
                     'end_time': str(de.end_time) if de.end_time else '',
@@ -3805,8 +3810,20 @@ def get_exam_summary(request):
                     if reg_upper and reg_upper != 'EMPTY':
                         is_eligible = student_eligibility.get(reg_upper, False)
 
-                    key = (str(seat.department or '').strip().upper(), str(seat.exam_date or ''), str(seat.exam_session or ''))
-                    dept_times = dept_exam_lookup.get(key, {'start_time': '', 'end_time': ''})
+                    student_sem = student_semester.get(reg_upper, '')
+                    key = (
+                        str(seat.department or '').strip().upper(),
+                        str(seat.exam_date or ''),
+                        str(seat.exam_session or ''),
+                        str(student_sem or '').strip()
+                    )
+                    fallback_key = (
+                        str(seat.department or '').strip().upper(),
+                        str(seat.exam_date or ''),
+                        str(seat.exam_session or ''),
+                        ''
+                    )
+                    dept_times = dept_exam_lookup.get(key) or dept_exam_lookup.get(fallback_key) or {'start_time': '', 'end_time': '', 'semester': ''}
 
                     seating_data.append({
                         'room_id': seat.room_id,
@@ -3822,8 +3839,8 @@ def get_exam_summary(request):
                         'exam_name': seat.exam_name or '',
                         'start_time': dept_times.get('start_time', ''),
                         'end_time': dept_times.get('end_time', ''),
-                        'semester': dept_times.get('semester', ''),
-                        'student_semester': student_semester.get(reg_upper, ''),
+                        'semester': student_sem or dept_times.get('semester', ''),
+                        'student_semester': student_sem,
                         'year': '',
                         'is_eligible': is_eligible
                     })
