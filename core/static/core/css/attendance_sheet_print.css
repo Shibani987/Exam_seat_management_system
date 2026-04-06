@@ -127,7 +127,7 @@ body {
   flex-direction: column;
   gap: 6px;
   width: max-content;
-  min-width: 122px;
+  min-width: 0;
    
 }
 .meta-field-group:last-child {
@@ -148,6 +148,7 @@ body {
 }
 .meta-field-group:first-child {
   padding-left: 0;
+  min-width: max-content;
 }
 .sheet-meta-box .meta-field {
   white-space: nowrap;
@@ -187,7 +188,7 @@ body {
   height: 42px;
   line-height: 42px;
 
-  font-size: 12px;
+  font-size: 13px;
 
   overflow: hidden;
   white-space: nowrap;
@@ -203,8 +204,8 @@ body {
 }
 
 .sheet-table th {
-  padding: 1px 4px;
-  height: 32px;
+  padding: 0 4px;
+  height: 26px;
   line-height: 1.1;
   vertical-align: middle;
 }
@@ -226,11 +227,11 @@ body {
 
 .name-col{ width:160px; }
 
-.reg-col{ width:138px; }
+.reg-col{ width:118px; }
 
-.roll-col{ width:112px; }
+.roll-col{ width:96px; }
 
-.booklet-col{ width:120px; }
+.booklet-col{ width:116px; }
 
 .signature-col{ width:160px; }
 
@@ -252,6 +253,12 @@ body {
 
 .booklet-col {
   text-align: center;
+}
+
+.sheet-table th.booklet-col,
+.sheet-table td.booklet-col {
+  padding-left: 2px;
+  padding-right: 2px;
 }
 
 .signature-col {
@@ -627,10 +634,12 @@ body {
   .sheet-table td {
     height: 38px !important;
     line-height: 38px !important;
+    font-size: 13px !important;
   }
 
   .sheet-table th {
-    height: 30px !important;
+    padding: 0 4px !important;
+    height: 24px !important;
   }
 
   .sheet-table + .sheet-footer-row {

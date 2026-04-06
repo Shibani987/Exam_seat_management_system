@@ -257,7 +257,11 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
 
     meta_top = top_margin + _mm(33) - 5
     meta_height = _mm(11)
-    left_meta_width = _mm(52)
+    left_label_width = max(
+        draw.textbbox((0, 0), "Paper Name", font=regular_34)[2],
+        draw.textbbox((0, 0), "Paper Code", font=regular_34)[2],
+    )
+    left_meta_width = left_label_width + _mm(8)
     right_meta_width = _mm(58)
     right_meta_right = content_right - _mm(18)
     right_meta_left = right_meta_right - right_meta_width
@@ -277,7 +281,7 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     table_top = top_margin + _mm(58)
     table_bottom = top_margin + _mm(235)
     table_width = content_right - content_left
-    col_widths = [_mm(10), _mm(50), _mm(40), _mm(33), _mm(37)]
+    col_widths = [_mm(10), _mm(50), _mm(34), _mm(28), _mm(36)]
     remaining = table_width - sum(col_widths)
     col_widths.append(remaining)
     col_lefts = [content_left]
@@ -285,7 +289,7 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
         col_lefts.append(col_lefts[-1] + width)
     col_rights = [left + width for left, width in zip(col_lefts, col_widths)]
 
-    header_height = _mm(11)
+    header_height = _mm(9)
     row_height = int((table_bottom - table_top - header_height) / ATTENDANCE_SHEET_STUDENTS_PER_PAGE)
 
     draw.rectangle((content_left, table_top, content_right, table_bottom), outline="black", width=2)
@@ -309,8 +313,8 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
             _draw_centered_text(draw, header_box, lines[0], bold_34)
         else:
             midpoint_y = (header_box[1] + header_box[3]) / 2
-            _draw_text(draw, ((left + right) / 2, midpoint_y - _mm(2.5)), lines[0], bold_34, anchor="ma")
-            _draw_text(draw, ((left + right) / 2, midpoint_y + _mm(2.5)), lines[1], bold_34, anchor="ma")
+            _draw_text(draw, ((left + right) / 2, midpoint_y - _mm(2)), lines[0], bold_34, anchor="ma")
+            _draw_text(draw, ((left + right) / 2, midpoint_y + _mm(2)), lines[1], bold_34, anchor="ma")
 
     draw.line((content_left, table_top + header_height, content_right, table_top + header_height), fill="black", width=2)
 
@@ -338,9 +342,9 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
             if not value:
                 continue
             if aligns[col_index] == "left":
-                _draw_text(draw, (left + cell_padding, (row_top + row_bottom) / 2), value, regular_30, anchor="lm")
+                _draw_text(draw, (left + cell_padding, (row_top + row_bottom) / 2), value, regular_34, anchor="lm")
             else:
-                _draw_text(draw, ((left + right) / 2, (row_top + row_bottom) / 2), value, regular_30, anchor="mm")
+                _draw_text(draw, ((left + right) / 2, (row_top + row_bottom) / 2), value, regular_34, anchor="mm")
 
     primary_top = table_bottom + _mm(10)
     mini_box_size = _mm(11)
@@ -415,10 +419,10 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [24, 140, 92, 84, 112]
+    col_widths = [24, 140, 76, 66, 106]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
-    header_height = 34
+    header_height = 28
 
     buffer = BytesIO()
     pdf = reportlab_canvas.Canvas(buffer, pagesize=A4)
@@ -470,7 +474,10 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
 
         meta_y_top = y_top - 74
         box_h = 22
-        left_box_w = 92
+        left_box_w = max(
+            pdf.stringWidth("Paper Name", "Times-Roman", 10),
+            pdf.stringWidth("Paper Code", "Times-Roman", 10),
+        ) + 18
         right_box_w = 108
         draw_box(left_margin, meta_y_top - box_h, left_box_w, box_h, "Paper Name", 10)
         draw_box(left_margin, meta_y_top - (box_h * 2) - 6, left_box_w, box_h, "Paper Code", 10)
@@ -503,10 +510,10 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
             center_x = (x_positions[idx] + x_positions[idx + 1]) / 2
             lines = header.split("\n")
             if len(lines) == 1:
-                draw_center(lines[0], center_x, table_top - 22, "Times-Bold", 8)
+                draw_center(lines[0], center_x, table_top - 19, "Times-Bold", 8)
             else:
-                draw_center(lines[0], center_x, table_top - 18, "Times-Bold", 8)
-                draw_center(lines[1], center_x, table_top - 28, "Times-Bold", 8)
+                draw_center(lines[0], center_x, table_top - 15, "Times-Bold", 8)
+                draw_center(lines[1], center_x, table_top - 23, "Times-Bold", 8)
 
         students = (page_meta.get("students") or [])[:ATTENDANCE_SHEET_STUDENTS_PER_PAGE]
         current_y = header_y
@@ -531,9 +538,9 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
                 cell_left = x_positions[col_index]
                 cell_right = x_positions[col_index + 1]
                 cell_mid_y = next_y + 10
-                pdf.setFont("Times-Roman", 8)
+                pdf.setFont("Times-Roman", 9)
                 if col_index == 1:
-                    pdf.drawString(cell_left + 8, cell_mid_y, value[:30])
+                    pdf.drawString(cell_left + 8, cell_mid_y, value[:28])
                 else:
                     pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:24])
             current_y = next_y
@@ -607,7 +614,7 @@ def _build_marks_pdf_response_reportlab(sheets, exam_name):
     col_widths = [22, 120, 95, 82, 100]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
-    header_height = 34
+    header_height = 28
 
     buffer = BytesIO()
     pdf = reportlab_canvas.Canvas(buffer, pagesize=A4)
@@ -683,10 +690,10 @@ def _build_marks_pdf_response_reportlab(sheets, exam_name):
             center_x = (x_positions[idx] + x_positions[idx + 1]) / 2
             lines = header.split("\n")
             if len(lines) == 1:
-                draw_center(lines[0], center_x, table_top - 22, "Times-Bold", 8)
+                draw_center(lines[0], center_x, table_top - 19, "Times-Bold", 8)
             else:
-                draw_center(lines[0], center_x, table_top - 18, "Times-Bold", 8)
-                draw_center(lines[1], center_x, table_top - 28, "Times-Bold", 8)
+                draw_center(lines[0], center_x, table_top - 15, "Times-Bold", 8)
+                draw_center(lines[1], center_x, table_top - 23, "Times-Bold", 8)
 
         students = (page_meta.get("students") or [])[:MARKS_SHEET_STUDENTS_PER_PAGE]
         current_y = header_y
