@@ -342,9 +342,9 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
             if not value:
                 continue
             if aligns[col_index] == "left":
-                _draw_text(draw, (left + cell_padding, (row_top + row_bottom) / 2), value, regular_34, anchor="lm")
+                _draw_text(draw, (left + cell_padding, (row_top + row_bottom) / 2), value, regular_36, anchor="lm")
             else:
-                _draw_text(draw, ((left + right) / 2, (row_top + row_bottom) / 2), value, regular_34, anchor="mm")
+                _draw_text(draw, ((left + right) / 2, (row_top + row_bottom) / 2), value, regular_36, anchor="mm")
 
     primary_top = table_bottom + _mm(10)
     mini_box_size = _mm(11)
@@ -538,11 +538,11 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
                 cell_left = x_positions[col_index]
                 cell_right = x_positions[col_index + 1]
                 cell_mid_y = next_y + 10
-                pdf.setFont("Times-Roman", 9)
+                pdf.setFont("Times-Roman", 10)
                 if col_index == 1:
-                    pdf.drawString(cell_left + 8, cell_mid_y, value[:28])
+                    pdf.drawString(cell_left + 8, cell_mid_y, value[:25])
                 else:
-                    pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:24])
+                    pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:22])
             current_y = next_y
 
         footer_row_1_y = table_bottom - 18
