@@ -368,9 +368,9 @@ function showStep3(pages, examName) {
           <tr>
             <th class="sl-col">SL.</th>
             <th class="name-col">NAME OF STUDENT</th>
-            <th class="reg-col">UNIVERSITY REG.<br>NUMBER</th>
-            <th class="roll-col">COLLEGE ROLL<br>NUMBER</th>
-            <th class="booklet-col">ANSWER BOOKLET<br>NUMBER</th>
+            <th class="reg-col">UNIVERSITY<br>REG. NUMBER</th>
+            <th class="roll-col">COLLEGE<br>ROLL NUMBER</th>
+            <th class="booklet-col">ANSWER<br>BOOKLET NUMBER</th>
             <th class="signature-col">FULL SIGNATURE<br>OF STUDENT</th>
           </tr>
         </thead>

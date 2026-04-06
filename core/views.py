@@ -494,9 +494,9 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         headers = [
             "SL.",
             "NAME OF STUDENT",
-            "UNIVERSITY REG.\nNUMBER",
-            "COLLEGE ROLL\nNUMBER",
-            "ANSWER BOOKLET\nNUMBER",
+            "UNIVERSITY\nREG. NUMBER",
+            "COLLEGE\nROLL NUMBER",
+            "ANSWER\nBOOKLET NUMBER",
             "FULL SIGNATURE\nOF STUDENT",
         ]
         for idx, header in enumerate(headers):
