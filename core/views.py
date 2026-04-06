@@ -275,9 +275,9 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
         _draw_centered_text(draw, (left, top, right, bottom), label, regular_34)
 
     table_top = top_margin + _mm(58)
-    table_bottom = top_margin + _mm(230)
+    table_bottom = top_margin + _mm(235)
     table_width = content_right - content_left
-    col_widths = [_mm(10), _mm(50), _mm(31), _mm(31), _mm(60)]
+    col_widths = [_mm(10), _mm(50), _mm(40), _mm(33), _mm(37)]
     remaining = table_width - sum(col_widths)
     col_widths.append(remaining)
     col_lefts = [content_left]
@@ -288,14 +288,14 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     header_height = _mm(11)
     row_height = int((table_bottom - table_top - header_height) / ATTENDANCE_SHEET_STUDENTS_PER_PAGE)
 
-    draw.rectangle((content_left, table_top, content_right, table_bottom), outline="black")
+    draw.rectangle((content_left, table_top, content_right, table_bottom), outline="black", width=2)
     headers = [
         "SL.",
         "NAME OF STUDENT",
         "UNIVERSITY\nREG. NUMBER",
         "COLLEGE\nROLL NUMBER",
         "ANSWER\nBOOKLET NUMBER",
-        "FULL SIGNATURE OF STUDNET",
+        "FULL SIGNATURE OF STUDENT",
     ]
 
     for idx, header in enumerate(headers):
@@ -315,7 +315,7 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     draw.line((content_left, table_top + header_height, content_right, table_top + header_height), fill="black", width=2)
 
     students = (page_meta.get("students") or [])[:ATTENDANCE_SHEET_STUDENTS_PER_PAGE]
-    cell_padding = _mm(2)
+    cell_padding = _mm(3)
     for row_index in range(ATTENDANCE_SHEET_STUDENTS_PER_PAGE):
         row_top = table_top + header_height + (row_index * row_height)
         row_bottom = row_top + row_height
@@ -350,9 +350,9 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     draw.rectangle((content_left + _mm(50), primary_top + _mm(12), content_left + _mm(50) + mini_box_size, primary_top + _mm(12) + mini_box_size), outline="black", width=2)
 
     internal_x = content_right - _mm(58)
-    internal_sig_top = primary_top - _mm(2)
+    internal_sig_top = primary_top + _mm(1)
     draw.rectangle((internal_x, internal_sig_top, internal_x + _mm(36), internal_sig_top + _mm(14)), outline="black", width=2)
-    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(28)), "Signature of Examiner (Internal)", regular_40, anchor="ma")
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(19)), "Signature of Examiner (Internal)", regular_40, anchor="ma")
     _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(26)), "Name (in CAPITAL):", regular_40, anchor="ma")
 
     secondary_y = A4_HEIGHT_PX - _mm(28) + 5
@@ -415,7 +415,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [22, 120, 80, 74, 92]
+    col_widths = [24, 140, 92, 84, 112]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
     header_height = 34
@@ -493,11 +493,11 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
 
         headers = [
             "SL.",
-            "STUDENT NAME",
+            "NAME OF STUDENT",
             "UNIVERSITY REG.\nNUMBER",
             "COLLEGE ROLL\nNUMBER",
             "ANSWER BOOKLET\nNUMBER",
-            "CANDIDATE\nSIGNATURE",
+            "FULL SIGNATURE\nOF STUDENT",
         ]
         for idx, header in enumerate(headers):
             center_x = (x_positions[idx] + x_positions[idx + 1]) / 2
@@ -533,7 +533,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
                 cell_mid_y = next_y + 10
                 pdf.setFont("Times-Roman", 8)
                 if col_index == 1:
-                    pdf.drawString(cell_left + 4, cell_mid_y, value[:26])
+                    pdf.drawString(cell_left + 8, cell_mid_y, value[:30])
                 else:
                     pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:24])
             current_y = next_y
@@ -557,7 +557,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
 
         internal_line_left = page_width - right_margin - 268
         internal_line_right = page_width - right_margin - 6
-        internal_line_y = footer_row_1_y - 1
+        internal_line_y = footer_row_1_y - 11
         pdf.line(internal_line_left, internal_line_y, internal_line_right, internal_line_y)
         draw_line_label("Signature of Examiner (Internal)", (internal_line_left + internal_line_right) / 2, internal_line_y - 12, 10)
         draw_line_label("Name (in CAPITAL):", ((internal_line_left + internal_line_right) / 2) - 118, internal_line_y - 25, 10)

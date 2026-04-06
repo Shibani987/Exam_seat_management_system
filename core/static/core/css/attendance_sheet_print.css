@@ -182,7 +182,7 @@ body {
 .sheet-table td,
 .sheet-table th {
   border: 0.8px solid #000;
-  padding: 0 4px;
+  padding: 0 6px;
 
   height: 42px;
   line-height: 42px;
@@ -224,17 +224,22 @@ body {
   text-align: center !important;
 }
 
-.name-col{ width:145px; }
+.name-col{ width:160px; }
 
-.reg-col{ width:132px; }
+.reg-col{ width:138px; }
 
-.roll-col{ width:105px; }
+.roll-col{ width:112px; }
 
-.booklet-col{ width:110px; }
+.booklet-col{ width:120px; }
 
-.signature-col{ width:150px; }
+.signature-col{ width:160px; }
 
 .name-col {
+  text-align: left;
+}
+
+.sheet-table td.name-col {
+  padding-left: 10px;
 }
 
 .reg-col {
@@ -349,7 +354,7 @@ body {
 .footer-right-internal {
   flex: 1;
   text-align: right;
-  margin-top: 14px;
+  margin-top: 24px;
 }
 
 .footer-right-internal .footer-label,
@@ -644,7 +649,7 @@ body {
   }
 
   .footer-right-internal {
-    margin-top: 2px !important;
+    margin-top: 12px !important;
   }
 
   .footer-left-hod,

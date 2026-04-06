@@ -307,7 +307,7 @@ function showStep3(pages, examName) {
           margin-top: 40px !important;
         }
         .footer-right-internal {
-          margin-top: 2px !important;
+          margin-top: 12px !important;
         }
         .footer-left-hod,
         .footer-right-external {
@@ -367,11 +367,11 @@ function showStep3(pages, examName) {
         <thead>
           <tr>
             <th class="sl-col">SL.</th>
-            <th class="name-col">STUDENT NAME</th>
+            <th class="name-col">NAME OF STUDENT</th>
             <th class="reg-col">UNIVERSITY REG.<br>NUMBER</th>
             <th class="roll-col">COLLEGE ROLL<br>NUMBER</th>
             <th class="booklet-col">ANSWER BOOKLET<br>NUMBER</th>
-            <th class="signature-col">CANDIDATE<br>SIGNATURE</th>
+            <th class="signature-col">FULL SIGNATURE<br>OF STUDENT</th>
           </tr>
         </thead>
         <tbody>
