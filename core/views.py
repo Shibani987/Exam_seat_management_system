@@ -284,37 +284,13 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     students = (page_meta.get("students") or [])[:ATTENDANCE_SHEET_STUDENTS_PER_PAGE]
 
     sl_width = _mm(10)
-    booklet_width = _mm(30)
-    signature_width = _mm(42)
+    name_width = _mm(52)
+    reg_width = _mm(28)
+    roll_width = _mm(27)
+    booklet_width = _mm(32)
+    signature_width = table_width - (sl_width + name_width + reg_width + roll_width + booklet_width)
 
-    reg_header_width = max(
-        draw.textbbox((0, 0), "UNIVERSITY", font=bold_38)[2],
-        draw.textbbox((0, 0), "REG. NUMBER", font=bold_38)[2],
-    ) + _mm(3)
-    roll_header_width = max(
-        draw.textbbox((0, 0), "COLLEGE", font=bold_38)[2],
-        draw.textbbox((0, 0), "ROLL NUMBER", font=bold_38)[2],
-    ) + _mm(4)
-
-    reg_content_width = 0
-    roll_content_width = 0
-    for student in students:
-        reg_text = (student.get("registration_number") or "").upper()
-        roll_text = (student.get("roll_number") or "").upper()
-        if reg_text:
-            reg_content_width = max(reg_content_width, draw.textbbox((0, 0), reg_text, font=regular_36)[2] + _mm(3))
-        if roll_text:
-            roll_content_width = max(roll_content_width, draw.textbbox((0, 0), roll_text, font=regular_36)[2] + _mm(4))
-
-    reg_width = min(max(reg_header_width, reg_content_width, _mm(22)), _mm(30))
-    roll_width = min(max(roll_header_width, roll_content_width, _mm(21)), _mm(29))
-    name_width = table_width - (sl_width + reg_width + roll_width + booklet_width + signature_width)
-    if name_width < _mm(42):
-        signature_width = max(_mm(32), signature_width - (_mm(42) - name_width))
-        name_width = table_width - (sl_width + reg_width + roll_width + booklet_width + signature_width)
-
-    col_widths = [sl_width, name_width, reg_width, roll_width, booklet_width]
-    col_widths.append(table_width - sum(col_widths))
+    col_widths = [sl_width, name_width, reg_width, roll_width, booklet_width, signature_width]
     col_lefts = [content_left]
     for width in col_widths[:-1]:
         col_lefts.append(col_lefts[-1] + width)
@@ -516,47 +492,12 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         students = (page_meta.get("students") or [])[:ATTENDANCE_SHEET_STUDENTS_PER_PAGE]
 
         sl_width = 24
-        booklet_width = 80
-        signature_width = content_width * 0.205
-
-        reg_header_width = max(
-            pdf.stringWidth("UNIVERSITY", "Times-Bold", 8.8),
-            pdf.stringWidth("REG. NUMBER", "Times-Bold", 8.8),
-        ) + 12
-        roll_header_width = max(
-            pdf.stringWidth("COLLEGE", "Times-Bold", 8.8),
-            pdf.stringWidth("ROLL NUMBER", "Times-Bold", 8.8),
-        ) + 16
-
-        reg_content_width = 0
-        roll_content_width = 0
-        for student in students:
-            reg_content_width = max(
-                reg_content_width,
-                pdf.stringWidth((student.get("registration_number") or "").upper(), "Times-Roman", 10) + 10,
-            )
-            roll_content_width = max(
-                roll_content_width,
-                pdf.stringWidth((student.get("roll_number") or "").upper(), "Times-Roman", 10) + 12,
-            )
-
-        reg_width = min(max(reg_header_width, reg_content_width, 58), 76)
-        roll_width = min(max(roll_header_width, roll_content_width, 56), 74)
-        name_width = content_width - (sl_width + reg_width + roll_width + booklet_width + signature_width)
-        if name_width < 118:
-            shortage = 118 - name_width
-            reduce_roll = min(shortage * 0.45, max(0, roll_width - 52))
-            roll_width -= reduce_roll
-            shortage -= reduce_roll
-            reduce_reg = min(shortage * 0.55, max(0, reg_width - 54))
-            reg_width -= reduce_reg
-            shortage -= reduce_reg
-            reduce_signature = min(shortage, max(0, signature_width - 86))
-            signature_width -= reduce_signature
-            name_width = content_width - (sl_width + reg_width + roll_width + booklet_width + signature_width)
-
-        col_widths = [sl_width, name_width, reg_width, roll_width, booklet_width]
-        col_widths.append(content_width - sum(col_widths))
+        name_width = 148
+        reg_width = 80
+        roll_width = 78
+        booklet_width = 92
+        signature_width = content_width - (sl_width + name_width + reg_width + roll_width + booklet_width)
+        col_widths = [sl_width, name_width, reg_width, roll_width, booklet_width, signature_width]
 
         room_number = page_meta.get("room_number")
         if room_number:
