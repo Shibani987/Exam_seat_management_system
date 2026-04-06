@@ -281,7 +281,7 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     table_top = top_margin + _mm(58)
     table_bottom = top_margin + _mm(235)
     table_width = content_right - content_left
-    col_widths = [_mm(10), _mm(50), _mm(34), _mm(28), _mm(36)]
+    col_widths = [_mm(10), _mm(60), _mm(31), _mm(30), _mm(33)]
     remaining = table_width - sum(col_widths)
     col_widths.append(remaining)
     col_lefts = [content_left]
@@ -289,7 +289,7 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
         col_lefts.append(col_lefts[-1] + width)
     col_rights = [left + width for left, width in zip(col_lefts, col_widths)]
 
-    header_height = _mm(9)
+    header_height = _mm(8)
     row_height = int((table_bottom - table_top - header_height) / ATTENDANCE_SHEET_STUDENTS_PER_PAGE)
 
     draw.rectangle((content_left, table_top, content_right, table_bottom), outline="black", width=2)
@@ -313,8 +313,8 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
             _draw_centered_text(draw, header_box, lines[0], bold_34)
         else:
             midpoint_y = (header_box[1] + header_box[3]) / 2
-            _draw_text(draw, ((left + right) / 2, midpoint_y - _mm(2)), lines[0], bold_34, anchor="ma")
-            _draw_text(draw, ((left + right) / 2, midpoint_y + _mm(2)), lines[1], bold_34, anchor="ma")
+            _draw_text(draw, ((left + right) / 2, midpoint_y - _mm(1.6)), lines[0], bold_38, anchor="ma")
+            _draw_text(draw, ((left + right) / 2, midpoint_y + _mm(1.2)), lines[1], bold_38, anchor="ma")
 
     draw.line((content_left, table_top + header_height, content_right, table_top + header_height), fill="black", width=2)
 
@@ -419,10 +419,10 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [24, 140, 76, 66, 106]
+    col_widths = [24, 170, 72, 74, 92]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
-    header_height = 28
+    header_height = 24
 
     buffer = BytesIO()
     pdf = reportlab_canvas.Canvas(buffer, pagesize=A4)
@@ -438,6 +438,46 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
 
     def draw_line_label(text, x_center, y_base, font_size=8):
         draw_center(text, x_center, y_base, "Times-Roman", font_size)
+
+    def draw_multiline_center_box(text, left, bottom, right, top, font_name="Times-Bold", font_size=8.5, line_gap=8):
+        lines = text.split("\n")
+        if not lines:
+            return
+        total_height = (len(lines) - 1) * line_gap
+        center_y = (bottom + top) / 2
+        start_y = center_y + (total_height / 2) - 1
+        for idx, line in enumerate(lines):
+            draw_center(line, (left + right) / 2, start_y - (idx * line_gap), font_name, font_size)
+
+    def draw_fit_text_left(text, left, right, y, base_font=10, min_font=7):
+        if not text:
+            return
+        available_width = max(0, right - left)
+        font_size = base_font
+        while font_size > min_font and pdf.stringWidth(text, "Times-Roman", font_size) > available_width:
+            font_size -= 0.5
+        final_text = text
+        if pdf.stringWidth(final_text, "Times-Roman", font_size) > available_width:
+            while final_text and pdf.stringWidth(final_text + "...", "Times-Roman", font_size) > available_width:
+                final_text = final_text[:-1]
+            final_text = (final_text + "...") if final_text else ""
+        pdf.setFont("Times-Roman", font_size)
+        pdf.drawString(left, y, final_text)
+
+    def draw_fit_text_center(text, left, right, y, base_font=10, min_font=7):
+        if not text:
+            return
+        available_width = max(0, right - left)
+        font_size = base_font
+        while font_size > min_font and pdf.stringWidth(text, "Times-Roman", font_size) > available_width:
+            font_size -= 0.5
+        final_text = text
+        if pdf.stringWidth(final_text, "Times-Roman", font_size) > available_width:
+            while final_text and pdf.stringWidth(final_text + "...", "Times-Roman", font_size) > available_width:
+                final_text = final_text[:-1]
+            final_text = (final_text + "...") if final_text else ""
+        pdf.setFont("Times-Roman", font_size)
+        pdf.drawCentredString((left + right) / 2, y, final_text)
 
     logo = _attendance_logo_image()
     logo_reader = ImageReader(logo) if (logo and ImageReader) else None
@@ -507,13 +547,16 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
             "FULL SIGNATURE\nOF STUDENT",
         ]
         for idx, header in enumerate(headers):
-            center_x = (x_positions[idx] + x_positions[idx + 1]) / 2
-            lines = header.split("\n")
-            if len(lines) == 1:
-                draw_center(lines[0], center_x, table_top - 19, "Times-Bold", 8)
-            else:
-                draw_center(lines[0], center_x, table_top - 15, "Times-Bold", 8)
-                draw_center(lines[1], center_x, table_top - 23, "Times-Bold", 8)
+            draw_multiline_center_box(
+                header,
+                x_positions[idx],
+                header_y,
+                x_positions[idx + 1],
+                table_top,
+                "Times-Bold",
+                8.8,
+                8,
+            )
 
         students = (page_meta.get("students") or [])[:ATTENDANCE_SHEET_STUDENTS_PER_PAGE]
         current_y = header_y
@@ -538,11 +581,12 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
                 cell_left = x_positions[col_index]
                 cell_right = x_positions[col_index + 1]
                 cell_mid_y = next_y + 10
-                pdf.setFont("Times-Roman", 10)
                 if col_index == 1:
-                    pdf.drawString(cell_left + 8, cell_mid_y, value[:25])
+                    draw_fit_text_left(value, cell_left + 8, cell_right - 8, cell_mid_y, 10, 6.5)
+                elif col_index == 3:
+                    draw_fit_text_center(value, cell_left + 6, cell_right - 6, cell_mid_y, 10, 7)
                 else:
-                    pdf.drawCentredString((cell_left + cell_right) / 2, cell_mid_y, value[:22])
+                    draw_fit_text_center(value, cell_left + 4, cell_right - 4, cell_mid_y, 10, 7)
             current_y = next_y
 
         footer_row_1_y = table_bottom - 18
