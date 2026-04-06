@@ -281,7 +281,7 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     table_top = top_margin + _mm(58)
     table_bottom = top_margin + _mm(235)
     table_width = content_right - content_left
-    col_widths = [_mm(10), _mm(60), _mm(31), _mm(30), _mm(33)]
+    col_widths = [_mm(10), _mm(67), _mm(29), _mm(28), _mm(30)]
     remaining = table_width - sum(col_widths)
     col_widths.append(remaining)
     col_lefts = [content_left]
@@ -419,7 +419,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
     top_margin = 12
     bottom_margin = 18
     content_width = page_width - left_margin - right_margin
-    col_widths = [24, 170, 72, 74, 92]
+    col_widths = [24, 190, 68, 70, 80]
     col_widths.append(content_width - sum(col_widths))
     row_height = 28
     header_height = 24
@@ -582,7 +582,7 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
                 cell_right = x_positions[col_index + 1]
                 cell_mid_y = next_y + 10
                 if col_index == 1:
-                    draw_fit_text_left(value, cell_left + 8, cell_right - 8, cell_mid_y, 10, 6.5)
+                    draw_fit_text_left(value, cell_left + 8, cell_right - 20, cell_mid_y, 10, 6.5)
                 elif col_index == 3:
                     draw_fit_text_center(value, cell_left + 6, cell_right - 6, cell_mid_y, 10, 7)
                 else:
