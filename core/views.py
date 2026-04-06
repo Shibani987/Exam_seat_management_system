@@ -309,8 +309,8 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     reg_width = min(max(reg_header_width, reg_content_width, _mm(22)), _mm(30))
     roll_width = min(max(roll_header_width, roll_content_width, _mm(21)), _mm(29))
     name_width = table_width - (sl_width + reg_width + roll_width + booklet_width + signature_width)
-    if name_width < _mm(52):
-        signature_width = max(_mm(36), signature_width - (_mm(52) - name_width))
+    if name_width < _mm(48):
+        signature_width = max(_mm(36), signature_width - (_mm(48) - name_width))
         name_width = table_width - (sl_width + reg_width + roll_width + booklet_width + signature_width)
 
     col_widths = [sl_width, name_width, reg_width, roll_width, booklet_width]
@@ -543,8 +543,8 @@ def _build_attendance_pdf_response_reportlab(sheets, exam_name):
         reg_width = min(max(reg_header_width, reg_content_width, 58), 76)
         roll_width = min(max(roll_header_width, roll_content_width, 56), 74)
         name_width = content_width - (sl_width + reg_width + roll_width + booklet_width + signature_width)
-        if name_width < 150:
-            shortage = 150 - name_width
+        if name_width < 138:
+            shortage = 138 - name_width
             reduce_roll = min(shortage * 0.45, max(0, roll_width - 56))
             roll_width -= reduce_roll
             shortage -= reduce_roll
