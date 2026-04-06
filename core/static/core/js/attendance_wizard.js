@@ -297,7 +297,11 @@ function showStep3(pages, examName) {
           line-height: 33px !important;
         }
         .sheet-table th {
-          height: 20px !important;
+          padding-top: 0 !important;
+          padding-bottom: 0 !important;
+          height: 18px !important;
+          line-height: 1 !important;
+          vertical-align: middle !important;
         }
         .sheet-table + .sheet-footer-row {
           margin-top: 30px !important;
