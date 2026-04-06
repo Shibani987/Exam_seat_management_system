@@ -275,9 +275,9 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
         _draw_centered_text(draw, (left, top, right, bottom), label, regular_34)
 
     table_top = top_margin + _mm(58)
-    table_bottom = top_margin + _mm(235)
+    table_bottom = top_margin + _mm(230)
     table_width = content_right - content_left
-    col_widths = [_mm(9), _mm(46), _mm(39), _mm(31), _mm(33)]
+    col_widths = [_mm(10), _mm(50), _mm(31), _mm(31), _mm(60)]
     remaining = table_width - sum(col_widths)
     col_widths.append(remaining)
     col_lefts = [content_left]
@@ -288,14 +288,14 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     header_height = _mm(11)
     row_height = int((table_bottom - table_top - header_height) / ATTENDANCE_SHEET_STUDENTS_PER_PAGE)
 
-    draw.rectangle((content_left, table_top, content_right, table_bottom), outline="black", width=2)
+    draw.rectangle((content_left, table_top, content_right, table_bottom), outline="black")
     headers = [
         "SL.",
-        "STUDENT NAME",
-        "UNIVERSITY REG.\nNUMBER",
-        "COLLEGE ROLL\nNUMBER",
-        "ANSWER BOOKLET\nNUMBER",
-        "CANDIDATE\nSIGNATURE",
+        "NAME OF STUDENT",
+        "UNIVERSITY\nREG. NUMBER",
+        "COLLEGE\nROLL NUMBER",
+        "ANSWER\nBOOKLET NUMBER",
+        "FULL SIGNATURE OF STUDNET",
     ]
 
     for idx, header in enumerate(headers):
@@ -352,7 +352,7 @@ def _draw_attendance_sheet_page(page_meta, exam_name, fonts, logo):
     internal_x = content_right - _mm(58)
     internal_sig_top = primary_top - _mm(2)
     draw.rectangle((internal_x, internal_sig_top, internal_x + _mm(36), internal_sig_top + _mm(14)), outline="black", width=2)
-    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(19)), "Signature of Examiner (Internal)", regular_40, anchor="ma")
+    _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(28)), "Signature of Examiner (Internal)", regular_40, anchor="ma")
     _draw_text(draw, (internal_x + _mm(18), internal_sig_top + _mm(26)), "Name (in CAPITAL):", regular_40, anchor="ma")
 
     secondary_y = A4_HEIGHT_PX - _mm(28) + 5
